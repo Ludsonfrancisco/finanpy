@@ -58,14 +58,14 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 1.1.7 Gerar e rodar migrations iniciais
 
 
-- [ ] **1.2 Perfil de usuário (app `profiles`)**
-  - [ ] 1.2.1 Criar `Profile` 1:1 com `User` (OneToOneField, related_name='profile')
-  - [ ] 1.2.2 Adicionar campos `first_name`, `last_name`, `birth_date`, `avatar` (ImageField opcional)
-  - [ ] 1.2.3 Adicionar `created_at` e `updated_at`
-  - [ ] 1.2.4 Criar `profiles/signals.py` com signal `post_save` de `User` criando `Profile`
-  - [ ] 1.2.5 Conectar signals em `profiles/apps.py` via método `ready()`
-  - [ ] 1.2.6 Registrar `Profile` em `profiles/admin.py`
-  - [ ] 1.2.7 Gerar e rodar migrations
+- [X] **1.2 Perfil de usuário (app `profiles`)**
+  - [X] 1.2.1 Criar `Profile` 1:1 com `User` (OneToOneField, related_name='profile')
+  - [X] 1.2.2 Adicionar campos `first_name`, `last_name`, `birth_date`, `avatar` (ImageField opcional)
+  - [X] 1.2.3 Adicionar `created_at` e `updated_at`
+  - [X] 1.2.4 Criar `profiles/signals.py` com signal `post_save` de `User` criando `Profile`
+  - [X] 1.2.5 Conectar signals em `profiles/apps.py` via método `ready()`
+  - [X] 1.2.6 Registrar `Profile` em `profiles/admin.py`
+  - [X] 1.2.7 Gerar e rodar migrations
 
 - [ ] **1.3 Formulários e views de autenticação**
   - [ ] 1.3.1 Criar `users/forms.py` com `SignUpForm` (email, password1, password2)
