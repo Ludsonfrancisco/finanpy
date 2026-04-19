@@ -1,0 +1,1 @@
+- [Custom User model](project_user_model.md) — AbstractUser + no username + email login; DB must be dropped if migrated before AUTH_USER_MODEL was set

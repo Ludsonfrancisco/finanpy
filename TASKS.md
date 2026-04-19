@@ -14,13 +14,20 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 0.1.4 Criar `.gitignore` (venv, `__pycache__`, `db.sqlite3`, `.env`, `staticfiles/`)
   - [X] 0.1.5 Inicializar repositório Git e primeiro commit
 
-- [ ] **0.2 Criar projeto Django**
+- [X] **0.2 Criar projeto Django**
   - [X] 0.2.1 Executar `django-admin startproject core .`
   - [X] 0.2.2 Validar que `manage.py` está na raiz
   - [X] 0.2.3 Executar `python manage.py runserver` e confirmar tela inicial
-  - [ ] 0.2.4 Configurar `LANGUAGE_CODE = 'pt-br'` em `settings.py`
-  - [ ] 0.2.5 Configurar `TIME_ZONE = 'America/Sao_Paulo'` em `settings.py`
-  - [ ] 0.2.6 Configurar `USE_TZ = True` em `settings.py`
+  - [X] 0.2.4 Configurar `LANGUAGE_CODE = 'pt-br'` em `settings.py`
+  - [X] 0.2.5 Configurar `TIME_ZONE = 'America/Sao_Paulo'` em `settings.py`
+  - [X] 0.2.6 Configurar `USE_TZ = True` em `settings.py`
+  - [X] 0.2.7 Instalar `python-dotenv` e adicionar ao `requirements.txt`
+  - [X] 0.2.8 Criar arquivo `.env` na raiz com `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS`
+  - [X] 0.2.9 Criar `.env.example` com as mesmas chaves sem valores sensíveis
+  - [X] 0.2.10 Mover `SECRET_KEY` para `.env` e ler via `os.environ` em `settings.py`
+  - [X] 0.2.11 Configurar `DEBUG` via variável de ambiente (padrão `False` se ausente)
+  - [X] 0.2.12 Configurar `ALLOWED_HOSTS` via variável de ambiente (lista separada por vírgula)
+  - [X] 0.2.13 Adicionar `ruff` ao `requirements.txt` e criar `ruff.toml` configurado para aspas simples (`quote-style = 'single'`)
 
 - [X] **0.3 Estrutura de apps**
   - [X] 0.3.1 Criar app `users` (`python manage.py startapp users`)
@@ -30,25 +37,26 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 0.3.5 Criar app `transactions`
   - [X] 0.3.6 Registrar todos os apps em `INSTALLED_APPS`
 
-- [ ] **0.4 Configuração de arquivos estáticos e templates**
-  - [ ] 0.4.1 Criar diretório `templates/` na raiz
-  - [ ] 0.4.2 Configurar `TEMPLATES['DIRS']` apontando para `BASE_DIR / 'templates'`
-  - [ ] 0.4.3 Criar diretório `static/` na raiz
-  - [ ] 0.4.4 Configurar `STATICFILES_DIRS`
-  - [ ] 0.4.5 Criar `static/css/custom.css` vazio para customizações pontuais
+- [X] **0.4 Configuração de arquivos estáticos e templates**
+  - [X] 0.4.1 Criar diretório `templates/` na raiz
+  - [X] 0.4.2 Configurar `TEMPLATES['DIRS']` apontando para `BASE_DIR / 'templates'`
+  - [X] 0.4.3 Criar diretório `static/` na raiz
+  - [X] 0.4.4 Configurar `STATICFILES_DIRS`
+  - [X] 0.4.5 Criar `static/css/custom.css` vazio para customizações pontuais
 
 ---
 
 ### Sprint 1 — Autenticação e usuário customizado
 
-- [ ] **1.1 Modelo de usuário customizado (app `users`)**
-  - [ ] 1.1.1 Criar classe `UserManager` herdando de `BaseUserManager` com `create_user` e `create_superuser` baseados em e-mail
-  - [ ] 1.1.2 Criar `User(AbstractUser)` com `username = None` e `email = models.EmailField(unique=True)`
-  - [ ] 1.1.3 Definir `USERNAME_FIELD = 'email'` e `REQUIRED_FIELDS = []`
-  - [ ] 1.1.4 Adicionar campos `created_at` e `updated_at`
-  - [ ] 1.1.5 Configurar `AUTH_USER_MODEL = 'users.User'` em `settings.py`
-  - [ ] 1.1.6 Registrar `User` em `users/admin.py` com `UserAdmin` adaptado
-  - [ ] 1.1.7 Gerar e rodar migrations iniciais
+- [X] **1.1 Modelo de usuário customizado (app `users`)**
+  - [X] 1.1.1 Criar classe `UserManager` herdando de `BaseUserManager` com `create_user` e `create_superuser` baseados em e-mail
+  - [X] 1.1.2 Criar `User(AbstractUser)` com `username = None` e `email = models.EmailField(unique=True)`
+  - [X] 1.1.3 Definir `USERNAME_FIELD = 'email'` e `REQUIRED_FIELDS = []`
+  - [X] 1.1.4 Adicionar campos `created_at` e `updated_at`
+  - [X] 1.1.5 Configurar `AUTH_USER_MODEL = 'users.User'` em `settings.py`
+  - [X] 1.1.6 Registrar `User` em `users/admin.py` com `UserAdmin` adaptado
+  - [X] 1.1.7 Gerar e rodar migrations iniciais
+
 
 - [ ] **1.2 Perfil de usuário (app `profiles`)**
   - [ ] 1.2.1 Criar `Profile` 1:1 com `User` (OneToOneField, related_name='profile')
