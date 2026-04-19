@@ -67,17 +67,17 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 1.2.6 Registrar `Profile` em `profiles/admin.py`
   - [X] 1.2.7 Gerar e rodar migrations
 
-- [ ] **1.3 Formulários e views de autenticação**
-  - [ ] 1.3.1 Criar `users/forms.py` com `SignUpForm` (email, password1, password2)
-  - [ ] 1.3.2 Criar `LoginForm` baseado em `AuthenticationForm` usando e-mail
-  - [ ] 1.3.3 Criar `SignUpView(CreateView)` em `users/views.py`
-  - [ ] 1.3.4 Criar `LoginView` herdando de `django.contrib.auth.views.LoginView`
-  - [ ] 1.3.5 Criar `LogoutView` usando a nativa do Django
-  - [ ] 1.3.6 Configurar `LOGIN_URL`, `LOGIN_REDIRECT_URL` e `LOGOUT_REDIRECT_URL` em `settings.py`
+- [X] **1.3 Formulários e views de autenticação**
+  - [X] 1.3.1 Criar `users/forms.py` com `SignUpForm` (email, password1, password2)
+  - [X] 1.3.2 Criar `LoginForm` baseado em `AuthenticationForm` usando e-mail
+  - [X] 1.3.3 Criar `SignUpView(CreateView)` em `users/views.py`
+  - [X] 1.3.4 Criar `LoginView` herdando de `django.contrib.auth.views.LoginView`
+  - [X] 1.3.5 Criar `LogoutView` usando a nativa do Django
+  - [X] 1.3.6 Configurar `LOGIN_URL`, `LOGIN_REDIRECT_URL` e `LOGOUT_REDIRECT_URL` em `settings.py`
 
-- [ ] **1.4 URLs de autenticação**
-  - [ ] 1.4.1 Criar `users/urls.py` com rotas `signup/`, `login/`, `logout/`
-  - [ ] 1.4.2 Incluir `users.urls` em `core/urls.py`
+- [X] **1.4 URLs de autenticação**
+  - [X] 1.4.1 Criar `users/urls.py` com rotas `signup/`, `login/`, `logout/`
+  - [X] 1.4.2 Incluir `users.urls` em `core/urls.py`
 
 ---
 
