@@ -1,0 +1,118 @@
+{% extends "layouts/base_app.html" %}
+
+{% block title %}{% if object %}Editar conta{% else %}Nova conta{% endif %} — Finanpy{% endblock %}
+
+{% block content %}
+
+<!-- Page heading -->
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold text-slate-100">
+    {% if object %}Editar conta{% else %}Nova conta{% endif %}
+  </h1>
+  <p class="mt-1 text-sm text-slate-400">
+    {% if object %}Atualize os dados da conta bancária.{% else %}Preencha os dados para cadastrar uma nova conta.{% endif %}
+  </p>
+</div>
+
+<!-- Messages -->
+{% include "partials/_messages.html" %}
+
+<!-- Card -->
+<div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-black/20 backdrop-blur">
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="flex flex-col gap-5">
+
+      <!-- name -->
+      <div>
+        <label for="{{ form.name.id_for_label }}"
+               class="mb-1.5 block text-sm font-medium text-slate-300">
+          Nome
+        </label>
+        {{ form.name }}
+        {% if form.name.errors %}
+          {% for error in form.name.errors %}
+            <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- type + currency side by side on sm+ -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+        <!-- type -->
+        <div>
+          <label for="{{ form.type.id_for_label }}"
+                 class="mb-1.5 block text-sm font-medium text-slate-300">
+            Tipo
+          </label>
+          {{ form.type }}
+          {% if form.type.errors %}
+            {% for error in form.type.errors %}
+              <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <!-- currency -->
+        <div>
+          <label for="{{ form.currency.id_for_label }}"
+                 class="mb-1.5 block text-sm font-medium text-slate-300">
+            Moeda
+          </label>
+          {{ form.currency }}
+          {% if form.currency.errors %}
+            {% for error in form.currency.errors %}
+              <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+      </div>
+
+      <!-- initial_balance -->
+      <div>
+        <label for="{{ form.initial_balance.id_for_label }}"
+               class="mb-1.5 block text-sm font-medium text-slate-300">
+          Saldo inicial
+        </label>
+        {{ form.initial_balance }}
+        {% if form.initial_balance.errors %}
+          {% for error in form.initial_balance.errors %}
+            <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Non-field errors -->
+      {% if form.non_field_errors %}
+        <div>
+          {% for error in form.non_field_errors %}
+            <span class="block text-xs text-rose-400">{{ error }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Action buttons -->
+      <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+
+        <a href="{% url 'accounts:list' %}"
+           class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500/40">
+          Cancelar
+        </a>
+
+        <button type="submit"
+                class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+          Salvar
+        </button>
+
+      </div>
+
+    </div>
+  </form>
+
+</div>
+
+{% endblock %}

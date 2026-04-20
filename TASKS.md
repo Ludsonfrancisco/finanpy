@@ -142,20 +142,20 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 4.1.5 Registrar no admin
   - [X] 4.1.6 Gerar e rodar migrations
 
-- [ ] **4.2 CRUD de contas**
-  - [ ] 4.2.1 Criar `accounts/forms.py` com `AccountForm(ModelForm)`
-  - [ ] 4.2.2 Criar `AccountListView(LoginRequiredMixin, ListView)` filtrando por `user=self.request.user`
-  - [ ] 4.2.3 Criar `AccountCreateView(LoginRequiredMixin, CreateView)` atribuindo `user` em `form_valid`
-  - [ ] 4.2.4 Criar `AccountUpdateView(LoginRequiredMixin, UpdateView)` com `get_queryset` restrito ao usuário
-  - [ ] 4.2.5 Criar `AccountDeleteView(LoginRequiredMixin, DeleteView)` com confirmação
-  - [ ] 4.2.6 Criar `accounts/urls.py` com rotas CRUD
-  - [ ] 4.2.7 Incluir em `core/urls.py`
+- [X] **4.2 CRUD de contas**
+  - [X] 4.2.1 Criar `accounts/forms.py` com `AccountForm(ModelForm)`
+  - [X] 4.2.2 Criar `AccountListView(LoginRequiredMixin, ListView)` filtrando por `user=self.request.user`
+  - [X] 4.2.3 Criar `AccountCreateView(LoginRequiredMixin, CreateView)` atribuindo `user` em `form_valid`
+  - [X] 4.2.4 Criar `AccountUpdateView(LoginRequiredMixin, UpdateView)` com `get_queryset` restrito ao usuário
+  - [X] 4.2.5 Criar `AccountDeleteView(LoginRequiredMixin, DeleteView)` com confirmação
+  - [X] 4.2.6 Criar `accounts/urls.py` com rotas CRUD
+  - [X] 4.2.7 Incluir em `core/urls.py`
 
-- [ ] **4.3 Templates de contas**
-  - [ ] 4.3.1 Criar `templates/accounts/list.html` com tabela e botão "Nova conta"
-  - [ ] 4.3.2 Criar `templates/accounts/form.html` reutilizado por create/update
-  - [ ] 4.3.3 Criar `templates/accounts/confirm_delete.html`
-  - [ ] 4.3.4 Adicionar link "Contas" na sidebar
+- [X] **4.3 Templates de contas**
+  - [X] 4.3.1 Criar `templates/accounts/list.html` com tabela e botão "Nova conta"
+  - [X] 4.3.2 Criar `templates/accounts/form.html` reutilizado por create/update
+  - [X] 4.3.3 Criar `templates/accounts/confirm_delete.html`
+  - [X] 4.3.4 Adicionar link "Contas" na sidebar
 
 ---
 
