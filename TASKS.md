@@ -90,12 +90,12 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 2.1.4 Criar bloco `{% block content %}` e `{% block title %}` em cada layout
   - [X] 2.1.5 Criar parcial `templates/partials/_messages.html` para `django.contrib.messages`
 
-- [ ] **2.2 Componentes reutilizáveis**
-  - [ ] 2.2.1 Criar parcial `templates/partials/_sidebar.html` com links para Dashboard, Contas, Categorias, Transações, Perfil, Logout
-  - [ ] 2.2.2 Criar parcial `templates/partials/_topbar_public.html`
-  - [ ] 2.2.3 Criar parcial `templates/partials/_topbar_app.html` com nome do usuário
-  - [ ] 2.2.4 Criar parcial `templates/partials/_form_field.html` para renderização padronizada de campos
-  - [ ] 2.2.5 Criar parcial `templates/partials/_empty_state.html` para listas vazias
+- [X] **2.2 Componentes reutilizáveis**
+  - [X] 2.2.1 Criar parcial `templates/partials/_sidebar.html` com links para Dashboard, Contas, Categorias, Transações, Perfil, Logout
+  - [X] 2.2.2 Criar parcial `templates/partials/_topbar_public.html`
+  - [X] 2.2.3 Criar parcial `templates/partials/_topbar_app.html` com nome do usuário
+  - [X] 2.2.4 Criar parcial `templates/partials/_form_field.html` para renderização padronizada de campos
+  - [X] 2.2.5 Criar parcial `templates/partials/_empty_state.html` para listas vazias
 
 - [ ] **2.3 Landing page pública**
   - [ ] 2.3.1 Criar app/pasta de views públicas no `core` ou novo app `pages` (optar por view simples em `core`)

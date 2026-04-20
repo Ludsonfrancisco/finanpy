@@ -32,3 +32,13 @@ Sprint 2.1 created the four foundational templates: `base.html`, `layouts/base_p
 | Sair | `users:logout` |
 
 These URL names must exist when the apps are wired up in later sprints.
+
+## Partials extracted in sprint 2.1 (second pass)
+
+The sidebar and topbar markup was extracted from `base_app.html` and `base_public.html` into standalone partials. The layout files now use `{% include %}` instead of inline markup:
+
+- `partials/_sidebar.html` — full `<aside class="hidden md:flex ...">` block with brand + nav + logout POST form.
+- `partials/_topbar_public.html` — sticky `<header>` with brand + Entrar/Cadastrar nav links.
+- `partials/_topbar_app.html` — `<header class="flex h-16 ...">` with mobile brand, desktop spacer, and user avatar + email.
+- `partials/_form_field.html` — receives `field` (BoundField). Renders label (with required `*` in rose-400), widget via `field.as_widget attrs={...}` with full input Tailwind classes, per-error spans in rose-400, help text in slate-500/xs.
+- `partials/_empty_state.html` — receives optional context vars: `empty_title`, `empty_message`, `empty_action_url`, `empty_action_label`. Uses `|default` filter for fallbacks. CTA renders only if `empty_action_url` is set.
