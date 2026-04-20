@@ -97,11 +97,11 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 2.2.4 Criar parcial `templates/partials/_form_field.html` para renderização padronizada de campos
   - [X] 2.2.5 Criar parcial `templates/partials/_empty_state.html` para listas vazias
 
-- [ ] **2.3 Landing page pública**
-  - [ ] 2.3.1 Criar app/pasta de views públicas no `core` ou novo app `pages` (optar por view simples em `core`)
-  - [ ] 2.3.2 Criar `templates/pages/home.html` com hero (gradiente emerald→teal→cyan), seção de features, CTA cadastro e login
-  - [ ] 2.3.3 Criar view `HomeView(TemplateView)` em `core/views.py`
-  - [ ] 2.3.4 Configurar rota `''` em `core/urls.py` apontando para `HomeView`
+- [X] **2.3 Landing page pública**
+  - [X] 2.3.1 Criar app/pasta de views públicas no `core` ou novo app `pages` (optar por view simples em `core`)
+  - [X] 2.3.2 Criar `templates/pages/home.html` com hero (gradiente emerald→teal→cyan), seção de features, CTA cadastro e login
+  - [X] 2.3.3 Criar view `HomeView(TemplateView)` em `core/views.py`
+  - [X] 2.3.4 Configurar rota `''` em `core/urls.py` apontando para `HomeView`
 
 - [ ] **2.4 Templates de autenticação**
   - [ ] 2.4.1 Criar `templates/users/signup.html` usando `base_public.html`

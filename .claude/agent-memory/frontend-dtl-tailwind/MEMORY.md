@@ -1,1 +1,2 @@
 - [Sprint 2.1 — Base Templates Structure](project_sprint2_base_templates.md) — layout hierarchy, sidebar/topbar decisions, URL namespaces, message tag pattern, partials extracted
+- [Home Landing Page](project_home_landing_page.md) — 3-section public page (hero + features grid + bottom CTA), design patterns and URL namespaces used
