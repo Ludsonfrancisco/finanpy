@@ -103,11 +103,11 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 2.3.3 Criar view `HomeView(TemplateView)` em `core/views.py`
   - [X] 2.3.4 Configurar rota `''` em `core/urls.py` apontando para `HomeView`
 
-- [ ] **2.4 Templates de autenticação**
-  - [ ] 2.4.1 Criar `templates/users/signup.html` usando `base_public.html`
-  - [ ] 2.4.2 Criar `templates/users/login.html` usando `base_public.html`
-  - [ ] 2.4.3 Aplicar classes Tailwind do design system em todos os campos
-  - [ ] 2.4.4 Exibir erros de validação com estilo do design system
+- [X] **2.4 Templates de autenticação**
+  - [X] 2.4.1 Criar `templates/users/signup.html` usando `base_public.html`
+  - [X] 2.4.2 Criar `templates/users/login.html` usando `base_public.html`
+  - [X] 2.4.3 Aplicar classes Tailwind do design system em todos os campos
+  - [X] 2.4.4 Exibir erros de validação com estilo do design system
 
 ---
 
