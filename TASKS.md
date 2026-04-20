@@ -134,13 +134,13 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ### Sprint 4 — Contas bancárias
 
-- [ ] **4.1 Model Account**
-  - [ ] 4.1.1 Criar `Account` em `accounts/models.py` com `user` (FK para `User`), `name`, `type` (choices), `initial_balance` (DecimalField), `currency` (default `'BRL'`)
-  - [ ] 4.1.2 Adicionar `created_at` e `updated_at`
-  - [ ] 4.1.3 Definir `__str__` retornando `self.name`
-  - [ ] 4.1.4 Criar método `current_balance` que soma `initial_balance` + transações
-  - [ ] 4.1.5 Registrar no admin
-  - [ ] 4.1.6 Gerar e rodar migrations
+- [X] **4.1 Model Account**
+  - [X] 4.1.1 Criar `Account` em `accounts/models.py` com `user` (FK para `User`), `name`, `type` (choices), `initial_balance` (DecimalField), `currency` (default `'BRL'`)
+  - [X] 4.1.2 Adicionar `created_at` e `updated_at`
+  - [X] 4.1.3 Definir `__str__` retornando `self.name`
+  - [X] 4.1.4 Criar método `current_balance` que soma `initial_balance` + transações
+  - [X] 4.1.5 Registrar no admin
+  - [X] 4.1.6 Gerar e rodar migrations
 
 - [ ] **4.2 CRUD de contas**
   - [ ] 4.2.1 Criar `accounts/forms.py` com `AccountForm(ModelForm)`
