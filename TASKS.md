@@ -161,12 +161,12 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ### Sprint 5 — Categorias
 
-- [ ] **5.1 Model Category**
-  - [ ] 5.1.1 Criar `Category` em `categories/models.py` com `user`, `name`, `type` (choices: `income`/`expense`), `color` (default `'#10b981'`), `icon` (CharField opcional)
-  - [ ] 5.1.2 Adicionar `created_at` e `updated_at`
-  - [ ] 5.1.3 Definir `unique_together = ('user', 'name', 'type')`
-  - [ ] 5.1.4 Registrar no admin
-  - [ ] 5.1.5 Gerar e rodar migrations
+- [X] **5.1 Model Category**
+  - [X] 5.1.1 Criar `Category` em `categories/models.py` com `user`, `name`, `type` (choices: `income`/`expense`), `color` (default `'#10b981'`), `icon` (CharField opcional)
+  - [X] 5.1.2 Adicionar `created_at` e `updated_at`
+  - [X] 5.1.3 Definir `unique_together = ('user', 'name', 'type')`
+  - [X] 5.1.4 Registrar no admin
+  - [X] 5.1.5 Gerar e rodar migrations
 
 - [ ] **5.2 CRUD de categorias**
   - [ ] 5.2.1 Criar `categories/forms.py` com `CategoryForm(ModelForm)`
