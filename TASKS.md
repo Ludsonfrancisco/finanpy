@@ -83,12 +83,12 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ### Sprint 2 — Design system e layouts base
 
-- [ ] **2.1 Templates base**
-  - [ ] 2.1.1 Criar `templates/base.html` com doctype, meta viewport, CDN do Tailwind e fonte Inter
-  - [ ] 2.1.2 Criar `templates/layouts/base_public.html` (herda de `base.html`) com topbar pública e footer
-  - [ ] 2.1.3 Criar `templates/layouts/base_app.html` (herda de `base.html`) com sidebar + topbar autenticada
-  - [ ] 2.1.4 Criar bloco `{% block content %}` e `{% block title %}` em cada layout
-  - [ ] 2.1.5 Criar parcial `templates/partials/_messages.html` para `django.contrib.messages`
+- [X] **2.1 Templates base**
+  - [X] 2.1.1 Criar `templates/base.html` com doctype, meta viewport, CDN do Tailwind e fonte Inter
+  - [X] 2.1.2 Criar `templates/layouts/base_public.html` (herda de `base.html`) com topbar pública e footer
+  - [X] 2.1.3 Criar `templates/layouts/base_app.html` (herda de `base.html`) com sidebar + topbar autenticada
+  - [X] 2.1.4 Criar bloco `{% block content %}` e `{% block title %}` em cada layout
+  - [X] 2.1.5 Criar parcial `templates/partials/_messages.html` para `django.contrib.messages`
 
 - [ ] **2.2 Componentes reutilizáveis**
   - [ ] 2.2.1 Criar parcial `templates/partials/_sidebar.html` com links para Dashboard, Contas, Categorias, Transações, Perfil, Logout

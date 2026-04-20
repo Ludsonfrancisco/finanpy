@@ -3,7 +3,9 @@
     "allow": [
       "Bash(python *)",
       "Bash(.venv/Scripts/python *)",
-      "Bash(.venv/Scripts/pip install *)"
+      "Bash(.venv/Scripts/pip install *)",
+      "Bash(mkdir -p C:/Users/ludso/Documents/projects/claude_code/finanpy/templates/layouts)",
+      "Bash(mkdir -p C:/Users/ludso/Documents/projects/claude_code/finanpy/templates/partials)"
     ]
   }
 }

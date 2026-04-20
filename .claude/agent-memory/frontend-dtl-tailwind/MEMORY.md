@@ -1,0 +1,1 @@
+- [Sprint 2.1 — Base Templates Structure](project_sprint2_base_templates.md) — layout hierarchy, sidebar/topbar decisions, URL namespaces, message tag pattern
