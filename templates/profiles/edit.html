@@ -1,0 +1,104 @@
+{% extends "layouts/base_app.html" %}
+
+{% block title %}Meu Perfil — Finanpy{% endblock %}
+
+{% block content %}
+
+<!-- Page heading -->
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold text-slate-100">Meu Perfil</h1>
+  <p class="mt-1 text-sm text-slate-400">Atualize suas informações pessoais</p>
+</div>
+
+<!-- Card -->
+<div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-black/20 backdrop-blur">
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    <div class="flex flex-col gap-5">
+
+      <!-- Row 1: first_name + last_name side by side on sm+ -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+        <!-- first_name -->
+        <div>
+          <label for="{{ form.first_name.id_for_label }}"
+                 class="mb-1.5 block text-sm font-medium text-slate-300">
+            Nome
+          </label>
+          {{ form.first_name }}
+          {% if form.first_name.errors %}
+            {% for error in form.first_name.errors %}
+              <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <!-- last_name -->
+        <div>
+          <label for="{{ form.last_name.id_for_label }}"
+                 class="mb-1.5 block text-sm font-medium text-slate-300">
+            Sobrenome
+          </label>
+          {{ form.last_name }}
+          {% if form.last_name.errors %}
+            {% for error in form.last_name.errors %}
+              <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+      </div>
+
+      <!-- Row 2: birth_date (full width) -->
+      <div>
+        <label for="{{ form.birth_date.id_for_label }}"
+               class="mb-1.5 block text-sm font-medium text-slate-300">
+          Data de nascimento
+        </label>
+        {{ form.birth_date }}
+        {% if form.birth_date.errors %}
+          {% for error in form.birth_date.errors %}
+            <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Row 3: avatar (full width) -->
+      <div>
+        <label for="{{ form.avatar.id_for_label }}"
+               class="mb-1.5 block text-sm font-medium text-slate-300">
+          Foto de perfil
+        </label>
+        {{ form.avatar }}
+        {% if form.avatar.errors %}
+          {% for error in form.avatar.errors %}
+            <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Non-field errors -->
+      {% if form.non_field_errors %}
+        <div>
+          {% for error in form.non_field_errors %}
+            <span class="block text-xs text-rose-400">{{ error }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Submit button -->
+      <div>
+        <button type="submit"
+                class="w-full rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+          Salvar alterações
+        </button>
+      </div>
+
+    </div>
+  </form>
+
+</div>
+
+{% endblock %}

@@ -21,6 +21,7 @@ from core.views import DashboardView, HomeView
 urlpatterns = [
     path('', HomeView.as_view(), name='home'),
     path('', include('users.urls')),
+    path('', include('profiles.urls')),
     path('admin/', admin.site.urls),
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
 ]

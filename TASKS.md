@@ -123,12 +123,12 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 3.1.7 Adicionar rota `dashboard/` em `core/urls.py`
   - [X] 3.1.8 Ajustar `LOGIN_REDIRECT_URL` para `/dashboard/`
 
-- [ ] **3.2 Gestão de perfil**
-  - [ ] 3.2.1 Criar `profiles/forms.py` com `ProfileForm(ModelForm)`
-  - [ ] 3.2.2 Criar `ProfileUpdateView(LoginRequiredMixin, UpdateView)` que atualiza o profile do usuário logado
-  - [ ] 3.2.3 Criar template `templates/profiles/edit.html`
-  - [ ] 3.2.4 Criar `profiles/urls.py` e incluir em `core/urls.py`
-  - [ ] 3.2.5 Adicionar link do perfil na sidebar e topbar
+- [X] **3.2 Gestão de perfil**
+  - [X] 3.2.1 Criar `profiles/forms.py` com `ProfileForm(ModelForm)`
+  - [X] 3.2.2 Criar `ProfileUpdateView(LoginRequiredMixin, UpdateView)` que atualiza o profile do usuário logado
+  - [X] 3.2.3 Criar template `templates/profiles/edit.html`
+  - [X] 3.2.4 Criar `profiles/urls.py` e incluir em `core/urls.py`
+  - [X] 3.2.5 Adicionar link do perfil na sidebar e topbar
 
 ---
 
