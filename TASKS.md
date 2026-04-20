@@ -168,11 +168,11 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 5.1.4 Registrar no admin
   - [X] 5.1.5 Gerar e rodar migrations
 
-- [ ] **5.2 CRUD de categorias**
-  - [ ] 5.2.1 Criar `categories/forms.py` com `CategoryForm(ModelForm)`
-  - [ ] 5.2.2 Criar CBVs `CategoryListView`, `CategoryCreateView`, `CategoryUpdateView`, `CategoryDeleteView`
-  - [ ] 5.2.3 Aplicar filtro por `user` em todas as views
-  - [ ] 5.2.4 Criar `categories/urls.py` e incluir em `core/urls.py`
+- [X] **5.2 CRUD de categorias**
+  - [X] 5.2.1 Criar `categories/forms.py` com `CategoryForm(ModelForm)`
+  - [X] 5.2.2 Criar CBVs `CategoryListView`, `CategoryCreateView`, `CategoryUpdateView`, `CategoryDeleteView`
+  - [X] 5.2.3 Aplicar filtro por `user` em todas as views
+  - [X] 5.2.4 Criar `categories/urls.py` e incluir em `core/urls.py`
 
 - [ ] **5.3 Templates de categorias**
   - [ ] 5.3.1 Criar `templates/categories/list.html` com grid de cards exibindo cor/ícone
