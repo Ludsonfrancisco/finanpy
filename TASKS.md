@@ -113,15 +113,15 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ### Sprint 3 — Dashboard e perfil
 
-- [ ] **3.1 Dashboard inicial**
-  - [ ] 3.1.1 Criar `core/views.py` com `DashboardView(LoginRequiredMixin, TemplateView)`
-  - [ ] 3.1.2 Em `get_context_data`, calcular saldo total, receitas e despesas do mês
-  - [ ] 3.1.3 Buscar últimas 10 transações do usuário
-  - [ ] 3.1.4 Criar template `templates/dashboard/index.html` usando `base_app.html`
-  - [ ] 3.1.5 Renderizar 3 cards de métrica (saldo, receitas, despesas)
-  - [ ] 3.1.6 Renderizar tabela de últimas transações
-  - [ ] 3.1.7 Adicionar rota `dashboard/` em `core/urls.py`
-  - [ ] 3.1.8 Ajustar `LOGIN_REDIRECT_URL` para `/dashboard/`
+- [X] **3.1 Dashboard inicial**
+  - [X] 3.1.1 Criar `core/views.py` com `DashboardView(LoginRequiredMixin, TemplateView)`
+  - [X] 3.1.2 Em `get_context_data`, calcular saldo total, receitas e despesas do mês
+  - [X] 3.1.3 Buscar últimas 10 transações do usuário
+  - [X] 3.1.4 Criar template `templates/dashboard/index.html` usando `base_app.html`
+  - [X] 3.1.5 Renderizar 3 cards de métrica (saldo, receitas, despesas)
+  - [X] 3.1.6 Renderizar tabela de últimas transações
+  - [X] 3.1.7 Adicionar rota `dashboard/` em `core/urls.py`
+  - [X] 3.1.8 Ajustar `LOGIN_REDIRECT_URL` para `/dashboard/`
 
 - [ ] **3.2 Gestão de perfil**
   - [ ] 3.2.1 Criar `profiles/forms.py` com `ProfileForm(ModelForm)`
