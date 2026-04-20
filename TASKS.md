@@ -159,7 +159,7 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ---
 
-### Sprint 5 — Categorias
+### Sprint 5 — Categorias [X]
 
 - [X] **5.1 Model Category**
   - [X] 5.1.1 Criar `Category` em `categories/models.py` com `user`, `name`, `type` (choices: `income`/`expense`), `color` (default `'#10b981'`), `icon` (CharField opcional)
@@ -174,11 +174,11 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 5.2.3 Aplicar filtro por `user` em todas as views
   - [X] 5.2.4 Criar `categories/urls.py` e incluir em `core/urls.py`
 
-- [ ] **5.3 Templates de categorias**
-  - [ ] 5.3.1 Criar `templates/categories/list.html` com grid de cards exibindo cor/ícone
-  - [ ] 5.3.2 Criar `templates/categories/form.html`
-  - [ ] 5.3.3 Criar `templates/categories/confirm_delete.html`
-  - [ ] 5.3.4 Adicionar link "Categorias" na sidebar
+- [X] **5.3 Templates de categorias**
+  - [X] 5.3.1 Criar `templates/categories/list.html` com grid de cards exibindo cor/ícone
+  - [X] 5.3.2 Criar `templates/categories/form.html`
+  - [X] 5.3.3 Criar `templates/categories/confirm_delete.html`
+  - [X] 5.3.4 Adicionar link "Categorias" na sidebar
 
 ---
 
