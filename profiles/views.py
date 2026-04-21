@@ -22,3 +22,7 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
         response = super().form_valid(form)
         messages.success(self.request, 'Perfil atualizado com sucesso.')
         return response
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Por favor corrija os erros abaixo.')
+        return super().form_invalid(form)

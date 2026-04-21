@@ -221,15 +221,15 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 7.1.3 Padronizar botões primários e secundários em todas as telas
   - [X] 7.1.4 Validar responsividade em 320px, 768px e 1280px
 
-- [ ] **7.2 Microinterações**
-  - [ ] 7.2.1 Adicionar `transition` em botões e links
-  - [ ] 7.2.2 Adicionar `focus:ring` em todos os inputs
-  - [ ] 7.2.3 Aplicar hover states em linhas de tabela e itens de menu
+- [X] **7.2 Microinterações**
+  - [X] 7.2.1 Adicionar `transition` em botões e links
+  - [X] 7.2.2 Adicionar `focus:ring` em todos os inputs
+  - [X] 7.2.3 Aplicar hover states em linhas de tabela e itens de menu
 
-- [ ] **7.3 Mensagens e empty states**
-  - [ ] 7.3.1 Exibir `messages.success` após ações CRUD
-  - [ ] 7.3.2 Exibir `messages.error` em falhas
-  - [ ] 7.3.3 Renderizar empty states com ilustração SVG simples e CTA
+- [X] **7.3 Mensagens e empty states**
+  - [X] 7.3.1 Exibir `messages.success` após ações CRUD
+  - [X] 7.3.2 Exibir `messages.error` em falhas
+  - [X] 7.3.3 Renderizar empty states com ilustração SVG simples e CTA
 
 - [ ] **7.4 Acessibilidade**
   - [ ] 7.4.1 Garantir `aria-label` em ícones isolados

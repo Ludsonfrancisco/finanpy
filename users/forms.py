@@ -4,9 +4,10 @@ from django import forms
 
 
 _INPUT_CLASSES = (
-    'w-full bg-slate-800 border border-slate-700 text-slate-100 '
-    'rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 '
-    'focus:ring-emerald-500 placeholder-slate-400'
+    'block w-full rounded-xl border border-slate-700 bg-slate-800 '
+    'px-4 py-2.5 text-sm text-slate-100 placeholder-slate-400 '
+    'focus:border-emerald-500 focus:outline-none focus:ring-2 '
+    'focus:ring-emerald-500/40'
 )
 
 

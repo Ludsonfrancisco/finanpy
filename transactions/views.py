@@ -63,6 +63,10 @@ class TransactionCreateView(LoginRequiredMixin, CreateView):
         messages.success(self.request, 'Transação criada com sucesso.')
         return super().form_valid(form)
 
+    def form_invalid(self, form):
+        messages.error(self.request, 'Por favor corrija os erros abaixo.')
+        return super().form_invalid(form)
+
 
 class TransactionUpdateView(LoginRequiredMixin, UpdateView):
     model = Transaction
@@ -81,6 +85,10 @@ class TransactionUpdateView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         messages.success(self.request, 'Transação atualizada com sucesso.')
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Por favor corrija os erros abaixo.')
+        return super().form_invalid(form)
 
 
 class TransactionDeleteView(LoginRequiredMixin, DeleteView):
