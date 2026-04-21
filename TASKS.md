@@ -256,26 +256,26 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 8.2.6 Implementar método `analyze(context: dict) -> AnalysisResult` que retorna dataclass com `summary: str` e `insights: list[str]`
   - [X] 8.2.7 Ler `OPENAI_API_KEY` via `os.environ` dentro do agente (sem hardcode)
 
-- [ ] **8.3 Service de orquestração (`analysis_service.py`)**
-  - [ ] 8.3.1 Criar `ai/services/__init__.py`
-  - [ ] 8.3.2 Implementar `AnalysisService.run_for_user(user)` em `ai/services/analysis_service.py`
-  - [ ] 8.3.3 Coleta de contexto via ORM: `Account.objects.filter(user=user)` com `current_balance`, `Transaction.objects.filter(user=user, date__gte=period_start)`, breakdown por categoria (aggregado com `Sum`)
-  - [ ] 8.3.4 Montar dict `context` com: `user_name`, `period`, `accounts`, `total_income`, `total_expense`, `net`, `category_breakdown`
-  - [ ] 8.3.5 Chamar `FinanceInsightAgent().analyze(context)` e capturar `AnalysisResult`
-  - [ ] 8.3.6 Persistir `AIAnalysis.objects.create(user=user, analysis_text=result.summary, insights=result.insights, period_start=..., period_end=..., model_used='gpt-5-mini')`
+- [X] **8.3 Service de orquestração (`analysis_service.py`)**
+  - [X] 8.3.1 Criar `ai/services/__init__.py`
+  - [X] 8.3.2 Implementar `AnalysisService.run_for_user(user)` em `ai/services/analysis_service.py`
+  - [X] 8.3.3 Coleta de contexto via ORM: `Account.objects.filter(user=user)` com `current_balance`, `Transaction.objects.filter(user=user, date__gte=period_start)`, breakdown por categoria (aggregado com `Sum`)
+  - [X] 8.3.4 Montar dict `context` com: `user_name`, `period`, `accounts`, `total_income`, `total_expense`, `net`, `category_breakdown`
+  - [X] 8.3.5 Chamar `FinanceInsightAgent().analyze(context)` e capturar `AnalysisResult`
+  - [X] 8.3.6 Persistir `AIAnalysis.objects.create(user=user, analysis_text=result.summary, insights=result.insights, period_start=..., period_end=..., model_used='gpt-5-mini')`
 
-- [ ] **8.4 Management command (`run_finance_analysis`)**
-  - [ ] 8.4.1 Criar estrutura `ai/management/commands/run_finance_analysis.py`
-  - [ ] 8.4.2 Implementar `Command(BaseCommand)` com `handle()` iterando `User.objects.filter(is_active=True)`
-  - [ ] 8.4.3 Chamar `AnalysisService.run_for_user(user)` para cada usuário com `try/except` e log de erro individual (não aborta o loop)
-  - [ ] 8.4.4 Adicionar argumento opcional `--user-id` para rodar análise de um usuário específico
-  - [ ] 8.4.5 Exibir `self.stdout.write(self.style.SUCCESS(...))` ao final com contagem de análises geradas
+- [X] **8.4 Management command (`run_finance_analysis`)**
+  - [X] 8.4.1 Criar estrutura `ai/management/commands/run_finance_analysis.py`
+  - [X] 8.4.2 Implementar `Command(BaseCommand)` com `handle()` iterando `User.objects.filter(is_active=True)`
+  - [X] 8.4.3 Chamar `AnalysisService.run_for_user(user)` para cada usuário com `try/except` e log de erro individual (não aborta o loop)
+  - [X] 8.4.4 Adicionar argumento opcional `--user-id` para rodar análise de um usuário específico
+  - [X] 8.4.5 Exibir `self.stdout.write(self.style.SUCCESS(...))` ao final com contagem de análises geradas
 
-- [ ] **8.5 Integração com dashboard**
-  - [ ] 8.5.1 Em `DashboardView.get_context_data`, buscar `AIAnalysis.objects.filter(user=request.user).order_by('-created_at').first()`
-  - [ ] 8.5.2 Passar `latest_analysis` ao contexto do template
-  - [ ] 8.5.3 No template `templates/dashboard/index.html`, adicionar card "Análise de IA" com `analysis_text` e lista de `insights`
-  - [ ] 8.5.4 Card só renderiza se `latest_analysis` não for `None`; exibir estado vazio com instrução para rodar o command
+- [X] **8.5 Integração com dashboard**
+  - [X] 8.5.1 Em `DashboardView.get_context_data`, buscar `AIAnalysis.objects.filter(user=request.user).order_by('-created_at').first()`
+  - [X] 8.5.2 Passar `latest_analysis` ao contexto do template
+  - [X] 8.5.3 No template `templates/dashboard/index.html`, adicionar card "Análise de IA" com `analysis_text` e lista de `insights`
+  - [X] 8.5.4 Card só renderiza se `latest_analysis` não for `None`; exibir estado vazio com instrução para rodar o command
 
 ---
 
