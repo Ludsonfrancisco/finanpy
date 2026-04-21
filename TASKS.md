@@ -267,10 +267,10 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 9.1.3 Criar `.dockerignore`
   - [X] 9.1.4 Documentar comandos de build e up no `README.md`
 
-- [ ] **9.2 Variáveis de ambiente**
-  - [ ] 9.2.1 Extrair `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis de ambiente
-  - [ ] 9.2.2 Criar `.env.example`
-  - [ ] 9.2.3 Adicionar leitura via `os.environ` em `settings.py`
+- [X] **9.2 Variáveis de ambiente**
+  - [X] 9.2.1 Extrair `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis de ambiente
+  - [X] 9.2.2 Criar `.env.example`
+  - [X] 9.2.3 Adicionar leitura via `os.environ` em `settings.py`
 
 - [ ] **9.3 Deploy-ready**
   - [ ] 9.3.1 Configurar `collectstatic`
