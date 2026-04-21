@@ -71,6 +71,14 @@
                class="mb-1.5 block text-sm font-medium text-slate-300">
           Foto de perfil
         </label>
+        {% if form.instance.avatar %}
+          <div class="mb-3 flex items-center gap-4">
+            <img src="{{ form.instance.avatar.url }}"
+                 alt="Foto atual"
+                 class="h-16 w-16 rounded-full object-cover ring-2 ring-slate-700">
+            <span class="text-xs text-slate-400">Foto atual — envie nova para substituir</span>
+          </div>
+        {% endif %}
         {{ form.avatar }}
         {% if form.avatar.errors %}
           {% for error in form.avatar.errors %}

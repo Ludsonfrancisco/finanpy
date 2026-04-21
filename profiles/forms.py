@@ -24,7 +24,8 @@ class ProfileForm(forms.ModelForm):
             'first_name': forms.TextInput(attrs={'class': _INPUT_CLASSES}),
             'last_name': forms.TextInput(attrs={'class': _INPUT_CLASSES}),
             'birth_date': forms.DateInput(
-                attrs={'class': _INPUT_CLASSES, 'type': 'date'}
+                format='%Y-%m-%d',
+                attrs={'class': _INPUT_CLASSES, 'type': 'date'},
             ),
             'avatar': forms.ClearableFileInput(attrs={'class': _FILE_CLASSES}),
         }

@@ -231,10 +231,10 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 7.3.2 Exibir `messages.error` em falhas
   - [X] 7.3.3 Renderizar empty states com ilustração SVG simples e CTA
 
-- [ ] **7.4 Acessibilidade**
-  - [ ] 7.4.1 Garantir `aria-label` em ícones isolados
-  - [ ] 7.4.2 Validar contraste AA em texto sobre fundo escuro
-  - [ ] 7.4.3 Testar navegação via Tab em todos os formulários
+- [x] **7.4 Acessibilidade**
+  - [x] 7.4.1 Garantir `aria-label` em ícones isolados
+  - [x] 7.4.2 Validar contraste AA em texto sobre fundo escuro
+  - [x] 7.4.3 Testar navegação via Tab em todos os formulários
 
 ---
 

@@ -24,7 +24,23 @@
       "Bash(python3 -c \"import sys; content=sys.stdin.read\\(\\); print\\(content[content.find\\('<form'\\):content.find\\('</form>'\\)+10] if '<form' in content else 'no form found'\\)\")",
       "Bash(grep -r \"urlpatterns\" users/urls.py)",
       "Bash(cat users/urls.py)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)",
+      "Bash(node test_tab_nav.mjs)",
+      "Bash(cp \"C:\\\\Users\\\\ludso\\\\Documents\\\\projects\\\\claude_code\\\\finanpy\\\\test_tab_nav.mjs\" /tmp/playwright_test/test_tab_nav.mjs)",
+      "Read(//tmp/**)",
+      "Bash(curl -s http://localhost:8000/users/login/)",
+      "Bash(python3 -c \"import sys; html=sys.stdin.read\\(\\); lines=[l for l in html.split\\('\\\\n'\\) if any\\(t in l.lower\\(\\) for t in ['input','form','button','csrfmiddlewaretoken']\\)]; print\\('\\\\n'.join\\(lines[:40]\\)\\)\")",
+      "Bash(curl -sv http://localhost:8000/users/login/)",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(grep -v \"^$\")",
+      "Bash(node *)",
+      "Bash(curl -s \"http://localhost:8000/signup/\")",
+      "Bash(curl -s \"http://localhost:8000/login/\")",
+      "Bash(grep -v \"imported\\\\|^$\")",
+      "Bash(curl -s \"http://localhost:8000/transacoes/nova/\" -c /tmp/no-cookie)",
+      "Bash(cat templates/accounts/form.html)",
+      "Bash(find . -name \"form.html\" -path \"*/accounts/*\")"
     ]
   }
 }

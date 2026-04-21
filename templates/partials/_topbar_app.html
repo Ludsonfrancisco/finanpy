@@ -35,9 +35,15 @@
 
   <!-- Authenticated user -->
   <div class="flex items-center gap-3">
-    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-semibold" aria-hidden="true">
-      {{ request.user.email|first|upper }}
-    </div>
+    {% if request.user.profile.avatar %}
+      <img src="{{ request.user.profile.avatar.url }}"
+           alt="Foto de perfil"
+           class="h-8 w-8 rounded-full object-cover ring-2 ring-emerald-500/40">
+    {% else %}
+      <div class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-semibold" aria-hidden="true">
+        {{ request.user.email|first|upper }}
+      </div>
+    {% endif %}
     <span class="hidden text-sm text-slate-300 sm:block">{{ request.user.email }}</span>
   </div>
 
