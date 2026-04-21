@@ -1,0 +1,25 @@
+{% extends 'layouts/base_public.html' %}
+
+{% block title %}Offline - Finanpy{% endblock %}
+
+{% block content %}
+<div class="flex min-h-[60vh] flex-col items-center justify-center text-center">
+  <div class="mb-6 rounded-full bg-slate-900 p-6 ring-1 ring-slate-800">
+    <svg class="h-12 w-12 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m2.829 2.829L12 21M9.172 9.172a4 4 0 015.656 0M9 10a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1h-2a1 1 0 01-1-1v-2zm-3 2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1h-2a1 1 0 01-1-1v-2z" />
+    </svg>
+  </div>
+  <h1 class="text-2xl font-bold text-slate-100 md:text-3xl">Você está offline</h1>
+  <p class="mt-4 max-w-md text-slate-400">
+    Parece que você está sem conexão com a internet. Algumas funcionalidades podem não estar disponíveis, mas você ainda pode visualizar seus dados salvos recentemente.
+  </p>
+  <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+    <button onclick="window.location.reload()" class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:from-emerald-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+      Tentar novamente
+    </button>
+    <a href="{% url 'dashboard' %}" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-6 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-700">
+      Ir para o Dashboard
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -279,21 +279,21 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ---
 
-### Sprint 9 — Transição PWA
+### Sprint 9 — Transição PWA [X]
 
 - [X] **9.1 Configuração Base e Manifest**
   - [X] 9.1.1 Criar `manifest.json` estático em `static/` com configurações do Finanpy.
   - [X] 9.1.2 Adicionar meta tags de PWA, `theme-color` e links de ícones no `base.html`.
   - [X] 9.1.3 Garantir tags específicas para iOS (`apple-mobile-web-app-capable`).
 
-- [ ] **9.2 Implementação do Service Worker**
-  - [ ] 9.2.1 Criar rota `/serviceworker.js` via `TemplateView` no `core/urls.py`.
-  - [ ] 9.2.2 Implementar instalação e ativação do Service Worker (Cache do App Shell).
-  - [ ] 9.2.3 Implementar interceptador de fetch com estratégia **Network First** para dados e **Cache First** para estáticos.
+- [X] **9.2 Implementação do Service Worker**
+  - [X] 9.2.1 Criar rota `/serviceworker.js` via `TemplateView` no `core/urls.py`.
+  - [X] 9.2.2 Implementar instalação e ativação do Service Worker (Cache do App Shell).
+  - [X] 9.2.3 Implementar interceptador de fetch com estratégia **Network First** para dados e **Cache First** para estáticos.
 
-- [ ] **9.3 Otimização Offline-First**
-  - [ ] 9.3.1 Criar página de fallback offline amigável.
-  - [ ] 9.3.2 Validar instalação e funcionamento offline via DevTools.
+- [X] **9.3 Otimização Offline-First**
+  - [X] 9.3.1 Criar página de fallback offline amigável.
+  - [X] 9.3.2 Validar instalação e funcionamento offline via DevTools.
 
 ---
 

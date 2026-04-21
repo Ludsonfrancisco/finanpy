@@ -15,6 +15,10 @@ class HomeView(TemplateView):
     template_name = 'pages/home.html'
 
 
+class OfflineView(TemplateView):
+    template_name = 'offline.html'
+
+
 class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard/index.html'
 

@@ -18,10 +18,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-from core.views import DashboardView, HomeView
+from django.views.generic import TemplateView
+from core.views import DashboardView, HomeView, OfflineView
 
 urlpatterns = [
     path('', HomeView.as_view(), name='home'),
+    path('offline/', OfflineView.as_view(), name='offline'),
     path('', include('users.urls')),
     path('', include('profiles.urls')),
     path('admin/', admin.site.urls),
@@ -29,4 +31,12 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('categories/', include('categories.urls')),
     path('transacoes/', include('transactions.urls')),
+    path(
+        'serviceworker.js',
+        TemplateView.as_view(
+            template_name='serviceworker.js',
+            content_type='application/javascript',
+        ),
+        name='serviceworker',
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
