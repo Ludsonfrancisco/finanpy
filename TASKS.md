@@ -272,9 +272,9 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 9.2.2 Criar `.env.example`
   - [X] 9.2.3 Adicionar leitura via `os.environ` em `settings.py`
 
-- [ ] **9.3 Deploy-ready**
-  - [ ] 9.3.1 Configurar `collectstatic`
-  - [ ] 9.3.2 Configurar servidor WSGI (gunicorn) no container
-  - [ ] 9.3.3 Validar execução via `docker compose up`
+- [X] **9.3 Deploy-ready**
+  - [X] 9.3.1 Configurar `collectstatic`
+  - [X] 9.3.2 Configurar servidor WSGI (gunicorn) no container
+  - [X] 9.3.3 Validar execução via `docker compose up`
 
 ---
