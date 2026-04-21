@@ -240,11 +240,11 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ### Sprint 8 — Testes (sprint final)
 
-- [ ] **8.1 Testes unitários**
-  - [ ] 8.1.1 Testar criação de `User` com e-mail via manager customizado
-  - [ ] 8.1.2 Testar criação automática de `Profile` via signal
-  - [ ] 8.1.3 Testar método `current_balance` de `Account`
-  - [ ] 8.1.4 Testar validações dos forms
+- [X] **8.1 Testes unitários**
+  - [X] 8.1.1 Testar criação de `User` com e-mail via manager customizado
+  - [X] 8.1.2 Testar criação automática de `Profile` via signal
+  - [X] 8.1.3 Testar método `current_balance` de `Account`
+  - [X] 8.1.4 Testar validações dos forms
 
 - [ ] **8.2 Testes de views**
   - [ ] 8.2.1 Testar redirecionamento de rotas protegidas sem login
