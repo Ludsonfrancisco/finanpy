@@ -40,7 +40,9 @@
       "Bash(grep -v \"imported\\\\|^$\")",
       "Bash(curl -s \"http://localhost:8000/transacoes/nova/\" -c /tmp/no-cookie)",
       "Bash(cat templates/accounts/form.html)",
-      "Bash(find . -name \"form.html\" -path \"*/accounts/*\")"
+      "Bash(find . -name \"form.html\" -path \"*/accounts/*\")",
+      "Bash(pip install *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:8000/)"
     ]
   }
 }

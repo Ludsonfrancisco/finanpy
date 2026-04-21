@@ -1,0 +1,2 @@
+- [Playwright submit button trap](feedback_playwright_submit_button.md) — sidebar logout form matches button[type="submit"] first; always use :has-text("Salvar")
+- [Accounts URL patterns](feedback_accounts_url.md) — creation URL is /accounts/new/ not /accounts/create/
