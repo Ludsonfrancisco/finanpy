@@ -15,6 +15,9 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY . .
 
+# Generate static files
+RUN SECRET_KEY=build-placeholder python manage.py collectstatic --noinput --settings=core.settings.base
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DJANGO_SETTINGS_MODULE=core.settings.production
