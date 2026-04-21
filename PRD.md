@@ -451,4 +451,79 @@ Como visitante, quero entender o que é o Finanpy e me cadastrar.
 | CDN do Tailwind indisponível | Baixo | Baixa | Migrar para build local do Tailwind em sprint futura. |
 
 ---
+
+## 13. Agente de IA — Análise Financeira Personalizada
+
+### 13.1 Visão geral
+
+O módulo `ai` introduz um agente de análise financeira que processa os dados transacionais do usuário e retorna insights personalizados em linguagem natural. O agente é executado via management command Django, persiste os resultados no model `AIAnalysis` e o dashboard exibe a análise mais recente.
+
+### 13.2 Problema
+
+Usuários acumulam transações mas não extraem padrões automaticamente. Visualizar números isolados (saldo, total de despesas) não responde perguntas como "onde estou gastando mais?", "meu padrão mudou este mês?" ou "o que posso ajustar?".
+
+### 13.3 Objetivo
+
+Gerar, periodicamente, um relatório de insights financeiros por usuário, usando LLM para interpretar os dados já registrados no sistema e comunicar conclusões acionáveis em pt-BR.
+
+### 13.4 Arquitetura do módulo
+
+```
+ai/
+├── agents/
+│   ├── finance_insight_agent.py   # Lógica do agente LangChain
+│   └── ai_integration_expert.md  # Agente documental (padrões LangChain 1.0)
+├── models.py                      # AIAnalysis
+├── admin.py
+├── apps.py
+├── services/
+│   └── analysis_service.py        # Orquestrador: coleta dados + chama agente + persiste
+├── management/
+│   └── commands/
+│       └── run_finance_analysis.py
+└── migrations/
+```
+
+### 13.5 Model AIAnalysis
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `user` | FK → User | Dono da análise |
+| `analysis_text` | TextField | Texto completo gerado pelo LLM |
+| `insights` | JSONField | Lista de strings: insights extraídos |
+| `period_start` | DateField | Início do período analisado |
+| `period_end` | DateField | Fim do período analisado |
+| `model_used` | CharField | Nome do modelo OpenAI utilizado |
+| `tokens_used` | IntegerField (null) | Total de tokens consumidos |
+| `created_at` | DateTimeField | Auto |
+
+### 13.6 Pipeline de execução
+
+1. `run_finance_analysis` itera todos os usuários ativos do sistema.
+2. Para cada usuário, `AnalysisService.run_for_user(user)` coleta via ORM: contas, saldos, transações dos últimos 30 dias, breakdown por categoria.
+3. O contexto estruturado é passado ao `FinanceInsightAgent.analyze(context)`.
+4. O agente constrói um `ChatPromptTemplate`, invoca `ChatOpenAI(model='gpt-5-mini')` via LCEL (`prompt | llm | parser`) e retorna `AnalysisResult(summary, insights)`.
+5. `AnalysisService` persiste o resultado em `AIAnalysis`.
+6. O dashboard consulta `AIAnalysis.objects.filter(user=user).order_by('-created_at').first()` e exibe o card de insights.
+
+### 13.7 Integrações
+
+| Dependência | Papel |
+|---|---|
+| `langchain` | Framework do agente (LCEL, prompts, output parsers) |
+| `langchain-openai` | Wrapper `ChatOpenAI` para API OpenAI |
+| `langchain-core` | `ChatPromptTemplate`, `StrOutputParser` |
+| `openai` | SDK base (requerido por `langchain-openai`) |
+
+Variável de ambiente necessária: `OPENAI_API_KEY`.
+
+### 13.8 Decisões técnicas
+
+- **LCEL (LangChain Expression Language)** em vez de `LLMChain` legado: mais legível, compatível com LangChain 1.0.
+- **JSONField para `insights`**: permite iterar bullets no template sem parsing adicional.
+- **`run_finance_analysis` como management command**: execução isolada, schedulável via cron/Celery futuro, sem acoplamento com request/response cycle.
+- **Uma análise por execução por usuário**: sem deduplicação por período — o histórico completo fica disponível via admin.
+- **Temperatura 0.3**: balanço entre determinismo e fluência natural nas respostas do LLM.
+
+---
 **Fim do documento.**

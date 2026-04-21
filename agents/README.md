@@ -11,6 +11,7 @@ Time de agentes especializados na stack do projeto Finanpy (Django 5.x + DTL + T
 | [Backend Django](#backend-django) | `backend-django.md` | Models, views, forms, URLs, signals, migrations, admin |
 | [Frontend DTL + Tailwind](#frontend-dtl--tailwind) | `frontend-dtl-tailwind.md` | Templates HTML, componentes, design system, responsividade |
 | [QA Tester](#qa-tester) | `qa-tester.md` | Testes E2E com Playwright, testes unitários Django, relatórios de bugs |
+| [AI Integration Expert](#ai-integration-expert) | `ai_integration_expert.md` | LangChain 1.0, chains LCEL, integração OpenAI, app `ai` |
 
 ---
 
@@ -84,6 +85,29 @@ Engenheiro de QA especializado em verificar o sistema Finanpy via Playwright (te
 
 ---
 
+## AI Integration Expert
+
+**Arquivo:** `ai_integration_expert.md`
+
+Engenheiro especializado em LangChain 1.0 e integração com Django. Atua como **guia de referência e automação para todos os futuros agentes de IA no sistema** — garante que toda implementação usa LCEL (LangChain Expression Language), nunca padrões legados (`LLMChain`, `ConversationChain`), e que a separação entre código de agente e código Django está correta.
+
+**Ferramentas:** context7 (documentação LangChain e OpenAI atualizadas), ferramentas de leitura/edição de arquivos, Bash para testes.
+
+**Use este agente quando precisar:**
+- Implementar ou revisar `ai/agents/finance_insight_agent.py`
+- Criar novos chains, tools ou AgentExecutors no app `ai`
+- Adicionar um novo agente de IA ao sistema e precisar de referência de padrões
+- Depurar erros de API OpenAI ou de parsing de output
+- Verificar se imports seguem LangChain 1.0 (e não versões 0.x legadas)
+- Adicionar dependências LangChain em `requirements/base.txt` com versões corretas
+- Mockar `ChatOpenAI` em testes unitários do app `ai`
+- Consultar documentação atualizada via MCP Context7
+- Revisar separação de responsabilidades entre `agents/`, `services/` e `management/`
+
+**Não use para:** models Django, views HTTP, templates HTML, testes E2E com Playwright.
+
+---
+
 ## Como usar os agentes
 
 Para invocar um agente no Claude Code, use o comando:
@@ -97,18 +121,24 @@ Ou referencie o arquivo `.md` correspondente ao iniciar uma tarefa. Cada agente 
 ### Fluxo recomendado por tipo de tarefa
 
 ```
-Nova feature (ex: Sprint 4 — Contas bancárias)
-  1. Backend Django   → models + views + forms + URLs + migrations
-  2. Frontend DTL     → templates + design system aplicado
-  3. QA Tester        → testes E2E + testes unitários + relatório
+Nova feature de domínio (ex: Sprint 4 — Contas bancárias)
+  1. Backend Django        → models + views + forms + URLs + migrations
+  2. Frontend DTL          → templates + design system aplicado
+  3. QA Tester             → testes E2E + testes unitários + relatório
+
+Nova feature de IA (ex: Sprint 8 — IA Financeira)
+  1. AI Integration Expert → model AIAnalysis + agente LangChain + service + command
+  2. Frontend DTL          → card de análise no dashboard
+  3. QA Tester             → testes unitários mockados + verificação visual
 
 Correção de bug
-  1. QA Tester        → reproduz + documenta com screenshot
-  2. Backend Django   → corrige lógica (se bug de backend)
-     ou Frontend DTL  → corrige UI (se bug visual)
-  3. QA Tester        → verifica correção
+  1. QA Tester             → reproduz + documenta com screenshot
+  2. Backend Django        → corrige lógica (se bug de backend)
+     ou Frontend DTL       → corrige UI (se bug visual)
+     ou AI Integration     → corrige chain/output parser (se bug de IA)
+  3. QA Tester             → verifica correção
 
 Auditoria visual (sprint 7)
-  1. Frontend DTL     → revisão e padronização
-  2. QA Tester        → checklist visual em todas as telas
+  1. Frontend DTL          → revisão e padronização
+  2. QA Tester             → checklist visual em todas as telas
 ```

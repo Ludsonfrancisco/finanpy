@@ -238,43 +238,84 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ---
 
-### Sprint 8 — Testes (sprint final)
+### Sprint 8 — IA Financeira
 
-- [X] **8.1 Testes unitários**
-  - [X] 8.1.1 Testar criação de `User` com e-mail via manager customizado
-  - [X] 8.1.2 Testar criação automática de `Profile` via signal
-  - [X] 8.1.3 Testar método `current_balance` de `Account`
-  - [X] 8.1.4 Testar validações dos forms
+- [X] **8.1 App `ai` e model `AIAnalysis`**
+  - [X] 8.1.1 Criar app `ai` via `python manage.py startapp ai`
+  - [X] 8.1.2 Registrar `ai` em `INSTALLED_APPS`
+  - [X] 8.1.3 Criar `AIAnalysis` em `ai/models.py` com campos: `user` (FK), `analysis_text`, `insights` (JSONField), `period_start`, `period_end`, `model_used`, `tokens_used` (null), `created_at`
+  - [X] 8.1.4 Registrar `AIAnalysis` no admin com `list_display`, `list_filter` por usuário e `search_fields`
+  - [X] 8.1.5 Gerar e rodar migrations
 
-- [X] **8.2 Testes de views**
-  - [X] 8.2.1 Testar redirecionamento de rotas protegidas sem login
-  - [X] 8.2.2 Testar filtragem por usuário em todas as listagens
-  - [X] 8.2.3 Testar CRUD de contas, categorias e transações
-  - [X] 8.2.4 Testar filtros de transações
+- [ ] **8.2 Agente LangChain (`finance_insight_agent.py`)**
+  - [ ] 8.2.1 Adicionar `langchain`, `langchain-openai`, `langchain-core` e `openai` em `requirements/base.txt`
+  - [ ] 8.2.2 Adicionar `OPENAI_API_KEY` em `.env.example` e `.env.production.example`
+  - [ ] 8.2.3 Criar `ai/agents/__init__.py`
+  - [ ] 8.2.4 Implementar `FinanceInsightAgent` em `ai/agents/finance_insight_agent.py` usando LCEL: `ChatPromptTemplate | ChatOpenAI(model='gpt-5-mini', temperature=0.3) | StrOutputParser`
+  - [ ] 8.2.5 Definir system prompt em pt-BR instruindo o modelo a retornar análise estruturada: parágrafo de resumo + lista de insights
+  - [ ] 8.2.6 Implementar método `analyze(context: dict) -> AnalysisResult` que retorna dataclass com `summary: str` e `insights: list[str]`
+  - [ ] 8.2.7 Ler `OPENAI_API_KEY` via `os.environ` dentro do agente (sem hardcode)
 
-- [X] **8.3 Cobertura**
-  - [X] 8.3.1 Instalar `coverage`
-  - [X] 8.3.2 Rodar suite e gerar relatório
-  - [X] 8.3.3 Garantir cobertura > 70%
+- [ ] **8.3 Service de orquestração (`analysis_service.py`)**
+  - [ ] 8.3.1 Criar `ai/services/__init__.py`
+  - [ ] 8.3.2 Implementar `AnalysisService.run_for_user(user)` em `ai/services/analysis_service.py`
+  - [ ] 8.3.3 Coleta de contexto via ORM: `Account.objects.filter(user=user)` com `current_balance`, `Transaction.objects.filter(user=user, date__gte=period_start)`, breakdown por categoria (aggregado com `Sum`)
+  - [ ] 8.3.4 Montar dict `context` com: `user_name`, `period`, `accounts`, `total_income`, `total_expense`, `net`, `category_breakdown`
+  - [ ] 8.3.5 Chamar `FinanceInsightAgent().analyze(context)` e capturar `AnalysisResult`
+  - [ ] 8.3.6 Persistir `AIAnalysis.objects.create(user=user, analysis_text=result.summary, insights=result.insights, period_start=..., period_end=..., model_used='gpt-5-mini')`
+
+- [ ] **8.4 Management command (`run_finance_analysis`)**
+  - [ ] 8.4.1 Criar estrutura `ai/management/commands/run_finance_analysis.py`
+  - [ ] 8.4.2 Implementar `Command(BaseCommand)` com `handle()` iterando `User.objects.filter(is_active=True)`
+  - [ ] 8.4.3 Chamar `AnalysisService.run_for_user(user)` para cada usuário com `try/except` e log de erro individual (não aborta o loop)
+  - [ ] 8.4.4 Adicionar argumento opcional `--user-id` para rodar análise de um usuário específico
+  - [ ] 8.4.5 Exibir `self.stdout.write(self.style.SUCCESS(...))` ao final com contagem de análises geradas
+
+- [ ] **8.5 Integração com dashboard**
+  - [ ] 8.5.1 Em `DashboardView.get_context_data`, buscar `AIAnalysis.objects.filter(user=request.user).order_by('-created_at').first()`
+  - [ ] 8.5.2 Passar `latest_analysis` ao contexto do template
+  - [ ] 8.5.3 No template `templates/dashboard/index.html`, adicionar card "Análise de IA" com `analysis_text` e lista de `insights`
+  - [ ] 8.5.4 Card só renderiza se `latest_analysis` não for `None`; exibir estado vazio com instrução para rodar o command
 
 ---
 
-playwright### Sprint 9 — Docker (sprint final)
+### Sprint 9 — Testes
 
-- [X] **9.1 Containerização**
-  - [X] 9.1.1 Criar `Dockerfile` multi-stage baseado em `python:3.12-slim`
-  - [X] 9.1.2 Criar `docker-compose.yml` com serviço `web` e volume para SQLite
-  - [X] 9.1.3 Criar `.dockerignore`
-  - [X] 9.1.4 Documentar comandos de build e up no `README.md`
+- [X] **9.1 Testes unitários**
+  - [X] 9.1.1 Testar criação de `User` com e-mail via manager customizado
+  - [X] 9.1.2 Testar criação automática de `Profile` via signal
+  - [X] 9.1.3 Testar método `current_balance` de `Account`
+  - [X] 9.1.4 Testar validações dos forms
 
-- [X] **9.2 Variáveis de ambiente**
-  - [X] 9.2.1 Extrair `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis de ambiente
-  - [X] 9.2.2 Criar `.env.example`
-  - [X] 9.2.3 Adicionar leitura via `os.environ` em `settings.py`
+- [X] **9.2 Testes de views**
+  - [X] 9.2.1 Testar redirecionamento de rotas protegidas sem login
+  - [X] 9.2.2 Testar filtragem por usuário em todas as listagens
+  - [X] 9.2.3 Testar CRUD de contas, categorias e transações
+  - [X] 9.2.4 Testar filtros de transações
 
-- [X] **9.3 Deploy-ready**
-  - [X] 9.3.1 Configurar `collectstatic`
-  - [X] 9.3.2 Configurar servidor WSGI (gunicorn) no container
-  - [X] 9.3.3 Validar execução via `docker compose up`
+- [X] **9.3 Cobertura**
+  - [X] 9.3.1 Instalar `coverage`
+  - [X] 9.3.2 Rodar suite e gerar relatório
+  - [X] 9.3.3 Garantir cobertura > 70%
+
+---
+
+### Sprint 10 — Docker
+
+- [X] **10.1 Containerização**
+  - [X] 10.1.1 Criar `Dockerfile` multi-stage baseado em `python:3.12-slim`
+  - [X] 10.1.2 Criar `docker-compose.yml` com serviço `web` e volume para SQLite
+  - [X] 10.1.3 Criar `.dockerignore`
+  - [X] 10.1.4 Documentar comandos de build e up no `README.md`
+
+- [X] **10.2 Variáveis de ambiente**
+  - [X] 10.2.1 Extrair `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis de ambiente
+  - [X] 10.2.2 Criar `.env.example`
+  - [X] 10.2.3 Adicionar leitura via `os.environ` em `settings.py`
+
+- [X] **10.3 Deploy-ready**
+  - [X] 10.3.1 Configurar `collectstatic`
+  - [X] 10.3.2 Configurar servidor WSGI (gunicorn) no container
+  - [X] 10.3.3 Validar execução via `docker compose up`
 
 ---
