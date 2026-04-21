@@ -246,16 +246,16 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 8.1.3 Testar método `current_balance` de `Account`
   - [X] 8.1.4 Testar validações dos forms
 
-- [ ] **8.2 Testes de views**
-  - [ ] 8.2.1 Testar redirecionamento de rotas protegidas sem login
-  - [ ] 8.2.2 Testar filtragem por usuário em todas as listagens
-  - [ ] 8.2.3 Testar CRUD de contas, categorias e transações
-  - [ ] 8.2.4 Testar filtros de transações
+- [X] **8.2 Testes de views**
+  - [X] 8.2.1 Testar redirecionamento de rotas protegidas sem login
+  - [X] 8.2.2 Testar filtragem por usuário em todas as listagens
+  - [X] 8.2.3 Testar CRUD de contas, categorias e transações
+  - [X] 8.2.4 Testar filtros de transações
 
-- [ ] **8.3 Cobertura**
-  - [ ] 8.3.1 Instalar `coverage`
-  - [ ] 8.3.2 Rodar suite e gerar relatório
-  - [ ] 8.3.3 Garantir cobertura > 70%
+- [X] **8.3 Cobertura**
+  - [X] 8.3.1 Instalar `coverage`
+  - [X] 8.3.2 Rodar suite e gerar relatório
+  - [X] 8.3.3 Garantir cobertura > 70%
 
 ---
 
