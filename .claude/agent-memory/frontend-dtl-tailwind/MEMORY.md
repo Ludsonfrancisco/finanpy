@@ -2,3 +2,4 @@
 - [Home Landing Page](project_home_landing_page.md) — 3-section public page (hero + features grid + bottom CTA), design patterns and URL namespaces used
 - [Auth Templates — signup and login](project_auth_templates.md) — card-centered layout, manual label rendering, per-error iteration, widget class injection convention
 - [Dashboard Template — Metric Cards and Transactions Table](project_dashboard_template.md) — border-t-2 accent pattern, responsive table columns, url-as-variable workaround for _empty_state.html
+- [Button and Spacing Standards — Enforced Conventions](feedback_button_standards.md) — exact class strings for primary/secondary/danger buttons, mb-8 headings, gap-6 card grids, p-6 cards

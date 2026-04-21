@@ -5,7 +5,7 @@
 {% block content %}
 
 <!-- Page heading -->
-<div class="mb-6">
+<div class="mb-8">
   <h1 class="text-2xl font-semibold text-slate-100">
     {% if object %}Editar transação{% else %}Nova transação{% endif %}
   </h1>
@@ -132,12 +132,12 @@
       <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
 
         <a href="{% url 'transactions:list' %}"
-           class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500/40">
+           class="inline-flex items-center gap-2 rounded-xl bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 shadow transition hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500/40">
           Cancelar
         </a>
 
         <button type="submit"
-                class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+                class="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
           Salvar
         </button>
 

@@ -182,7 +182,7 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ---
 
-### Sprint 6 — Transações
+### Sprint 6 — Transações [X]
 
 - [X] **6.1 Model Transaction**
   - [X] 6.1.1 Criar `Transaction` em `transactions/models.py` com `user`, `account` (FK), `category` (FK), `description`, `amount` (DecimalField), `date` (DateField), `type` (choices `income`/`expense`)
@@ -206,20 +206,20 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 6.3.5 Adicionar paginação visual no rodapé da lista
   - [X] 6.3.6 Adicionar link "Transações" na sidebar
 
-- [ ] **6.4 Integração com dashboard**
-  - [ ] 6.4.1 Refinar cálculo de saldo total usando `Sum` agregado do ORM
-  - [ ] 6.4.2 Refinar cálculo de receitas e despesas do mês
-  - [ ] 6.4.3 Adicionar seção de "Despesas por categoria" (lista simples) no dashboard
+- [X] **6.4 Integração com dashboard**
+  - [X] 6.4.1 Refinar cálculo de saldo total usando `Sum` agregado do ORM
+  - [X] 6.4.2 Refinar cálculo de receitas e despesas do mês
+  - [X] 6.4.3 Adicionar seção de "Despesas por categoria" (lista simples) no dashboard
 
 ---
 
 ### Sprint 7 — Polimento visual e UX
 
-- [ ] **7.1 Consistência visual**
-  - [ ] 7.1.1 Revisar todas as telas garantindo uso dos mesmos tokens de cor
-  - [ ] 7.1.2 Padronizar espaçamento interno (`p-6`) e externo (`gap-6`) em cards
-  - [ ] 7.1.3 Padronizar botões primários e secundários em todas as telas
-  - [ ] 7.1.4 Validar responsividade em 320px, 768px e 1280px
+- [X] **7.1 Consistência visual**
+  - [X] 7.1.1 Revisar todas as telas garantindo uso dos mesmos tokens de cor
+  - [X] 7.1.2 Padronizar espaçamento interno (`p-6`) e externo (`gap-6`) em cards
+  - [X] 7.1.3 Padronizar botões primários e secundários em todas as telas
+  - [X] 7.1.4 Validar responsividade em 320px, 768px e 1280px
 
 - [ ] **7.2 Microinterações**
   - [ ] 7.2.1 Adicionar `transition` em botões e links

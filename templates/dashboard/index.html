@@ -11,7 +11,7 @@
 </div>
 
 <!-- ===== Summary metric cards ===== -->
-<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
 
   <!-- Saldo total -->
   <div class="rounded-2xl border border-t-2 border-slate-700 border-t-slate-500 bg-gradient-to-br from-slate-800 to-slate-900 p-6 shadow-xl shadow-black/20 transition hover:border-slate-600">
@@ -66,13 +66,48 @@
 
 </div>
 
+<!-- ===== Expenses by category ===== -->
+<div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl shadow-black/20 backdrop-blur">
+
+  <!-- Section header -->
+  <div class="border-b border-slate-800 px-6 py-4">
+    <h2 class="text-base font-semibold text-slate-100">Despesas por categoria</h2>
+    <p class="mt-0.5 text-xs text-slate-500">Top categorias no mês atual</p>
+  </div>
+
+  {% if expenses_by_category %}
+    <ul class="divide-y divide-slate-800" aria-label="Despesas por categoria">
+      {% for item in expenses_by_category %}
+        <li class="flex items-center gap-4 px-6 py-4 transition hover:bg-slate-800/50">
+          <!-- Colored dot -->
+          <span class="h-3 w-3 flex-shrink-0 rounded-full"
+                style="background-color: {{ item.category__color }}"
+                aria-hidden="true"></span>
+          <!-- Category name -->
+          <span class="flex-1 text-sm text-slate-100">{{ item.category__name }}</span>
+          <!-- Amount -->
+          <span class="text-rose-400 font-semibold tabular-nums text-sm">
+            R$&nbsp;{{ item.total|floatformat:2 }}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <!-- Empty state -->
+    <div class="px-6 py-10 text-center">
+      <p class="text-sm text-slate-400">Nenhuma despesa no mês atual.</p>
+    </div>
+  {% endif %}
+
+</div>
+
 <!-- ===== Recent transactions ===== -->
 <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl shadow-black/20 backdrop-blur">
 
   <!-- Section header -->
   <div class="flex items-center justify-between border-b border-slate-800 px-6 py-4">
     <h2 class="text-base font-semibold text-slate-100">Transações recentes</h2>
-    <a href="#"
+    <a href="{% url 'transactions:list' %}"
        class="text-xs font-medium text-emerald-400 transition hover:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 rounded">
       Ver todas
     </a>
@@ -147,7 +182,7 @@
 
     <!-- Footer link -->
     <div class="border-t border-slate-800 px-6 py-3 text-right">
-      <a href="#"
+      <a href="{% url 'transactions:list' %}"
          class="text-xs font-medium text-slate-400 transition hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 rounded">
         Ver histórico completo &rarr;
       </a>

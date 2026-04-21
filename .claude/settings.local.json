@@ -5,7 +5,26 @@
       "Bash(.venv/Scripts/python *)",
       "Bash(.venv/Scripts/pip install *)",
       "Bash(mkdir -p C:/Users/ludso/Documents/projects/claude_code/finanpy/templates/layouts)",
-      "Bash(mkdir -p C:/Users/ludso/Documents/projects/claude_code/finanpy/templates/partials)"
+      "Bash(mkdir -p C:/Users/ludso/Documents/projects/claude_code/finanpy/templates/partials)",
+      "Bash(.venv\\\\Scripts\\\\activate)",
+      "Bash(npx playwright *)",
+      "Bash(cd /tmp)",
+      "Bash(node responsiveness_test.js)",
+      "Bash(node -e \"require\\('@playwright/test'\\)\")",
+      "Bash(node -e \"require\\('playwright-core'\\)\")",
+      "Bash(npm root *)",
+      "Bash(node -e \"const p = require\\('C:/Users/ludso/AppData/Roaming/npm/node_modules/playwright'\\); console.log\\(p\\)\")",
+      "Bash(node -e \"const p = require\\('playwright'\\); console.log\\(Object.keys\\(p\\)\\);\")",
+      "Bash(node pwqa/run.js)",
+      "Bash(mv \"C:/Users/ludso/AppData/Roaming/npm/node_modules/@executeautomation/playwright-mcp-server/pwqa/run.js\" \"C:/Users/ludso/AppData/Roaming/npm/node_modules/@executeautomation/playwright-mcp-server/pwqa/run.cjs\")",
+      "Bash(node pwqa/run.cjs)",
+      "Bash(curl -s -c /tmp/cookies.txt -b /tmp/cookies.txt http://127.0.0.1:8000/users/login/)",
+      "Bash(curl -v -s http://127.0.0.1:8000/users/login/)",
+      "Bash(curl -s http://127.0.0.1:8000/users/login/)",
+      "Bash(python3 -c \"import sys; content=sys.stdin.read\\(\\); print\\(content[content.find\\('<form'\\):content.find\\('</form>'\\)+10] if '<form' in content else 'no form found'\\)\")",
+      "Bash(grep -r \"urlpatterns\" users/urls.py)",
+      "Bash(cat users/urls.py)",
+      "Bash(node -e ' *)"
     ]
   }
 }
