@@ -261,11 +261,11 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ### Sprint 9 — Docker (sprint final)
 
-- [ ] **9.1 Containerização**
-  - [ ] 9.1.1 Criar `Dockerfile` multi-stage baseado em `python:3.12-slim`
-  - [ ] 9.1.2 Criar `docker-compose.yml` com serviço `web` e volume para SQLite
-  - [ ] 9.1.3 Criar `.dockerignore`
-  - [ ] 9.1.4 Documentar comandos de build e up no `README.md`
+- [X] **9.1 Containerização**
+  - [X] 9.1.1 Criar `Dockerfile` multi-stage baseado em `python:3.12-slim`
+  - [X] 9.1.2 Criar `docker-compose.yml` com serviço `web` e volume para SQLite
+  - [X] 9.1.3 Criar `.dockerignore`
+  - [X] 9.1.4 Documentar comandos de build e up no `README.md`
 
 - [ ] **9.2 Variáveis de ambiente**
   - [ ] 9.2.1 Extrair `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis de ambiente
