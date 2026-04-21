@@ -184,12 +184,12 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ### Sprint 6 — Transações
 
-- [ ] **6.1 Model Transaction**
-  - [ ] 6.1.1 Criar `Transaction` em `transactions/models.py` com `user`, `account` (FK), `category` (FK), `description`, `amount` (DecimalField), `date` (DateField), `type` (choices `income`/`expense`)
-  - [ ] 6.1.2 Adicionar `created_at` e `updated_at`
-  - [ ] 6.1.3 Definir ordenação default por `-date, -created_at`
-  - [ ] 6.1.4 Registrar no admin com `list_filter` e `search_fields`
-  - [ ] 6.1.5 Gerar e rodar migrations
+- [X] **6.1 Model Transaction**
+  - [X] 6.1.1 Criar `Transaction` em `transactions/models.py` com `user`, `account` (FK), `category` (FK), `description`, `amount` (DecimalField), `date` (DateField), `type` (choices `income`/`expense`)
+  - [X] 6.1.2 Adicionar `created_at` e `updated_at`
+  - [X] 6.1.3 Definir ordenação default por `-date, -created_at`
+  - [X] 6.1.4 Registrar no admin com `list_filter` e `search_fields`
+  - [X] 6.1.5 Gerar e rodar migrations
 
 - [ ] **6.2 CRUD de transações**
   - [ ] 6.2.1 Criar `transactions/forms.py` com `TransactionForm(ModelForm)` que filtra `account` e `category` pelo usuário logado
