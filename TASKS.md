@@ -259,7 +259,7 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ---
 
-### Sprint 9 — Docker (sprint final)
+playwright### Sprint 9 — Docker (sprint final)
 
 - [X] **9.1 Containerização**
   - [X] 9.1.1 Criar `Dockerfile` multi-stage baseado em `python:3.12-slim`
