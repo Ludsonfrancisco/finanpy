@@ -247,14 +247,14 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 8.1.4 Registrar `AIAnalysis` no admin com `list_display`, `list_filter` por usuário e `search_fields`
   - [X] 8.1.5 Gerar e rodar migrations
 
-- [ ] **8.2 Agente LangChain (`finance_insight_agent.py`)**
-  - [ ] 8.2.1 Adicionar `langchain`, `langchain-openai`, `langchain-core` e `openai` em `requirements/base.txt`
-  - [ ] 8.2.2 Adicionar `OPENAI_API_KEY` em `.env.example` e `.env.production.example`
-  - [ ] 8.2.3 Criar `ai/agents/__init__.py`
-  - [ ] 8.2.4 Implementar `FinanceInsightAgent` em `ai/agents/finance_insight_agent.py` usando LCEL: `ChatPromptTemplate | ChatOpenAI(model='gpt-5-mini', temperature=0.3) | StrOutputParser`
-  - [ ] 8.2.5 Definir system prompt em pt-BR instruindo o modelo a retornar análise estruturada: parágrafo de resumo + lista de insights
-  - [ ] 8.2.6 Implementar método `analyze(context: dict) -> AnalysisResult` que retorna dataclass com `summary: str` e `insights: list[str]`
-  - [ ] 8.2.7 Ler `OPENAI_API_KEY` via `os.environ` dentro do agente (sem hardcode)
+- [X] **8.2 Agente LangChain (`finance_insight_agent.py`)**
+  - [X] 8.2.1 Adicionar `langchain`, `langchain-openai`, `langchain-core` e `openai` em `requirements/base.txt`
+  - [X] 8.2.2 Adicionar `OPENAI_API_KEY` em `.env.example` e `.env.production.example`
+  - [X] 8.2.3 Criar `ai/agents/__init__.py`
+  - [X] 8.2.4 Implementar `FinanceInsightAgent` em `ai/agents/finance_insight_agent.py` usando LCEL: `ChatPromptTemplate | ChatOpenAI(model='gpt-5-mini', temperature=0.3) | StrOutputParser`
+  - [X] 8.2.5 Definir system prompt em pt-BR instruindo o modelo a retornar análise estruturada: parágrafo de resumo + lista de insights
+  - [X] 8.2.6 Implementar método `analyze(context: dict) -> AnalysisResult` que retorna dataclass com `summary: str` e `insights: list[str]`
+  - [X] 8.2.7 Ler `OPENAI_API_KEY` via `os.environ` dentro do agente (sem hardcode)
 
 - [ ] **8.3 Service de orquestração (`analysis_service.py`)**
   - [ ] 8.3.1 Criar `ai/services/__init__.py`
