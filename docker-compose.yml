@@ -1,12 +1,30 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   web:
     build: .
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - .env.production
+    environment:
+      DJANGO_SETTINGS_MODULE: core.settings.production
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
-      - sqlite_data:/app/db.sqlite3
       - media_data:/app/media
     command: >
       sh -c "python manage.py migrate &&
@@ -14,5 +32,5 @@ services:
              gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 2"
 
 volumes:
-  sqlite_data:
+  postgres_data:
   media_data:

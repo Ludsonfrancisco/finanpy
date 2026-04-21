@@ -4,8 +4,8 @@ FROM python:3.12-slim AS builder
 WORKDIR /app
 
 RUN pip install --upgrade pip
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+COPY requirements/production.txt requirements/base.txt ./requirements/
+RUN pip install --no-cache-dir --prefix=/install -r requirements/production.txt
 
 # Stage 2: runtime
 FROM python:3.12-slim
@@ -17,6 +17,7 @@ COPY . .
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV DJANGO_SETTINGS_MODULE=core.settings.production
 
 EXPOSE 8000
 
