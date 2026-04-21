@@ -22,7 +22,38 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    /* Rising Lines Effect - Balanced */
+    /* --- Premium Motion Animations --- */
+    
+    /* Reveal on Scroll */
+    .reveal {
+        opacity: 0;
+        transform: translateY(30px);
+        transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .reveal.active {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Floating Animation */
+    @keyframes float {
+        0%, 100% { transform: translateY(0) rotate(0); }
+        50% { transform: translateY(-20px) rotate(2deg); }
+    }
+    .animate-float {
+        animation: float 6s ease-in-out infinite;
+    }
+
+    /* Pulse Glow */
+    @keyframes pulse-glow {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 0.6; }
+    }
+    .glow-dot {
+        animation: pulse-glow 3s ease-in-out infinite;
+    }
+
+    /* Rising Lines Effect */
     @keyframes rise {
         0% { transform: translateY(110vh); opacity: 0; }
         10% { opacity: 0.45; }
@@ -49,6 +80,16 @@
         opacity: 0;
         will-change: transform;
     }
+
+    /* Sequential Loading for Mockup */
+    @keyframes bar-grow {
+        from { width: 0; }
+        to { width: var(--final-width); }
+    }
+    .mockup-bar {
+        animation: bar-grow 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        animation-delay: var(--delay);
+    }
 </style>
 {% endblock %}
 
@@ -57,172 +98,198 @@
     <!-- Background Elements -->
     <div class="fixed inset-0 z-0 bg-grid-pattern pointer-events-none"></div>
     <div class="line-container">
-        <!-- Balanced set of lines with mixed widths and speeds -->
         <div class="rising-line" style="--left: 5%; --duration: 5s; --delay: -1s;"></div>
-        <div class="rising-line" style="--left: 15%; --duration: 7s; --delay: -4s; width: 1px;"></div>
         <div class="rising-line" style="--left: 25%; --duration: 4s; --delay: -2s; width: 2px;"></div>
-        <div class="rising-line" style="--left: 40%; --duration: 6s; --delay: -3.5s;"></div>
-        <div class="rising-line" style="--left: 55%; --duration: 5s; --delay: -0.5s; width: 1px;"></div>
         <div class="rising-line" style="--left: 70%; --duration: 8s; --delay: -5s;"></div>
         <div class="rising-line" style="--left: 85%; --duration: 4.5s; --delay: -2.5s; width: 2px;"></div>
-        <div class="rising-line" style="--left: 95%; --duration: 6.5s; --delay: -1.2s;"></div>
     </div>
     <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[800px] aura-gradient -z-10 pointer-events-none"></div>
 
     <!-- ========== HERO SECTION ========== -->
     <section class="relative z-10 px-6 pt-20 pb-32 text-center md:pt-32">
         <div class="mx-auto max-w-5xl">
-            <!-- Badge -->
-            <div class="inline-flex items-center gap-2 px-3 py-1 mb-8 border rounded-full bg-emerald-500/10 border-emerald-500/20">
+            <div class="reveal active inline-flex items-center gap-2 px-3 py-1 mb-8 border rounded-full bg-emerald-500/10 border-emerald-500/20">
                 <span class="relative flex h-2 w-2">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
                 <span class="text-xs font-medium tracking-widest uppercase text-emerald-400">
-                    Novo: Gestão de Categorias Inteligente
+                    SaaS Premium: Gestão Financeira com IA
                 </span>
             </div>
 
-            <h1 class="text-5xl font-bold leading-[1.1] tracking-tighter md:text-8xl text-white mb-8">
-                Finanças
+            <h1 class="reveal active text-5xl font-bold leading-[1.1] tracking-tighter md:text-8xl text-white mb-8">
+                Controle seu dinheiro
                 <br/>
                 <span class="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent text-glow">
-                    Simplificadas.
+                    com Inteligência.
                 </span>
             </h1>
 
-            <p class="mx-auto mt-6 max-w-2xl text-lg md:text-xl text-slate-400 leading-relaxed">
-                Assuma o controle total do seu fluxo financeiro com uma interface intuitiva, 
-                segura e projetada para a sua produtividade diária.
+            <p class="reveal active mx-auto mt-6 max-w-2xl text-lg md:text-xl text-slate-400 leading-relaxed" style="transition-delay: 0.1s;">
+                O Finanpy transforma seus dados em estratégia. Simples como uma planilha, 
+                poderoso como um banco privado.
             </p>
 
-            <div class="mt-12 flex flex-col items-center justify-center gap-6 sm:flex-row">
+            <div class="reveal active mt-12 flex flex-col items-center justify-center gap-6 sm:flex-row" style="transition-delay: 0.2s;">
                 <a href="{% url 'users:signup' %}"
-                   class="group relative inline-flex items-center justify-center rounded-xl bg-emerald-500 px-8 py-4 font-bold text-white transition-all hover:bg-emerald-600 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.4)] focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                    Começar agora — Grátis
+                   class="group relative inline-flex items-center justify-center rounded-xl bg-emerald-500 px-8 py-4 font-bold text-white transition-all hover:bg-emerald-600 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+                    Começar agora — É grátis
                 </a>
                 <a href="{% url 'users:login' %}"
-                   class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900/50 px-8 py-4 font-bold text-slate-300 transition-all hover:border-slate-500 hover:text-white hover:bg-slate-900 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                   class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900/50 px-8 py-4 font-bold text-slate-300 transition-all hover:border-slate-500 hover:text-white backdrop-blur-sm">
                     Acessar minha conta
                 </a>
             </div>
 
-            <!-- Dashboard Mockup Placeholder -->
-            <div class="mt-20 relative mx-auto max-w-4xl">
-                <div class="glass-card rounded-2xl overflow-hidden shadow-2xl border-white/10 group">
-                    <div class="bg-slate-800/50 border-b border-white/5 px-4 py-3 flex items-center gap-2">
-                        <div class="flex gap-1.5">
+            <!-- Dashboard Mockup (The Animated "Square") -->
+            <div class="reveal mt-24 relative mx-auto max-w-5xl" style="transition-delay: 0.3s;">
+                <!-- Decorative Floating Shapes -->
+                <div class="absolute -top-12 -right-12 h-32 w-32 bg-emerald-500/10 rounded-3xl blur-2xl animate-float"></div>
+                <div class="absolute -bottom-8 -left-12 h-40 w-40 bg-cyan-500/10 rounded-full blur-3xl animate-float" style="animation-delay: -2s;"></div>
+
+                <div class="glass-card rounded-[2rem] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border-white/10 group transition-transform duration-700 hover:scale-[1.01]">
+                    <!-- Browser Bar -->
+                    <div class="bg-slate-900/80 border-b border-white/5 px-6 py-4 flex items-center justify-between">
+                        <div class="flex gap-2">
                             <div class="w-3 h-3 rounded-full bg-rose-500/50"></div>
                             <div class="w-3 h-3 rounded-full bg-amber-500/50"></div>
                             <div class="w-3 h-3 rounded-full bg-emerald-500/50"></div>
                         </div>
-                        <div class="mx-auto text-[10px] text-slate-500 font-mono tracking-widest uppercase">
+                        <div class="px-6 py-1 rounded-full bg-slate-950/50 border border-white/5 text-[10px] text-slate-500 font-mono tracking-widest uppercase">
                             finanpy.app/dashboard
                         </div>
+                        <div class="w-12"></div> <!-- Spacer -->
                     </div>
-                    <div class="aspect-video bg-slate-950/40 p-6 md:p-10">
-                        <div class="grid grid-cols-3 gap-4 h-full">
-                            <div class="col-span-2 space-y-4">
-                                <div class="h-32 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 animate-pulse"></div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="h-24 rounded-xl bg-slate-900/50 border border-white/5"></div>
-                                    <div class="h-24 rounded-xl bg-slate-900/50 border border-white/5"></div>
+                    
+                    <!-- Mockup Content -->
+                    <div class="aspect-video bg-slate-950/40 p-8 md:p-12">
+                        <div class="grid grid-cols-12 gap-6 h-full">
+                            <!-- Sidebar Mock -->
+                            <div class="col-span-3 space-y-4">
+                                <div class="h-6 w-24 rounded-lg bg-emerald-500/20 mb-8"></div>
+                                <div class="space-y-3">
+                                    <div class="h-10 w-full rounded-xl bg-emerald-500/10 border border-emerald-500/20"></div>
+                                    <div class="h-10 w-full rounded-xl bg-white/5"></div>
+                                    <div class="h-10 w-full rounded-xl bg-white/5"></div>
+                                    <div class="h-10 w-full rounded-xl bg-white/5"></div>
                                 </div>
-                                <div class="h-40 rounded-xl bg-slate-900/50 border border-white/5"></div>
                             </div>
-                            <div class="space-y-4">
-                                <div class="h-full rounded-xl bg-slate-900/50 border border-white/5"></div>
+                            <!-- Main Content Mock -->
+                            <div class="col-span-9 space-y-6">
+                                <div class="flex gap-4">
+                                    <div class="h-32 flex-1 rounded-2xl bg-gradient-to-br from-emerald-500/5 to-teal-500/5 border border-white/5 p-4 flex flex-col justify-end">
+                                        <div class="h-2 w-12 bg-slate-700 rounded mb-2"></div>
+                                        <div class="h-4 w-24 bg-white/10 rounded"></div>
+                                    </div>
+                                    <div class="h-32 flex-1 rounded-2xl bg-white/5 border border-white/5"></div>
+                                    <div class="h-32 flex-1 rounded-2xl bg-white/5 border border-white/5"></div>
+                                </div>
+                                <div class="flex-1 rounded-2xl bg-slate-900/50 border border-white/5 p-6 relative overflow-hidden">
+                                    <div class="flex justify-between items-center mb-8">
+                                        <div class="h-3 w-32 bg-slate-700 rounded"></div>
+                                        <div class="flex gap-2">
+                                            <div class="h-2 w-8 bg-emerald-500/40 rounded"></div>
+                                            <div class="h-2 w-8 bg-slate-800 rounded"></div>
+                                        </div>
+                                    </div>
+                                    <!-- Animated Graph Bars -->
+                                    <div class="flex items-end gap-3 h-32">
+                                        <div class="flex-1 bg-emerald-500/20 rounded-t-lg mockup-bar" style="--final-width: 100%; height: 60%; --delay: 0.5s;"></div>
+                                        <div class="flex-1 bg-emerald-500/40 rounded-t-lg mockup-bar" style="--final-width: 100%; height: 85%; --delay: 0.7s;"></div>
+                                        <div class="flex-1 bg-emerald-500/20 rounded-t-lg mockup-bar" style="--final-width: 100%; height: 45%; --delay: 0.9s;"></div>
+                                        <div class="flex-1 bg-emerald-500/60 rounded-t-lg mockup-bar shadow-[0_0_20px_rgba(16,185,129,0.3)]" style="--final-width: 100%; height: 100%; --delay: 1.1s;"></div>
+                                        <div class="flex-1 bg-emerald-500/20 rounded-t-lg mockup-bar" style="--final-width: 100%; height: 75%; --delay: 1.3s;"></div>
+                                        <div class="flex-1 bg-emerald-500/40 rounded-t-lg mockup-bar" style="--final-width: 100%; height: 90%; --delay: 1.5s;"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <!-- Glowing decoration behind mockup -->
-                <div class="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 blur-2xl -z-10 rounded-2xl"></div>
+                <!-- Glowing Decoration -->
+                <div class="absolute -inset-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 blur-3xl -z-10 rounded-[3rem]"></div>
             </div>
         </div>
     </section>
 
-    <!-- ========== STATS SECTION ========== -->
-    <section class="relative z-10 px-6 py-12 border-y border-white/5 bg-slate-900/20">
+    <!-- ========== STATS SECTION (Reveal on Scroll) ========== -->
+    <section class="relative z-10 px-6 py-20 border-y border-white/5 bg-slate-900/10 backdrop-blur-sm">
         <div class="mx-auto max-w-7xl">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
-                <div class="text-center">
-                    <div class="text-3xl md:text-4xl font-bold text-white mb-1">10k+</div>
-                    <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Usuários Ativos</div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-12">
+                <div class="reveal text-center">
+                    <div class="text-4xl md:text-5xl font-black text-white mb-2 tracking-tighter">10k+</div>
+                    <div class="text-[10px] uppercase tracking-[0.2em] text-emerald-500 font-bold">Mentes no controle</div>
                 </div>
-                <div class="text-center">
-                    <div class="text-3xl md:text-4xl font-bold text-white mb-1">R$ 5M+</div>
-                    <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Gerenciados</div>
+                <div class="reveal text-center" style="transition-delay: 0.1s;">
+                    <div class="text-4xl md:text-5xl font-black text-white mb-2 tracking-tighter">R$ 5M+</div>
+                    <div class="text-[10px] uppercase tracking-[0.2em] text-emerald-500 font-bold">Volume gerido</div>
                 </div>
-                <div class="text-center">
-                    <div class="text-3xl md:text-4xl font-bold text-white mb-1">24/7</div>
-                    <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Suporte Premium</div>
+                <div class="reveal text-center" style="transition-delay: 0.2s;">
+                    <div class="text-4xl md:text-5xl font-black text-white mb-2 tracking-tighter">24/7</div>
+                    <div class="text-[10px] uppercase tracking-[0.2em] text-emerald-500 font-bold">Monitoramento</div>
                 </div>
-                <div class="text-center">
-                    <div class="text-3xl md:text-4xl font-bold text-white mb-1">99.9%</div>
-                    <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Uptime Seguro</div>
+                <div class="reveal text-center" style="transition-delay: 0.3s;">
+                    <div class="text-4xl md:text-5xl font-black text-white mb-2 tracking-tighter">99.9%</div>
+                    <div class="text-[10px] uppercase tracking-[0.2em] text-emerald-500 font-bold">Uptime seguro</div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ========== FEATURES GRID ========== -->
-    <section class="relative z-10 px-6 py-32 border-t border-white/5 bg-slate-950/50">
+    <!-- ========== FEATURES GRID (Reveal Cards) ========== -->
+    <section class="relative z-10 px-6 py-32 border-t border-white/5 bg-slate-950">
         <div class="mx-auto max-w-7xl">
-            <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
-                <div class="max-w-2xl text-left">
-                    <h2 class="text-3xl md:text-5xl font-bold text-white tracking-tight mb-4">
-                        Tudo o que você precisa em
+            <div class="reveal flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
+                <div class="max-w-2xl">
+                    <h2 class="text-4xl md:text-6xl font-bold text-white tracking-tight mb-6">
+                        Experiência
                         <br/>
-                        <span class="text-emerald-400">um só lugar.</span>
+                        <span class="text-emerald-400">Sem atrito.</span>
                     </h2>
-                    <p class="text-lg text-slate-400 font-light">
-                        Esqueça planilhas complexas. O Finanpy foi construído para ser a ferramenta definitiva para sua organização financeira.
+                    <p class="text-xl text-slate-400 font-light leading-relaxed">
+                        Esqueça planilhas travadas. O Finanpy é o seu cockpit financeiro pessoal.
                     </p>
                 </div>
-                <div class="flex items-center gap-4 text-xs font-semibold tracking-widest uppercase text-emerald-500/60">
-                    <span class="w-8 h-px bg-emerald-500/30"></span>
-                    Recursos Premium
-                </div>
             </div>
 
-            <div class="grid gap-6 md:grid-cols-3">
+            <div class="grid gap-8 md:grid-cols-3">
                 <!-- Feature 1 -->
-                <div class="group relative p-8 bg-slate-900/40 border border-white/5 rounded-2xl hover:bg-slate-900/60 transition-all hover:border-emerald-500/30">
-                    <div class="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <div class="reveal group relative p-10 bg-slate-900/40 border border-white/5 rounded-[2rem] hover:bg-slate-900/60 transition-all hover:border-emerald-500/30 hover:-translate-y-2">
+                    <div class="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-3">Multicontas</h3>
-                    <p class="text-slate-400 leading-relaxed">
-                        Acompanhe todos os seus saldos bancários e carteiras em tempo real, com total isolamento e segurança de dados.
+                    <h3 class="text-2xl font-bold text-white mb-4">Multicontas</h3>
+                    <p class="text-slate-400 leading-relaxed font-light">
+                        Acompanhe todos os seus saldos bancários e carteiras em tempo real, com total isolamento e segurança.
                     </p>
                 </div>
 
                 <!-- Feature 2 -->
-                <div class="group relative p-8 bg-slate-900/40 border border-white/5 rounded-2xl hover:bg-slate-900/60 transition-all hover:border-emerald-500/30">
-                    <div class="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500/10 text-teal-400 group-hover:scale-110 transition-transform">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M3 5.5A2.5 2.5 0 015.5 3h5.086a2 2 0 011.414.586l7.414 7.414a2 2 0 010 2.828l-5.086 5.086a2 2 0 01-2.828 0L4.086 11.5A2 2 0 013.5 10.086V5.5z" />
+                <div class="reveal group relative p-10 bg-slate-900/40 border border-white/5 rounded-[2rem] hover:bg-slate-900/60 transition-all hover:border-emerald-500/30 hover:-translate-y-2" style="transition-delay: 0.1s;">
+                    <div class="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-500/10 text-teal-400 group-hover:scale-110 group-hover:bg-teal-500 group-hover:text-white transition-all duration-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-3">Categorização Inteligente</h3>
-                    <p class="text-slate-400 leading-relaxed">
-                        Organize suas receitas e gastos com tags personalizadas. Entenda exatamente onde você pode economizar.
+                    <h3 class="text-2xl font-bold text-white mb-4">Análise com IA</h3>
+                    <p class="text-slate-400 leading-relaxed font-light">
+                        Receba conselhos estratégicos e "papo reto" da nossa IA para nunca mais perder dinheiro por bobeira.
                     </p>
                 </div>
 
                 <!-- Feature 3 -->
-                <div class="group relative p-8 bg-slate-900/40 border border-white/5 rounded-2xl hover:bg-slate-900/60 transition-all hover:border-emerald-500/30">
-                    <div class="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:scale-110 transition-transform">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+                <div class="reveal group relative p-10 bg-slate-900/40 border border-white/5 rounded-[2rem] hover:bg-slate-900/60 transition-all hover:border-emerald-500/30 hover:-translate-y-2" style="transition-delay: 0.2s;">
+                    <div class="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-400 group-hover:scale-110 group-hover:bg-cyan-500 group-hover:text-white transition-all duration-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-3">Histórico Detalhado</h3>
-                    <p class="text-slate-400 leading-relaxed">
-                        Registre transações rapidamente e visualize sua evolução financeira através de relatórios claros e objetivos.
+                    <h3 class="text-2xl font-bold text-white mb-4">Métricas SaaS</h3>
+                    <p class="text-slate-400 leading-relaxed font-light">
+                        Gráficos interativos e dashboards dignos de uma fintech para você visualizar sua evolução.
                     </p>
                 </div>
             </div>
@@ -232,24 +299,41 @@
     <!-- ========== BOTTOM CTA ========== -->
     <section class="relative z-10 border-t border-white/5 bg-slate-950 py-32 overflow-hidden">
         <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] aura-gradient opacity-50 -z-10"></div>
-        <div class="mx-auto max-w-3xl px-6 text-center">
-            <h2 class="text-4xl font-bold text-white md:text-6xl tracking-tight mb-6">
-                Assuma o controle do seu 
-                <span class="text-emerald-500">futuro.</span>
+        <div class="reveal mx-auto max-w-3xl px-6 text-center">
+            <h2 class="text-5xl font-bold text-white md:text-7xl tracking-tighter mb-8">
+                A hora é <span class="text-emerald-500 italic">agora.</span>
             </h2>
-            <p class="mb-12 text-lg text-slate-400">
-                Junte-se a centenas de usuários que já transformaram sua relação com o dinheiro.
+            <p class="mb-12 text-xl text-slate-400 font-light">
+                Junte-se à nova geração que domina o dinheiro com tecnologia.
             </p>
-            <div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div class="flex flex-col items-center justify-center gap-6 sm:flex-row">
                 <a href="{% url 'users:signup' %}"
-                   class="inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 font-bold text-slate-950 transition-all hover:bg-slate-200 hover:scale-105 active:scale-95 shadow-xl shadow-white/10">
-                    Começar Gratuitamente
+                   class="inline-flex items-center justify-center rounded-2xl bg-white px-10 py-5 font-black text-slate-950 transition-all hover:bg-slate-200 hover:scale-105 active:scale-95 shadow-2xl shadow-white/5">
+                    Criar conta gratuita
                 </a>
-                <p class="text-sm text-slate-500">
-                    Sem cartão de crédito. <br class="sm:hidden"/> Comece em 30 segundos.
-                </p>
             </div>
+            <p class="mt-8 text-sm text-slate-500 font-medium">
+                Sem cartões. Sem letras miúdas. Só controle total.
+            </p>
         </div>
     </section>
 </div>
+
+<script>
+    // Intersection Observer for Reveal on Scroll
+    const observerOptions = {
+        threshold: 0.15,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('active');
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
 {% endblock %}

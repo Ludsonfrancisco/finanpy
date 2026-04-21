@@ -526,4 +526,35 @@ Variável de ambiente necessária: `OPENAI_API_KEY`.
 - **Temperatura 0.3**: balanço entre determinismo e fluência natural nas respostas do LLM.
 
 ---
+
+## 14. Transição para PWA (Progressive Web App)
+
+### 14.1 Visão geral
+Transformar o Finanpy em um PWA para oferecer uma experiência "app-like", permitindo instalação nativa (Add to Home Screen) em dispositivos móveis e desktops, além de resiliência em conexões instáveis.
+
+### 14.2 Benefícios para o usuário e negócio
+- **Acessibilidade:** Acesso imediato via ícone na tela inicial, sem necessidade de app store.
+- **Performance:** Carregamento quase instantâneo do "App Shell".
+- **Engajamento:** Preparação para futuras notificações push (lembretes de vencimento, resumos semanais).
+
+### 14.3 Requisitos técnicos
+- **HTTPS:** Servir a aplicação obrigatoriamente sobre HTTPS (via Nginx/Render em produção).
+- **Manifest:** Implementar `manifest.json` com ícones, `theme_color` (#10b981) e `display: standalone`.
+- **Service Worker:** Registrar um Service Worker no escopo raiz (`/`).
+
+### 14.4 Requisitos funcionais e estratégia offline
+- **App Shell:** HTML/CSS/JS estruturais devem ser armazenados em cache na instalação (Estratégia *Cache First*).
+- **Dados Financeiros (Transações/Dashboard):** Estratégia **Network First**. O app tenta buscar os dados mais recentes do servidor Django; se falhar (offline), exibe o último estado salvo no cache.
+- **Persistência Offline (Roadmap):** Formulários preenchidos offline devem ser enfileirados via Background Sync e IndexedDB para envio quando a conexão retornar.
+
+### 14.5 Dependências e riscos
+- **SSL:** Obrigatório em produção (Risco: Render/VPS sem SSL quebra o PWA).
+- **Cache Invalidation:** Risco de exibir dados obsoletos se o Service Worker não for atualizado corretamente.
+
+### 14.6 Critérios de sucesso
+- Auditoria do Lighthouse PWA > 90.
+- Prompt de instalação nativo sendo disparado em iOS (Safari) e Android (Chrome).
+
+---
 **Fim do documento.**
+

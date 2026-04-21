@@ -279,43 +279,69 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ---
 
-### Sprint 9 — Testes
+### Sprint 9 — Transição PWA
 
-- [X] **9.1 Testes unitários**
-  - [X] 9.1.1 Testar criação de `User` com e-mail via manager customizado
-  - [X] 9.1.2 Testar criação automática de `Profile` via signal
-  - [X] 9.1.3 Testar método `current_balance` de `Account`
-  - [X] 9.1.4 Testar validações dos forms
+- [X] **9.1 Configuração Base e Manifest**
+  - [X] 9.1.1 Criar `manifest.json` estático em `static/` com configurações do Finanpy.
+  - [X] 9.1.2 Adicionar meta tags de PWA, `theme-color` e links de ícones no `base.html`.
+  - [X] 9.1.3 Garantir tags específicas para iOS (`apple-mobile-web-app-capable`).
 
-- [X] **9.2 Testes de views**
-  - [X] 9.2.1 Testar redirecionamento de rotas protegidas sem login
-  - [X] 9.2.2 Testar filtragem por usuário em todas as listagens
-  - [X] 9.2.3 Testar CRUD de contas, categorias e transações
-  - [X] 9.2.4 Testar filtros de transações
+- [ ] **9.2 Implementação do Service Worker**
+  - [ ] 9.2.1 Criar rota `/serviceworker.js` via `TemplateView` no `core/urls.py`.
+  - [ ] 9.2.2 Implementar instalação e ativação do Service Worker (Cache do App Shell).
+  - [ ] 9.2.3 Implementar interceptador de fetch com estratégia **Network First** para dados e **Cache First** para estáticos.
 
-- [X] **9.3 Cobertura**
-  - [X] 9.3.1 Instalar `coverage`
-  - [X] 9.3.2 Rodar suite e gerar relatório
-  - [X] 9.3.3 Garantir cobertura > 70%
+- [ ] **9.3 Otimização Offline-First**
+  - [ ] 9.3.1 Criar página de fallback offline amigável.
+  - [ ] 9.3.2 Validar instalação e funcionamento offline via DevTools.
 
 ---
 
-### Sprint 10 — Docker
+### Sprint 10 — Testes
 
-- [X] **10.1 Containerização**
-  - [X] 10.1.1 Criar `Dockerfile` multi-stage baseado em `python:3.12-slim`
-  - [X] 10.1.2 Criar `docker-compose.yml` com serviço `web` e volume para SQLite
-  - [X] 10.1.3 Criar `.dockerignore`
-  - [X] 10.1.4 Documentar comandos de build e up no `README.md`
+- [X] **10.1 Testes unitários**
+  - [X] 10.1.1 Testar criação de `User` com e-mail via manager customizado
+  - [X] 10.1.2 Testar criação automática de `Profile` via signal
+  - [X] 10.1.3 Testar método `current_balance` de `Account`
+  - [X] 10.1.4 Testar validações dos forms
 
-- [X] **10.2 Variáveis de ambiente**
-  - [X] 10.2.1 Extrair `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis de ambiente
-  - [X] 10.2.2 Criar `.env.example`
-  - [X] 10.2.3 Adicionar leitura via `os.environ` em `settings.py`
+- [X] **10.2 Testes de views**
+  - [X] 10.2.1 Testar redirecionamento de rotas protegidas sem login
+  - [X] 10.2.2 Testar filtragem por usuário em todas as listagens
+  - [X] 10.2.3 Testar CRUD de contas, categorias e transações
+  - [X] 10.2.4 Testar filtros de transações
 
-- [X] **10.3 Deploy-ready**
-  - [X] 10.3.1 Configurar `collectstatic`
-  - [X] 10.3.2 Configurar servidor WSGI (gunicorn) no container
-  - [X] 10.3.3 Validar execução via `docker compose up`
+- [X] **10.3 Cobertura**
+  - [X] 10.3.1 Instalar `coverage`
+  - [X] 10.3.2 Rodar suite e gerar relatório
+  - [X] 10.3.3 Garantir cobertura > 70%
+
+- [ ] **10.4 Validação e QA do PWA**
+  - [ ] 10.4.1 **Testes Funcionais:** Validar fluxos de autenticação, formulários e CRUDs sob o contexto de PWA.
+  - [ ] 10.4.2 **Testes Específicos de PWA:** Verificar instalabilidade (A2HS), registro do Service Worker e integridade do `manifest.json`.
+  - [ ] 10.4.3 **Comportamento Offline:** Testar navegação e exibição de dados cacheados sem conexão.
+  - [ ] 10.4.4 **Testes Multi-Dispositivo:** Validar UX prioritariamente em Tablets, seguido de Mobile e Desktop.
+  - [ ] 10.4.5 **Performance e Rede:** Medir tempos de carregamento e validar degradação graciosa em redes lentas (3G/2G).
+  - [ ] 10.4.6 **UX/UI:** Garantir interações touch-friendly e ausência de quebras de layout em modo standalone.
+
+---
+
+### Sprint 11 — Docker
+
+- [X] **11.1 Containerização**
+  - [X] 11.1.1 Criar `Dockerfile` multi-stage baseado em `python:3.12-slim`
+  - [X] 11.1.2 Criar `docker-compose.yml` com serviço `web` e volume para SQLite
+  - [X] 11.1.3 Criar `.dockerignore`
+  - [X] 11.1.4 Documentar comandos de build e up no `README.md`
+
+- [X] **11.2 Variáveis de ambiente**
+  - [X] 11.2.1 Extrair `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis de ambiente
+  - [X] 11.2.2 Criar `.env.example`
+  - [X] 11.2.3 Adicionar leitura via `os.environ` em `settings.py`
+
+- [X] **11.3 Deploy-ready**
+  - [X] 11.3.1 Configurar `collectstatic`
+  - [X] 11.3.2 Configurar servidor WSGI (gunicorn) no container
+  - [X] 11.3.3 Validar execução via `docker compose up`
 
 ---

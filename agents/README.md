@@ -10,8 +10,31 @@ Time de agentes especializados na stack do projeto Finanpy (Django 5.x + DTL + T
 |---|---|---|
 | [Backend Django](#backend-django) | `backend-django.md` | Models, views, forms, URLs, signals, migrations, admin |
 | [Frontend DTL + Tailwind](#frontend-dtl--tailwind) | `frontend-dtl-tailwind.md` | Templates HTML, componentes, design system, responsividade |
-| [QA Tester](#qa-tester) | `qa-tester.md` | Testes E2E com Playwright, testes unitários Django, relatórios de bugs |
+| [QA Tester](#qa-tester) | `qa-tester.md` | Testes E2E básicos, unitários e relatórios de bugs |
 | [AI Integration Expert](#ai-integration-expert) | `ai_integration_expert.md` | LangChain 1.0, chains LCEL, integração OpenAI, app `ai` |
+| [PWA Specialist](#pwa-specialist) | `pwa_specialist.md` | Manifest, Service Workers, Offline First, Cache API |
+| [QA Specialist](#qa-specialist) | `qa_specialist.md` | Validação de PWA, estratégias de teste modernas, regressões |
+
+---
+
+## QA Specialist
+
+**Arquivo:** `qa_specialist.md`
+
+Engenheiro de QA focado em validação de alto nível para PWAs e prontidão de produção. Especialista em estratégias de teste offline, simulando condições de rede adversas e garantindo a integridade do sistema após grandes refatorações.
+
+**Ferramentas:** context7 (metodologias de teste PWA), ferramentas de leitura/edição de arquivos, Playwright.
+
+**Use este agente quando precisar:**
+- Criar um **plano de testes** para o PWA
+- Validar a **instalabilidade** e o comportamento do **Service Worker**
+- Testar a resiliência do sistema em **modo offline** ou redes lentas
+- Detectar **regressões** em fluxos críticos (Auth, CRUD) após a transição PWA
+- Auditar a interface especificamente em **Tablets**
+- Validar estratégias de **caching** dinâmico e estático
+- Emitir um parecer de **Production Readiness**
+
+**Não use para:** Escrita de código de novas funcionalidades, migrações de banco de dados.
 
 ---
 
