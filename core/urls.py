@@ -26,4 +26,5 @@ urlpatterns = [
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
     path('accounts/', include('accounts.urls')),
     path('categories/', include('categories.urls')),
+    path('transacoes/', include('transactions.urls')),
 ]

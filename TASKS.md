@@ -191,20 +191,20 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
   - [X] 6.1.4 Registrar no admin com `list_filter` e `search_fields`
   - [X] 6.1.5 Gerar e rodar migrations
 
-- [ ] **6.2 CRUD de transações**
-  - [ ] 6.2.1 Criar `transactions/forms.py` com `TransactionForm(ModelForm)` que filtra `account` e `category` pelo usuário logado
-  - [ ] 6.2.2 Criar `TransactionListView(LoginRequiredMixin, ListView)` com paginação (`paginate_by = 20`)
-  - [ ] 6.2.3 Implementar filtros por querystring (período, conta, categoria, tipo) em `get_queryset`
-  - [ ] 6.2.4 Criar `TransactionCreateView`, `TransactionUpdateView`, `TransactionDeleteView`
-  - [ ] 6.2.5 Criar `transactions/urls.py` e incluir em `core/urls.py`
+- [X] **6.2 CRUD de transações**
+  - [X] 6.2.1 Criar `transactions/forms.py` com `TransactionForm(ModelForm)` que filtra `account` e `category` pelo usuário logado
+  - [X] 6.2.2 Criar `TransactionListView(LoginRequiredMixin, ListView)` com paginação (`paginate_by = 20`)
+  - [X] 6.2.3 Implementar filtros por querystring (período, conta, categoria, tipo) em `get_queryset`
+  - [X] 6.2.4 Criar `TransactionCreateView`, `TransactionUpdateView`, `TransactionDeleteView`
+  - [X] 6.2.5 Criar `transactions/urls.py` e incluir em `core/urls.py`
 
-- [ ] **6.3 Templates de transações**
-  - [ ] 6.3.1 Criar `templates/transactions/list.html` com filtros no topo e tabela
-  - [ ] 6.3.2 Estilizar valores: verde (`emerald-400`) para receitas, vermelho (`rose-400`) para despesas
-  - [ ] 6.3.3 Criar `templates/transactions/form.html`
-  - [ ] 6.3.4 Criar `templates/transactions/confirm_delete.html`
-  - [ ] 6.3.5 Adicionar paginação visual no rodapé da lista
-  - [ ] 6.3.6 Adicionar link "Transações" na sidebar
+- [X] **6.3 Templates de transações**
+  - [X] 6.3.1 Criar `templates/transactions/list.html` com filtros no topo e tabela
+  - [X] 6.3.2 Estilizar valores: verde (`emerald-400`) para receitas, vermelho (`rose-400`) para despesas
+  - [X] 6.3.3 Criar `templates/transactions/form.html`
+  - [X] 6.3.4 Criar `templates/transactions/confirm_delete.html`
+  - [X] 6.3.5 Adicionar paginação visual no rodapé da lista
+  - [X] 6.3.6 Adicionar link "Transações" na sidebar
 
 - [ ] **6.4 Integração com dashboard**
   - [ ] 6.4.1 Refinar cálculo de saldo total usando `Sum` agregado do ORM
