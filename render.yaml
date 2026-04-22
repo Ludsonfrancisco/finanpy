@@ -1,0 +1,26 @@
+services:
+  # O Web Service para o Django
+  - type: web
+    name: finanpy
+    runtime: python
+    plan: free # Você pode mudar para 'starter' depois se precisar de mais RAM
+    buildCommand: ./render-build.sh
+    startCommand: gunicorn core.wsgi:application
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: finanpy-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 4
+      - key: DJANGO_SETTINGS_MODULE
+        value: core.settings.production
+      - key: PYTHON_VERSION
+        value: 3.12.3
+
+# O Banco de Dados PostgreSQL
+databases:
+  - name: finanpy-db
+    plan: free # O plano free do banco no Render expira em 90 dias
