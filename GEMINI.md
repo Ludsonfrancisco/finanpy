@@ -3,9 +3,9 @@
 ## Project Overview
 **Finanpy** is a premium, full-stack personal finance management system built with **Django 5.2** and **TailwindCSS**. It follows a monolithic architecture designed for simplicity and ease of use, prioritizing a modern "SaaS-level" visual identity.
 
-- **Status:** MVP in development (Sprint 4 completed: Auth, Profiles, Accounts, and Dashboard are functional).
-- **Core Tech:** Python 3.12+, Django 5.2, SQLite, TailwindCSS (via CDN), Inter Font.
-- **Architecture:** Domain-driven Django apps (`users`, `profiles`, `accounts`, `categories`, `transactions`).
+- **Status:** MVP in development.
+- **Hosting:** Render.com (PostgreSQL + Web Service).
+- **Core Tech:** Python 3.12+, Django 5.2, SQLite (Local) / PostgreSQL (Prod), TailwindCSS (via CDN), Inter Font.
 
 ## Getting Started
 
