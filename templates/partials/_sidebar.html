@@ -75,6 +75,11 @@
       </button>
     </div>
 
+    <!-- iOS Instructions (Visible only on iOS) -->
+    <div id="ios-install-instructions" class="hidden px-6 py-2 text-[10px] text-slate-500 italic">
+      No iPhone: Toque em <svg xmlns="http://www.w3.org/2000/svg" class="inline h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M8.25 6.75L12 3m0 0l3.75 3.75M12 3v18" stroke-linecap="round" stroke-linejoin="round"/></svg> e depois em "Adicionar à Tela de Início".
+    </div>
+
     <!-- Logout (POST form to keep CSRF safe) -->
     <form method="post" action="{% url 'users:logout' %}">
       {% csrf_token %}

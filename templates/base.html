@@ -111,6 +111,14 @@
     window.addEventListener('appinstalled', (evt) => {
       console.log('Finanpy was installed.');
     });
+
+    // Detect iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    if (isIOS && !isStandalone) {
+      const iosInstructions = document.getElementById('ios-install-instructions');
+      if (iosInstructions) iosInstructions.classList.remove('hidden');
+    }
   </script>
   {% endblock %}
 </body>
