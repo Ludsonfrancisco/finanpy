@@ -39,4 +39,12 @@ urlpatterns = [
         ),
         name='serviceworker',
     ),
+    path(
+        'manifest.json',
+        TemplateView.as_view(
+            template_name='manifest.json',
+            content_type='application/json',
+        ),
+        name='manifest',
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
