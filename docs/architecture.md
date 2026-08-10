@@ -72,8 +72,9 @@ erDiagram
 
 O dashboard consolida os três responsáveis. Um usuário não pode manter mais de
 uma associação ativa, mas o modelo aceita mais de um usuário dentro do mesmo
-Lar. A decisão de usar um ou dois logins no cotidiano será registrada na
-especificação da autenticação `[INVESTIGAR]`.
+Lar. Nesta fase, o casal usará um login compartilhado com sessões independentes
+por dispositivo. A separação do modelo permite adotar dois logins no futuro sem
+migrar os registros financeiros.
 
 ## Operação atual
 

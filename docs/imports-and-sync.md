@@ -91,6 +91,8 @@ Pré-requisitos: limite de tamanho, MIME real, antivírus/validação, nome alea
 
 ## Sincronização de dispositivos
 
+O mesmo login familiar pode manter sessões independentes no Windows, iPhone e Android. Cada dispositivo é revogável e guarda seu próprio responsável padrão. Uma importação poderá ser iniciada em qualquer plataforma; depois da revisão e confirmação no servidor, o resultado será sincronizado automaticamente para as demais.
+
 ```mermaid
 sequenceDiagram
     participant App as Flutter

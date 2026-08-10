@@ -9,7 +9,7 @@
 - **Estado atual:** aplicação web Django privada, com Lar compartilhado, membros, responsáveis financeiros, contas, categorias, transações e dashboard consolidado.
 - **Produto alvo:** aplicativo Flutter para iOS, Android e Windows, sincronizado com o backend Django no servidor Linux/EasyPanel.
 - **Estratégia de dados aprovada:** importação de arquivos primeiro; integração paga automática somente após o produto estar maduro e em uso.
-- **Usuários do produto:** uma família no mesmo Lar. O domínio já separa credenciais de acesso (`HouseholdMembership`) e responsáveis financeiros (`Eu`, `Esposa` e `Conjunto`). Usar um login compartilhado ou dois logins pessoais é uma decisão pendente da Sprint 2 `[INVESTIGAR]`.
+- **Usuários do produto:** uma família no mesmo Lar, com um único login compartilhado nesta fase. Cada dispositivo terá sessão própria e revogável. O domínio mantém credenciais de acesso separadas dos responsáveis financeiros `Eu`, `Esposa` e `Conjunto`, permitindo dois logins no futuro sem migrar o ledger.
 - **Identidade visual:** em avaliação. A preferência por uma linguagem fintech premium semelhante em espírito ao C6 Bank é uma referência candidata, não uma decisão final.
 - **Regra visual irrevogável:** não usar roxo.
 - **`[INVESTIGAR]`:** decisão ou comportamento sem evidência suficiente. Não deve ser implementado por suposição.
@@ -114,7 +114,7 @@ Nenhuma dependência Flutter, API REST, PostgreSQL, parser OFX/CSV, fila ou prov
 | API | Django REST Framework ou alternativa compatível | escolha e versão `[INVESTIGAR]` por ADR |
 | Banco servidor | PostgreSQL | aprovado como direção; versão/imagem EasyPanel `[INVESTIGAR]` |
 | Banco local | SQLite com camada reativa e fila de sincronização | aprovado; pacote `[INVESTIGAR]` |
-| Autenticação | tokens curtos + renovação rotativa em armazenamento seguro | desenho alvo; pacote `[INVESTIGAR]` |
+| Autenticação | login familiar único; token curto e renovação rotativa por dispositivo em armazenamento seguro | desenho aprovado; pacote e tempos exatos `[INVESTIGAR]` por ADR |
 | Importação | OFX e CSV primeiro; PDF/XLSX por adaptadores | aprovado |
 | Automação futura | adaptador de provedor, inicialmente candidato Pierre | contratação e suporte a dois CPFs `[INVESTIGAR]` |
 

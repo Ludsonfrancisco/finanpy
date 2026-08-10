@@ -6,7 +6,8 @@
 - Linguagem cross-platform consistente, respeitando safe areas, navegação, teclado, voltar, sheets e acessibilidade de cada plataforma.
 - Conteúdo financeiro e confiança antes de efeitos visuais.
 - Offline-first, com origem e atualização do dado sempre visíveis.
-- Uma família no mesmo Lar, com responsáveis `Eu`, `Esposa` e `Conjunto`. O modelo aceita um ou dois logins; a política de acesso será decidida antes da autenticação mobile `[INVESTIGAR]`.
+- Uma família no mesmo Lar, com um login compartilhado e responsáveis `Eu`, `Esposa` e `Conjunto`.
+- Cada dispositivo possui sessão revogável e escolhe `Eu` ou `Esposa` como padrão; `Conjunto` permanece disponível em cada lançamento.
 - Sem landing e sem cadastro público.
 
 O design system final está em `[INVESTIGAR]`. Não produzir telas finais antes do gate visual em [design-system.md](design-system.md).

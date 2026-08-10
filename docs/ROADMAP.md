@@ -72,6 +72,8 @@ Riscos: backfill associar dados à pessoa errada; mudança de saldo. Mitigação
 
 Objetivo: expor o domínio com segurança para Flutter.
 
+Decisão aprovada: um login familiar compartilhado, sessões independentes e revogáveis por dispositivo, responsável padrão `Eu`/`Esposa` por instalação e sincronização automática com outbox offline. Especificação: [login único e sincronização por dispositivo](superpowers/specs/2026-08-10-single-login-device-sync-design.md).
+
 - [ ] OpenAPI para login, refresh, logout e dispositivos;
 - [ ] testes de autorização por household em todo endpoint;
 - [ ] endpoints de owners, instituições, contas, categorias e transações;

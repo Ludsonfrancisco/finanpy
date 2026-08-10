@@ -64,7 +64,7 @@ erDiagram
 | `FinancialOwner` | UUID, household, nome de exibição, tipo pessoa/conjunto, ativo |
 | `SyncDevice` | UUID, user, plataforma, nome, último cursor, revogado em |
 
-O backfill entregue cria um `Household`, uma associação ativa e os responsáveis `Eu`, `Esposa` e `Conjunto`, ligando os dados existentes ao Lar e ao responsável padrão. O modelo permite mais de um usuário no mesmo Lar; a política cotidiana de um ou dois logins será definida na Sprint 2 `[INVESTIGAR]`.
+O backfill entregue cria um `Household`, uma associação ativa e os responsáveis `Eu`, `Esposa` e `Conjunto`, ligando os dados existentes ao Lar e ao responsável padrão. Nesta fase haverá um login familiar compartilhado, com sessão e responsável padrão independentes por dispositivo. O modelo aceita mais de um usuário para uma evolução futura sem migrar o ledger.
 
 ### Instituições, contas e caixa
 
