@@ -6,11 +6,12 @@ from django.conf import settings
 from django.test import SimpleTestCase
 from django.urls import URLPattern, URLResolver, get_resolver
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.settings import api_settings
 from rest_framework.views import APIView
 
 from api.authentication import DeviceTokenAuthentication
+from api.permissions import IsDeviceSession
 
 OPENAPI_EXPECTATIONS = (
     ('version', '3.1.0'),
@@ -68,8 +69,12 @@ def runtime_security(view_class, route):
     assert authentication_classes == (DeviceTokenAuthentication,), (
         f'{route} must use only DeviceTokenAuthentication.'
     )
-    assert AllowAny not in permission_classes, (
-        f'{route} cannot combine private device authentication with AllowAny.'
+    assert permission_classes in {
+        (IsAuthenticated,),
+        (IsDeviceSession,),
+    }, (
+        f'{route} must use a known private permission: '
+        'IsAuthenticated or IsDeviceSession.'
     )
     return [{'opaqueBearer': []}]
 
@@ -165,6 +170,26 @@ class OpenApiContractTest(SimpleTestCase):
             with self.assertRaisesRegex(
                 AssertionError,
                 'DeviceTokenAuthentication',
+            ):
+                runtime_api_operations()
+
+    def test_runtime_contract_rejects_empty_private_permissions(self):
+        callback = get_resolver().resolve('/api/v1/devices/').func
+
+        with patch.object(callback.view_class, 'permission_classes', []):
+            with self.assertRaisesRegex(
+                AssertionError,
+                'private permission',
+            ):
+                runtime_api_operations()
+
+    def test_runtime_contract_rejects_allow_any_private_permission(self):
+        callback = get_resolver().resolve('/api/v1/devices/').func
+
+        with patch.object(callback.view_class, 'permission_classes', [AllowAny]):
+            with self.assertRaisesRegex(
+                AssertionError,
+                'private permission',
             ):
                 runtime_api_operations()
 

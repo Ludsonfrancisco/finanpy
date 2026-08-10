@@ -111,3 +111,19 @@ non-public view was opaque bearer, then passed after effective authentication
 validation was added. Final focused OpenAPI/observability/error suite: 25 PASS.
 Final full suite: 271 PASS in 111.180 seconds. Repository Ruff and diff checks:
 PASS.
+
+## Private-permission contract binding
+
+The runtime OpenAPI gate now maps a private operation to `opaqueBearer` only
+when its effective permission configuration exactly matches a known
+login-enforcing policy used by the API: `IsAuthenticated` or
+`IsDeviceSession`. Empty permission lists, `AllowAny`, permissive custom
+permissions, and unknown permission compositions are rejected. Public operations
+remain exactly no authentication classes plus `AllowAny`; inherited DRF defaults
+remain the fallback when a view has no override.
+
+TDD evidence: regressions for empty permissions and `AllowAny` failed against the
+previous partial check, then passed with exact private-permission validation. The
+existing `SessionAuthentication` regression remains green. Final focused
+OpenAPI/observability/error suite: 27 PASS. Final full suite: 273 PASS in 128.179
+seconds. Repository Ruff and diff checks: PASS.
