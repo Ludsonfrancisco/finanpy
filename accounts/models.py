@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, Sum
 
@@ -28,6 +29,20 @@ class Account(models.Model):
         related_name='accounts',
         verbose_name='usuário',
     )
+    household = models.ForeignKey(
+        'households.Household',
+        on_delete=models.PROTECT,
+        related_name='accounts',
+        null=True,
+        blank=True,
+    )
+    financial_owner = models.ForeignKey(
+        'households.FinancialOwner',
+        on_delete=models.PROTECT,
+        related_name='accounts',
+        null=True,
+        blank=True,
+    )
     name = models.CharField(max_length=120, verbose_name='nome')
     type = models.CharField(
         max_length=20,
@@ -52,6 +67,15 @@ class Account(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        if (
+            self.household_id
+            and self.financial_owner_id
+            and self.financial_owner.household_id != self.household_id
+        ):
+            raise ValidationError({'financial_owner': 'Responsável pertence a outro Lar.'})
 
     @property
     def current_balance(self):

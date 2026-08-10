@@ -17,6 +17,13 @@ class Category(models.Model):
         related_name='categories',
         verbose_name='usuário',
     )
+    household = models.ForeignKey(
+        'households.Household',
+        on_delete=models.PROTECT,
+        related_name='categories',
+        null=True,
+        blank=True,
+    )
     name = models.CharField(max_length=100, verbose_name='nome')
     type = models.CharField(
         max_length=10,
