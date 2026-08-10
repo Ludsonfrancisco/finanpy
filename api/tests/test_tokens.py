@@ -1,7 +1,12 @@
+import queue
+import threading
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.db import close_old_connections
+from django.db.models.query import QuerySet
+from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 
 from api.models import DeviceSession, UsedRefreshToken
@@ -15,6 +20,7 @@ from api.tokens import (
     revoke_session,
     rotate_refresh_token,
 )
+from households.models import HouseholdMembership
 from households.services import ensure_household_for_user, get_financial_owner
 from users.models import User
 
@@ -24,6 +30,34 @@ class DeviceTokenServiceTest(TestCase):
         self.user = User.objects.create_user(email='lar@example.test', password='Strong-pass-123')
         self.household = ensure_household_for_user(self.user)
         self.owner = get_financial_owner(self.household, owner_type='self')
+
+    def issue_device_session(self):
+        return issue_session(
+            user=self.user,
+            household=self.household,
+            default_owner=self.owner,
+            platform=DeviceSession.WINDOWS,
+            name='Notebook',
+        )
+
+    def assert_invalid_scope_revokes_without_rotation(self, issued):
+        original_access_digest = issued.session.access_token_digest
+        original_refresh_digest = issued.session.refresh_token_digest
+        original_access_expiry = issued.session.access_expires_at
+        original_refresh_expiry = issued.session.refresh_expires_at
+
+        with self.assertRaises(InvalidRefreshTokenError):
+            rotate_refresh_token(issued.refresh_token)
+
+        issued.session.refresh_from_db()
+        self.assertIsNotNone(issued.session.revoked_at)
+        self.assertEqual(issued.session.access_token_digest, original_access_digest)
+        self.assertEqual(issued.session.refresh_token_digest, original_refresh_digest)
+        self.assertEqual(issued.session.access_expires_at, original_access_expiry)
+        self.assertEqual(issued.session.refresh_expires_at, original_refresh_expiry)
+        self.assertFalse(UsedRefreshToken.objects.filter(
+            token_digest=digest_token(issued.refresh_token),
+        ).exists())
 
     def test_raw_tokens_are_returned_once_but_only_digests_are_stored(self):
         issued = issue_session(
@@ -163,3 +197,132 @@ class DeviceTokenServiceTest(TestCase):
             )
 
         self.assertIn('default_owner', error.exception.message_dict)
+
+    def test_session_rejects_inactive_user(self):
+        self.user.is_active = False
+        self.user.save(update_fields=['is_active'])
+
+        with self.assertRaises(ValidationError) as error:
+            self.issue_device_session()
+
+        self.assertIn('user', error.exception.message_dict)
+        self.assertFalse(DeviceSession.objects.exists())
+
+    def test_refresh_revokes_session_after_user_is_deactivated(self):
+        issued = self.issue_device_session()
+        self.user.is_active = False
+        self.user.save(update_fields=['is_active'])
+
+        self.assert_invalid_scope_revokes_without_rotation(issued)
+
+    def test_refresh_revokes_session_after_household_is_deactivated(self):
+        issued = self.issue_device_session()
+        self.household.is_active = False
+        self.household.save(update_fields=['is_active'])
+
+        self.assert_invalid_scope_revokes_without_rotation(issued)
+
+    def test_refresh_revokes_session_after_membership_is_deactivated(self):
+        issued = self.issue_device_session()
+        HouseholdMembership.objects.filter(
+            user=self.user,
+            household=self.household,
+        ).update(is_active=False)
+
+        self.assert_invalid_scope_revokes_without_rotation(issued)
+
+    def test_refresh_revokes_session_after_default_owner_is_deactivated(self):
+        issued = self.issue_device_session()
+        self.owner.is_active = False
+        self.owner.save(update_fields=['is_active'])
+
+        self.assert_invalid_scope_revokes_without_rotation(issued)
+
+    def test_refresh_revokes_session_after_default_owner_becomes_shared(self):
+        issued = self.issue_device_session()
+        shared_owner = get_financial_owner(self.household, owner_type='shared')
+        shared_owner.delete()
+        self.owner.type = 'shared'
+        self.owner.save(update_fields=['type'])
+
+        self.assert_invalid_scope_revokes_without_rotation(issued)
+
+    def test_refresh_revokes_session_after_default_owner_moves_to_another_household(self):
+        issued = self.issue_device_session()
+        other_user = User.objects.create_user(
+            email='owner-externo@example.test',
+            password='Strong-pass-123',
+        )
+        other_household = ensure_household_for_user(other_user)
+        other_owner = get_financial_owner(other_household, owner_type='self')
+        DeviceSession.objects.filter(pk=issued.session.pk).update(
+            default_owner=other_owner,
+        )
+
+        self.assert_invalid_scope_revokes_without_rotation(issued)
+
+
+class DeviceTokenConcurrencyTest(TransactionTestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='concorrencia@example.test',
+            password='Strong-pass-123',
+        )
+        self.household = ensure_household_for_user(self.user)
+        self.owner = get_financial_owner(self.household, owner_type='self')
+
+    def test_concurrent_refresh_has_one_winner_and_replay_revokes_session(self):
+        issued = issue_session(
+            user=self.user,
+            household=self.household,
+            default_owner=self.owner,
+            platform=DeviceSession.WINDOWS,
+            name='Notebook',
+        )
+        both_loaded_session = threading.Barrier(2)
+        outcomes = queue.Queue()
+        original_first = QuerySet.first
+
+        def synchronize_device_session_read(queryset):
+            result = original_first(queryset)
+            if queryset.model is DeviceSession:
+                both_loaded_session.wait(timeout=10)
+            return result
+
+        def rotate_in_separate_connection():
+            close_old_connections()
+            try:
+                rotate_refresh_token(issued.refresh_token)
+            except RefreshReuseError:
+                outcomes.put('replay')
+            except Exception as exc:
+                outcomes.put(type(exc).__name__)
+            else:
+                outcomes.put('issued')
+            finally:
+                close_old_connections()
+
+        with patch.object(QuerySet, 'first', synchronize_device_session_read):
+            threads = [
+                threading.Thread(target=rotate_in_separate_connection)
+                for _ in range(2)
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=15)
+
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertEqual(outcomes.qsize(), 2)
+        self.assertEqual(
+            sorted(outcomes.get_nowait() for _ in range(2)),
+            ['issued', 'replay'],
+        )
+        issued.session.refresh_from_db()
+        self.assertIsNotNone(issued.session.revoked_at)
+        self.assertEqual(
+            UsedRefreshToken.objects.filter(
+                token_digest=digest_token(issued.refresh_token),
+            ).count(),
+            1,
+        )

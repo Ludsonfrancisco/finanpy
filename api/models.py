@@ -43,6 +43,9 @@ class DeviceSession(models.Model):
         super().clean()
         errors = {}
 
+        if self.user_id and not self.user.is_active:
+            errors['user'] = 'O usuário precisa estar ativo.'
+
         if self.user_id and self.household_id:
             has_active_membership = self.user.household_memberships.filter(
                 household_id=self.household_id,
@@ -55,8 +58,13 @@ class DeviceSession(models.Model):
         if self.default_owner_id and self.household_id:
             if self.default_owner.household_id != self.household_id:
                 errors['default_owner'] = 'O responsável padrão deve pertencer ao mesmo Lar.'
-            elif self.default_owner.type == self.default_owner.SHARED:
-                errors['default_owner'] = 'O responsável conjunto não pode ser o padrão do aparelho.'
+            elif not self.default_owner.is_active:
+                errors['default_owner'] = 'O responsável padrão precisa estar ativo.'
+            elif self.default_owner.type not in (
+                self.default_owner.SELF,
+                self.default_owner.SPOUSE,
+            ):
+                errors['default_owner'] = 'O responsável padrão deve ser próprio ou cônjuge.'
 
         if errors:
             raise ValidationError(errors)
