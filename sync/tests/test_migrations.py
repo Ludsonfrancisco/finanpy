@@ -3,6 +3,8 @@ from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TransactionTestCase
 
+SYNC_TABLES = {'sync_idempotentoperation', 'sync_syncchange'}
+
 
 class SyncMetadataMigrationTest(TransactionTestCase):
     migrate_from = [
@@ -23,6 +25,7 @@ class SyncMetadataMigrationTest(TransactionTestCase):
         executor.migrate([*self.migrate_from, ('sync', None)])
         self.old_apps = executor.loader.project_state(self.migrate_from).apps
         self.legacy_ids = self._create_legacy_fixture(self.old_apps)
+        self.legacy_snapshot = self._legacy_snapshot(self.old_apps)
 
     def tearDown(self):
         executor = MigrationExecutor(connection)
@@ -88,10 +91,68 @@ class SyncMetadataMigrationTest(TransactionTestCase):
             'transactions': [row.pk for row in transactions],
         }
 
-    def _migrate(self, targets):
+    def _legacy_snapshot(self, apps):
+        cases = {
+            'accounts': (
+                apps.get_model('accounts', 'Account'),
+                (
+                    'pk',
+                    'user_id',
+                    'household_id',
+                    'financial_owner_id',
+                    'name',
+                    'type',
+                    'initial_balance',
+                    'currency',
+                    'created_at',
+                    'updated_at',
+                ),
+            ),
+            'categories': (
+                apps.get_model('categories', 'Category'),
+                (
+                    'pk',
+                    'user_id',
+                    'household_id',
+                    'name',
+                    'type',
+                    'color',
+                    'icon',
+                    'created_at',
+                    'updated_at',
+                ),
+            ),
+            'transactions': (
+                apps.get_model('transactions', 'Transaction'),
+                (
+                    'pk',
+                    'user_id',
+                    'household_id',
+                    'financial_owner_id',
+                    'account_id',
+                    'category_id',
+                    'description',
+                    'amount',
+                    'date',
+                    'type',
+                    'created_at',
+                    'updated_at',
+                ),
+            ),
+        }
+        return {
+            key: list(
+                Model.objects.filter(pk__in=self.legacy_ids[key])
+                .order_by('pk')
+                .values(*fields)
+            )
+            for key, (Model, fields) in cases.items()
+        }
+
+    def _migrate(self, targets, state_targets=None):
         executor = MigrationExecutor(connection)
         executor.migrate(targets)
-        return executor.loader.project_state(targets).apps
+        return executor.loader.project_state(state_targets or targets).apps
 
     def test_forward_backfills_unique_uuids_and_version_one_then_reverses(self):
         new_apps = self._migrate(self.migrate_to)
@@ -112,7 +173,9 @@ class SyncMetadataMigrationTest(TransactionTestCase):
             self.assertEqual(len({row_uuid for row_uuid, _ in rows}), 2)
             self.assertEqual([version for _, version in rows], [1, 1])
 
-        reversed_apps = self._migrate(self.migrate_from)
+        reverse_targets = [*self.migrate_from, ('sync', None)]
+        reversed_apps = self._migrate(reverse_targets, self.migrate_from)
+        reversed_snapshot = self._legacy_snapshot(reversed_apps)
         for app_label, model_name, key in (
             ('accounts', 'Account', 'accounts'),
             ('categories', 'Category', 'categories'),
@@ -120,14 +183,12 @@ class SyncMetadataMigrationTest(TransactionTestCase):
         ):
             Model = reversed_apps.get_model(app_label, model_name)
             self.assertEqual(
-                list(
-                    Model.objects.filter(pk__in=self.legacy_ids[key])
-                    .order_by('pk')
-                    .values_list('pk', flat=True)
-                ),
-                self.legacy_ids[key],
+                reversed_snapshot[key],
+                self.legacy_snapshot[key],
             )
             with self.assertRaises(FieldDoesNotExist):
                 Model._meta.get_field('uuid')
             with self.assertRaises(FieldDoesNotExist):
                 Model._meta.get_field('sync_version')
+
+        self.assertTrue(SYNC_TABLES.isdisjoint(connection.introspection.table_names()))
