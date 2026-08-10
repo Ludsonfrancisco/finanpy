@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 
 from django.conf import settings
@@ -22,6 +23,9 @@ class Account(models.Model):
         (INVESTMENT, 'Investimento'),
         (OTHER, 'Outro'),
     ]
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    sync_version = models.PositiveBigIntegerField(default=1, editable=False)
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

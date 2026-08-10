@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -11,6 +13,9 @@ class Transaction(models.Model):
         (INCOME, 'Receita'),
         (EXPENSE, 'Despesa'),
     ]
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    sync_version = models.PositiveBigIntegerField(default=1, editable=False)
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

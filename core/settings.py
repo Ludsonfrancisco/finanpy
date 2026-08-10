@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'users',
     'ai',
     'api',
+    'sync',
 ]
 
 MIDDLEWARE = [
