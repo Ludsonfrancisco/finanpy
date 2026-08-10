@@ -4,7 +4,6 @@ from django.test import SimpleTestCase
 
 from sync.cursors import InvalidCursor, decode_cursor, encode_cursor
 
-
 CURSOR_CASES = (
     ('round_trip', 42, 'same_household', 42),
     ('tampered', 42, 'changed_signature', 'invalid_cursor'),

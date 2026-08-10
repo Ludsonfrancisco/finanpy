@@ -131,6 +131,33 @@ class SyncPullApiTest(TestCase):
         repeated = self.pull(body['cursor'])
         self.assertEqual(repeated.json(), body)
 
+    def assert_invalid_cursor_response(self, cursor):
+        self.create_changes(1)
+
+        response = self.pull(cursor)
+
+        self.assertEqual(response.status_code, 400)
+        body = response.json()
+        self.assertEqual(body['error']['code'], 'invalid_cursor')
+        self.assertNotIn('changes', body)
+        self.assertNotIn('cursor', body)
+
+    def test_tampered_cursor_is_rejected(self):
+        cursor = encode_cursor(0, self.household.uuid)
+        replacement = 'a' if cursor[-1] != 'a' else 'b'
+
+        self.assert_invalid_cursor_response(cursor[:-1] + replacement)
+
+    def test_foreign_household_cursor_is_rejected(self):
+        cursor = encode_cursor(0, uuid4())
+
+        self.assert_invalid_cursor_response(cursor)
+
+    def test_negative_change_id_cursor_is_rejected(self):
+        cursor = encode_cursor(-1, self.household.uuid)
+
+        self.assert_invalid_cursor_response(cursor)
+
     def test_pull_cases_are_documented(self):
         self.assertEqual(len(PULL_CASES), 5)
 
