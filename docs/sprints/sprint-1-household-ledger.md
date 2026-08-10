@@ -6,7 +6,7 @@ Data da verificação: 10 de agosto de 2026.
 
 O Lar passou a ser a fronteira principal das consultas e relações financeiras. Cada Lar possui os responsáveis “Eu” (`self`), “Esposa” (`spouse`) e “Conjunto” (`shared`), enquanto o painel permanece consolidado entre os três.
 
-O fechamento local foi verificado e está contido no commit `docs: close household ledger sprint`. O push deste commit não faz parte deste ensaio; antes da Task 6, a branch local e `origin/codex/sprint-1-household-ledger` estavam sincronizadas em `e73440f04ef4030d12d6e547e18c66905fbb0c47` (`0 0`).
+O commit principal da Task 6 é `12f240b99ab64566b95d8f8a2e6f6aa454b64492` (`docs: close household ledger sprint`). Ele foi publicado em `origin/codex/sprint-1-household-ledger`; após o `fetch`, `git rev-list --left-right --count HEAD...origin/codex/sprint-1-household-ledger` retornou `0 0`.
 
 ## Commits por task
 
@@ -23,7 +23,7 @@ O fechamento local foi verificado e está contido no commit `docs: close househo
 - Task 5:
   - `4401ced4ca1228dea1d536f6e5a5941d766500d3` — `feat: require household ownership links`;
   - `e73440f04ef4030d12d6e547e18c66905fbb0c47` — `fix: guard category migration rollback`.
-- Task 6: o commit que contém este documento, com a mensagem `docs: close household ledger sprint`; o hash final fica registrado no relatório local da task após a criação do commit.
+- Task 6: `12f240b99ab64566b95d8f8a2e6f6aa454b64492` — `docs: close household ledger sprint`.
 
 ## Banco e backup de ensaio
 
@@ -63,8 +63,7 @@ Antes de qualquer migration em uma instalação real, criar e retirar do servido
 
 ## Riscos restantes e próximo passo
 
-- Trocar a senha antiga antes da publicação.
+- Trocar a senha antiga caso ela ainda esteja em uso.
 - Avaliar a limpeza opcional do histórico Git se ainda houver material sensível em commits antigos.
 - Validar backup, migrations, variáveis seguras e operação com um worker no EasyPanel; este ensaio sintético não substitui a validação no ambiente real.
-- Publicar o commit local de fechamento quando autorizado; até lá, o remoto permanece sem a documentação da Task 6.
 - Em seguida, vincular UUID/versão e preparar a API. Nenhum trabalho de API ou design visual foi iniciado nesta sprint.

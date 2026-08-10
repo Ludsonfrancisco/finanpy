@@ -1104,7 +1104,7 @@ Atualizar `README.md` com o conceito de Lar e o comando administrativo utilizado
 - riscos restantes: troca da senha antiga, limpeza opcional do histórico e validação no EasyPanel;
 - próximo passo: vincular UUID/versão e preparar a API, sem iniciar design visual.
 
-- [ ] **Step 6: Commit e push de encerramento da sprint**
+- [x] **Step 6: Commit e push de encerramento da sprint**
 
 Run:
 
