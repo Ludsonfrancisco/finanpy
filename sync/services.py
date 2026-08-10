@@ -75,6 +75,10 @@ def _invalid(fields) -> OperationResult:
     }
 
 
+def _uuid_collision() -> OperationResult:
+    return _invalid({'entity_uuid': _field_error()})
+
+
 def _uuid(value):
     if isinstance(value, UUID):
         return value
@@ -148,6 +152,7 @@ def _validation_fields(exc):
     if not hasattr(exc, 'error_dict'):
         return {'data': _field_error()}
     relation_names = {
+        'uuid': 'entity_uuid',
         'financial_owner': 'financial_owner_uuid',
         'account': 'account_uuid',
         'category': 'category_uuid',
@@ -224,7 +229,7 @@ def _create(device_session, operation, validated) -> OperationResult:
         household=device_session.household,
         uuid=validated['entity_uuid'],
     ).exists():
-        return _invalid({'entity_uuid': _field_error()})
+        return _uuid_collision()
 
     values, errors = _resolve_data(device_session, spec, validated['data'])
     if errors:
@@ -300,8 +305,12 @@ def _apply_new(device_session, operation) -> OperationResult:
                 return _create(device_session, operation, validated)
             return _update_or_delete(device_session, operation, validated)
     except ValidationError as exc:
+        if validated['action'] == 'create' and 'uuid' in getattr(exc, 'error_dict', {}):
+            return _uuid_collision()
         return _invalid(_validation_fields(exc))
     except IntegrityError:
+        if validated['action'] == 'create':
+            return _uuid_collision()
         return _invalid({'data': _field_error()})
 
 

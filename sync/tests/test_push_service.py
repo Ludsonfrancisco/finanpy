@@ -1,5 +1,6 @@
 from copy import deepcopy
 from decimal import Decimal
+from unittest.mock import patch
 from uuid import uuid4
 
 from django.test import TestCase
@@ -360,6 +361,95 @@ class PushServiceTest(TestCase):
         self.assertNotIn(str(self.foreign_account.uuid), repr(result))
         self.assertNotIn(str(self.foreign_category.uuid), repr(result))
         self.assertEqual(invalid_local.amount, Decimal('50.00'))
+
+    def test_local_and_foreign_uuid_collisions_have_the_same_opaque_outcome(self):
+        local_operation = self.account_create_operation(
+            entity_uuid=str(self.account.uuid),
+        )
+        foreign_operation = self.account_create_operation(
+            entity_uuid=str(self.foreign_account.uuid),
+        )
+        expected = {
+            'status': 'invalid',
+            'code': 'validation_error',
+            'fields': {'entity_uuid': ['Invalid value.']},
+        }
+        account_count = Account.objects.count()
+        change_count = SyncChange.objects.count()
+
+        local_result = apply_operation(self.device_session, local_operation)
+        foreign_result = apply_operation(self.device_session, foreign_operation)
+
+        self.assertEqual(local_result, expected)
+        self.assertEqual(foreign_result, expected)
+        self.assertEqual(local_result, foreign_result)
+        self.assertEqual(Account.objects.count(), account_count)
+        self.assertEqual(SyncChange.objects.count(), change_count)
+        for operation, result in (
+            (local_operation, local_result),
+            (foreign_operation, foreign_result),
+        ):
+            stored = IdempotentOperation.objects.get(
+                device_session=self.device_session,
+                operation_id=operation['operation_id'],
+            )
+            self.assertEqual(stored.response_body, result)
+
+    def test_create_integrity_fallback_matches_opaque_uuid_collision_outcome(self):
+        operation = self.account_create_operation(
+            entity_uuid=str(self.foreign_account.uuid),
+        )
+        expected = {
+            'status': 'invalid',
+            'code': 'validation_error',
+            'fields': {'entity_uuid': ['Invalid value.']},
+        }
+        account_count = Account.objects.count()
+        change_count = SyncChange.objects.count()
+
+        with patch.object(Account, 'full_clean', return_value=None):
+            result = apply_operation(self.device_session, operation)
+
+        self.assertEqual(result, expected)
+        self.assertEqual(Account.objects.count(), account_count)
+        self.assertEqual(SyncChange.objects.count(), change_count)
+        stored = IdempotentOperation.objects.get(
+            device_session=self.device_session,
+            operation_id=operation['operation_id'],
+        )
+        self.assertEqual(stored.response_body, result)
+
+    def test_uuid_collision_hides_other_validation_differences(self):
+        local_operation = self.account_create_operation(
+            entity_uuid=str(self.account.uuid),
+        )
+        foreign_operation = self.account_create_operation(
+            entity_uuid=str(self.foreign_account.uuid),
+        )
+        local_operation['data']['name'] = ''
+        foreign_operation['data']['name'] = ''
+        expected = {
+            'status': 'invalid',
+            'code': 'validation_error',
+            'fields': {'entity_uuid': ['Invalid value.']},
+        }
+        account_count = Account.objects.count()
+        change_count = SyncChange.objects.count()
+
+        local_result = apply_operation(self.device_session, local_operation)
+        foreign_result = apply_operation(self.device_session, foreign_operation)
+
+        self.assertEqual(local_result, expected)
+        self.assertEqual(foreign_result, expected)
+        self.assertEqual(local_result, foreign_result)
+        self.assertEqual(Account.objects.count(), account_count)
+        self.assertEqual(SyncChange.objects.count(), change_count)
+        for operation in (local_operation, foreign_operation):
+            stored = IdempotentOperation.objects.get(
+                device_session=self.device_session,
+                operation_id=operation['operation_id'],
+            )
+            self.assertEqual(stored.response_body, expected)
 
     def test_validation_failure_is_stored_without_partial_mutation(self):
         operation = self.account_create_operation()
