@@ -3,7 +3,6 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from django.urls import reverse
 
 from accounts.models import Account
 from categories.models import Category
@@ -79,3 +78,28 @@ class ProtectedRouteRedirectTest(TestCase):
 
     def test_profile_edit_redirects(self):
         self._assert_redirects_to_login('/profile/edit/')
+
+
+class PrivateEntryPointTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='private-entry@example.com',
+            password='test-password-123',
+        )
+
+    def test_public_signup_is_not_exposed(self):
+        response = self.client.get('/signup/')
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_root_redirects_anonymous_user_to_login(self):
+        response = self.client.get('/')
+
+        self.assertRedirects(response, '/login/')
+
+    def test_root_redirects_authenticated_user_to_dashboard(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get('/')
+
+        self.assertRedirects(response, '/dashboard/')

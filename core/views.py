@@ -2,15 +2,20 @@ from decimal import Decimal
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum
+from django.shortcuts import redirect
 from django.utils import timezone
+from django.views import View
 from django.views.generic import TemplateView
 
 from accounts.models import Account
 from transactions.models import Transaction
 
 
-class HomeView(TemplateView):
-    template_name = 'pages/home.html'
+class HomeView(View):
+    def get(self, request):
+        if request.user.is_authenticated:
+            return redirect('dashboard')
+        return redirect('users:login')
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
