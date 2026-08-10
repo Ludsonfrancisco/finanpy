@@ -1,5 +1,7 @@
+import threading
+
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import transaction
+from django.db import connection, transaction
 
 from .models import FinancialOwner, Household, HouseholdMembership
 
@@ -9,18 +11,40 @@ OWNER_NAMES = {
     FinancialOwner.SHARED: 'Conjunto',
 }
 
+_SQLITE_USER_LOCKS = {}
+_SQLITE_USER_LOCKS_GUARD = threading.Lock()
+
+
+def _get_sqlite_user_lock(user_pk):
+    with _SQLITE_USER_LOCKS_GUARD:
+        return _SQLITE_USER_LOCKS.setdefault(user_pk, threading.Lock())
+
+
+def ensure_household_for_user(user):
+    if connection.vendor == 'sqlite':
+        # SQLite ignores SELECT ... FOR UPDATE, so serialize local threads by user.
+        with _get_sqlite_user_lock(user.pk):
+            return _ensure_household_for_user(user)
+    return _ensure_household_for_user(user)
+
 
 @transaction.atomic
-def ensure_household_for_user(user):
+def _ensure_household_for_user(user):
     locked_user = user.__class__.objects.select_for_update().get(pk=user.pk)
     membership = (
         HouseholdMembership.objects.select_related('household')
-        .filter(user=locked_user, is_active=True, household__is_active=True)
+        .filter(user=locked_user)
         .order_by('pk')
         .first()
     )
     if membership:
         household = membership.household
+        if not household.is_active:
+            household.is_active = True
+            household.save(update_fields=['is_active'])
+        if not membership.is_active:
+            membership.is_active = True
+            membership.save(update_fields=['is_active'])
     else:
         household = Household.objects.create(name='Lar Finance')
         HouseholdMembership.objects.create(

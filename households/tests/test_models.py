@@ -1,6 +1,8 @@
+import threading
+
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError
-from django.test import TestCase
+from django.db import IntegrityError, close_old_connections
+from django.test import TestCase, TransactionTestCase
 
 from households.models import FinancialOwner, Household, HouseholdMembership
 from households.services import (
@@ -64,6 +66,24 @@ class HouseholdModelTest(TestCase):
                 role=HouseholdMembership.ADMIN,
             )
 
+    def test_bootstrap_reactivates_existing_inactive_household(self):
+        household = ensure_household_for_user(self.user)
+        membership = HouseholdMembership.objects.get(user=self.user)
+        household.is_active = False
+        household.save(update_fields=['is_active'])
+        membership.is_active = False
+        membership.save(update_fields=['is_active'])
+
+        restored_household = ensure_household_for_user(self.user)
+
+        membership.refresh_from_db()
+        restored_household.refresh_from_db()
+        self.assertEqual(restored_household, household)
+        self.assertTrue(restored_household.is_active)
+        self.assertTrue(membership.is_active)
+        self.assertEqual(HouseholdMembership.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(FinancialOwner.objects.filter(household=household).count(), 3)
+
     def test_get_household_for_user_returns_active_household(self):
         household = ensure_household_for_user(self.user)
 
@@ -76,3 +96,43 @@ class HouseholdModelTest(TestCase):
             get_financial_owner(household).type,
             FinancialOwner.SHARED,
         )
+
+
+class HouseholdConcurrencyTest(TransactionTestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='concurrent-household-owner@example.com',
+            password='test-password-123',
+        )
+
+    def test_concurrent_bootstrap_returns_one_household_without_errors(self):
+        barrier = threading.Barrier(2)
+        result_household_ids = []
+        failures = []
+        result_lock = threading.Lock()
+
+        def bootstrap_household():
+            close_old_connections()
+            try:
+                worker_user = User.objects.get(pk=self.user.pk)
+                barrier.wait()
+                household = ensure_household_for_user(worker_user)
+                with result_lock:
+                    result_household_ids.append(household.pk)
+            except Exception as exc:
+                with result_lock:
+                    failures.append(exc)
+            finally:
+                close_old_connections()
+
+        threads = [threading.Thread(target=bootstrap_household) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertFalse(failures, [repr(failure) for failure in failures])
+        self.assertEqual(len(result_household_ids), 2)
+        self.assertEqual(len(set(result_household_ids)), 1)
+        self.assertEqual(HouseholdMembership.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(FinancialOwner.objects.count(), 3)
