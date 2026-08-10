@@ -22,15 +22,11 @@ class Transaction(models.Model):
         'households.Household',
         on_delete=models.PROTECT,
         related_name='transactions',
-        null=True,
-        blank=True,
     )
     financial_owner = models.ForeignKey(
         'households.FinancialOwner',
         on_delete=models.PROTECT,
         related_name='transactions',
-        null=True,
-        blank=True,
     )
     account = models.ForeignKey(
         'accounts.Account',

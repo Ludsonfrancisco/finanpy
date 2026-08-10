@@ -29,7 +29,7 @@ class CategoryModelTest(TestCase):
         self.assertEqual(category.type, Category.EXPENSE)
         self.assertEqual(str(category), 'Alimentação (Despesa)')
 
-    def test_unique_together_constraint(self):
+    def test_unique_household_constraint(self):
         Category.objects.create(
             user=self.user,
             household=self.household,
@@ -90,7 +90,7 @@ class CategoryFormTest(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('type', form.errors)
 
-    def test_unique_together_raises_validation_error_via_form(self):
+    def test_household_constraint_raises_validation_error_via_model(self):
         # First save is fine
         Category.objects.create(
             user=self.user,
@@ -98,8 +98,6 @@ class CategoryFormTest(TestCase):
             name='Lazer',
             type=Category.EXPENSE,
         )
-        # Build the duplicate through the form; bind it to the existing instance's
-        # user by saving manually, then validate_unique via full_clean.
         duplicate = Category(
             user=self.user,
             household=self.household,
@@ -108,7 +106,7 @@ class CategoryFormTest(TestCase):
         )
         from django.core.exceptions import ValidationError
         with self.assertRaises(ValidationError):
-            duplicate.validate_unique()
+            duplicate.full_clean()
 
 
 class CategoryViewTest(TestCase):

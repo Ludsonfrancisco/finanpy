@@ -21,8 +21,6 @@ class Category(models.Model):
         'households.Household',
         on_delete=models.PROTECT,
         related_name='categories',
-        null=True,
-        blank=True,
     )
     name = models.CharField(max_length=100, verbose_name='nome')
     type = models.CharField(
@@ -49,7 +47,12 @@ class Category(models.Model):
         verbose_name = 'categoria'
         verbose_name_plural = 'categorias'
         ordering = ['name']
-        unique_together = ('user', 'name', 'type')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['household', 'name', 'type'],
+                name='unique_category_per_household_name_type',
+            )
+        ]
 
     def __str__(self):
         return f'{self.name} ({self.get_type_display()})'

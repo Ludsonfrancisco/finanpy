@@ -33,15 +33,11 @@ class Account(models.Model):
         'households.Household',
         on_delete=models.PROTECT,
         related_name='accounts',
-        null=True,
-        blank=True,
     )
     financial_owner = models.ForeignKey(
         'households.FinancialOwner',
         on_delete=models.PROTECT,
         related_name='accounts',
-        null=True,
-        blank=True,
     )
     name = models.CharField(max_length=120, verbose_name='nome')
     type = models.CharField(

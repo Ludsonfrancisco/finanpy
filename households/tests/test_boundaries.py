@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 
 from accounts.models import Account
@@ -58,6 +59,41 @@ class HouseholdBoundaryTest(TestCase):
         with self.assertRaises(ValidationError):
             account.full_clean()
 
+    def test_account_requires_household_and_owner(self):
+        account = Account(user=self.user, name='Sem Lar')
+
+        with self.assertRaises(ValidationError):
+            account.full_clean()
+
+    def test_category_requires_household(self):
+        category = Category(
+            user=self.user,
+            name='Sem Lar',
+            type=Category.EXPENSE,
+        )
+
+        with self.assertRaises(ValidationError):
+            category.full_clean()
+
+    def test_categories_are_unique_inside_household(self):
+        with self.assertRaises(IntegrityError):
+            Category.objects.create(
+                user=self.other_user,
+                household=self.household,
+                name='Mercado',
+                type=Category.EXPENSE,
+            )
+
+    def test_category_name_and_type_can_repeat_in_another_household(self):
+        category = Category.objects.create(
+            user=self.user,
+            household=self.other_household,
+            name='Mercado',
+            type=Category.EXPENSE,
+        )
+
+        self.assertEqual(category.household, self.other_household)
+
     def _transaction(self, **overrides):
         values = {
             'user': self.user,
@@ -84,3 +120,9 @@ class HouseholdBoundaryTest(TestCase):
     def test_transaction_rejects_owner_from_another_household(self):
         with self.assertRaises(ValidationError):
             self._transaction(financial_owner=self.other_owner).full_clean()
+
+    def test_transaction_requires_household_and_owner(self):
+        transaction = self._transaction(household=None, financial_owner=None)
+
+        with self.assertRaises(ValidationError):
+            transaction.full_clean()

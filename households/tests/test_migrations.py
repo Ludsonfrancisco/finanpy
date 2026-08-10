@@ -287,3 +287,108 @@ class BackfillExistingFinancialDataMigrationTest(TransactionTestCase):
                 'transactions.financial_owner': 1,
             }
         )
+
+
+class RequiredLedgerLinksMigrationTest(TransactionTestCase):
+    migrate_from = [
+        ('households', '0002_backfill_existing_financial_data'),
+        ('accounts', '0002_account_household_financial_owner'),
+        ('categories', '0002_category_household'),
+        ('transactions', '0002_transaction_household_financial_owner'),
+    ]
+    migrate_to = [
+        ('accounts', '0003_require_household_owner'),
+        ('categories', '0003_require_household'),
+        ('transactions', '0003_require_household_owner'),
+    ]
+
+    def setUp(self):
+        super().setUp()
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_from)
+        old_apps = executor.loader.project_state(self.migrate_from).apps
+
+        User = old_apps.get_model('users', 'User')
+        Household = old_apps.get_model('households', 'Household')
+        Membership = old_apps.get_model('households', 'HouseholdMembership')
+        Owner = old_apps.get_model('households', 'FinancialOwner')
+        Account = old_apps.get_model('accounts', 'Account')
+        Category = old_apps.get_model('categories', 'Category')
+        Transaction = old_apps.get_model('transactions', 'Transaction')
+
+        self.user_id = User.objects.create(
+            email='required-links@example.com',
+            password='legacy-password-hash',
+        ).pk
+        household = Household.objects.create(name='Lar preservado')
+        Membership.objects.create(
+            household=household,
+            user_id=self.user_id,
+            role='admin',
+        )
+        owner = Owner.objects.create(
+            household=household,
+            type='shared',
+            name='Conjunto',
+        )
+        self.account_id = Account.objects.create(
+            user_id=self.user_id,
+            household=household,
+            financial_owner=owner,
+            name='Conta preservada',
+            initial_balance=Decimal('910.25'),
+        ).pk
+        self.category_id = Category.objects.create(
+            user_id=self.user_id,
+            household=household,
+            name='Mercado preservado',
+            type='expense',
+            color='#654321',
+        ).pk
+        self.transaction_id = Transaction.objects.create(
+            user_id=self.user_id,
+            household=household,
+            financial_owner=owner,
+            account_id=self.account_id,
+            category_id=self.category_id,
+            description='Compra preservada em 0003',
+            amount=Decimal('42.75'),
+            date=date(2026, 8, 10),
+            type='expense',
+        ).pk
+
+    def tearDown(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        super().tearDown()
+
+    def test_required_link_migrations_preserve_ledger_data(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_to)
+        migrated_apps = executor.loader.project_state(self.migrate_to).apps
+
+        Account = migrated_apps.get_model('accounts', 'Account')
+        Category = migrated_apps.get_model('categories', 'Category')
+        Transaction = migrated_apps.get_model('transactions', 'Transaction')
+
+        self.assertEqual(Account.objects.count(), 1)
+        self.assertEqual(Category.objects.count(), 1)
+        self.assertEqual(Transaction.objects.count(), 1)
+
+        account = Account.objects.get(pk=self.account_id)
+        category = Category.objects.get(pk=self.category_id)
+        transaction = Transaction.objects.get(pk=self.transaction_id)
+        self.assertEqual(account.name, 'Conta preservada')
+        self.assertEqual(account.initial_balance, Decimal('910.25'))
+        self.assertIsNotNone(account.household_id)
+        self.assertIsNotNone(account.financial_owner_id)
+        self.assertEqual(category.name, 'Mercado preservado')
+        self.assertEqual(category.color, '#654321')
+        self.assertIsNotNone(category.household_id)
+        self.assertEqual(transaction.description, 'Compra preservada em 0003')
+        self.assertEqual(transaction.amount, Decimal('42.75'))
+        self.assertEqual(transaction.date, date(2026, 8, 10))
+        self.assertEqual(transaction.account_id, self.account_id)
+        self.assertEqual(transaction.category_id, self.category_id)
+        self.assertIsNotNone(transaction.household_id)
+        self.assertIsNotNone(transaction.financial_owner_id)
