@@ -17,7 +17,7 @@ from api.resources import (
     SummaryView,
     TransactionListView,
 )
-from api.sync_views import SyncPushView
+from api.sync_views import SyncPullView, SyncPushView
 from api.views import HealthView
 
 urlpatterns = [
@@ -35,6 +35,7 @@ urlpatterns = [
     path('summary/', SummaryView.as_view(), name='summary'),
     path('bootstrap/', BootstrapView.as_view(), name='bootstrap'),
     path('sync/push/', SyncPushView.as_view(), name='sync-push'),
+    path('sync/changes/', SyncPullView.as_view(), name='sync-changes'),
     path(
         'devices/<uuid:device_uuid>/revoke/',
         RevokeDeviceView.as_view(),
