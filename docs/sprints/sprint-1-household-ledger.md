@@ -1,69 +1,116 @@
 # Sprint 1 — Household Ledger
 
-Data da verificação: 10 de agosto de 2026.
+Data de fechamento: 10 de agosto de 2026.
 
 ## Resultado
 
-O Lar passou a ser a fronteira principal das consultas e relações financeiras. Cada Lar possui os responsáveis “Eu” (`self`), “Esposa” (`spouse`) e “Conjunto” (`shared`), enquanto o painel permanece consolidado entre os três.
+O Lar passou a ser a fronteira de autorização, consulta e consolidação. Cada Lar
+possui os responsáveis “Eu”, “Esposa” e “Conjunto”. O dashboard permanece
+consolidado, enquanto contas e movimentações guardam o responsável financeiro.
 
-O commit principal da Task 6 é `12f240b99ab64566b95d8f8a2e6f6aa454b64492` (`docs: close household ledger sprint`). Ele foi publicado em `origin/codex/sprint-1-household-ledger`; após o `fetch`, `git rev-list --left-right --count HEAD...origin/codex/sprint-1-household-ledger` retornou `0 0`.
+A sprint também endureceu o legado:
 
-## Commits por task
+- acesso revogado falha fechado;
+- histórico de memberships é preservado;
+- schemas SQLite divergentes são reconciliados por migration;
+- FKs legadas de usuário usam `PROTECT`;
+- uma auditoria somente leitura detecta inconsistências sem imprimir PII;
+- erros legados aparecem no formulário sem HTTP 500;
+- CI e operação são tratados como gates de segurança.
 
-- Task 1:
-  - `ebe4458b001dc753101c40c06e45b8b044628f20` — `feat: add household ownership core`;
-  - `313583a1f9e3b77a20f6e67226c0cda93378d4a2` — `fix: serialize household initialization`;
-  - `1c56cdacaeebb536c2f935f9c30f324f3c5f26d7` — `fix: handle household bootstrap lifecycle`;
-  - `713c1f65b2eb754fd41791051de7c1d8fa49d475` — `fix: limit SQLite deployment workers`.
-- Task 2: `c4e94dfdb8aecdc1f0da417ccd1c48a635f0b747` — `feat: add household boundaries to ledger`.
-- Task 3:
-  - `c129020c9b184686c65f20a0132483ef799e441e` — `feat: backfill legacy data into household`;
-  - `3c42758cd0163c6e54b3e91d964be4de91444b05` — `fix: reject hybrid household backfill state`.
-- Task 4: `8c149d74e5a42e81859c546c207a9f2ebc0096cf` — `feat: scope web ledger by household`.
-- Task 5:
-  - `4401ced4ca1228dea1d536f6e5a5941d766500d3` — `feat: require household ownership links`;
-  - `e73440f04ef4030d12d6e547e18c66905fbb0c47` — `fix: guard category migration rollback`.
-- Task 6: `12f240b99ab64566b95d8f8a2e6f6aa454b64492` — `docs: close household ledger sprint`.
+## Commits por etapa
 
-## Banco e backup de ensaio
+### Construção inicial
 
-O `db.sqlite3` deste worktree tinha 0 bytes e nenhuma tabela. Ele não continha uma instalação migrada que pudesse representar os dados legados e não foi alterado.
+- Task 1: `ebe4458`, `313583a`, `1c56cda`, `713c1f6`.
+- Task 2: `c4e94df`.
+- Task 3: `c129020`, `3c42758`.
+- Task 4: `8c149d7`.
+- Task 5: `4401ced`, `e73440f`.
+- Task 6: `12f240b`.
 
-Para evitar qualquer contato com dados reais, foi criada a base descartável e ignorada pelo Git `data/task-6-synthetic-legacy.sqlite3`. Ela foi levada ao estado anterior ao backfill (`households.0001` e migrations opcionais `0002` do ledger) e recebeu somente dados sintéticos: 1 usuário, 1 conta, 1 categoria e 1 movimentação. Os cinco novos vínculos estavam nulos, como em um banco legado.
+### Hardening
 
-O comando `manage.py backup_sqlite` criou `backups/sprint-1-before-migrations.sqlite3` e retornou `Backup verified`. No instante da criação, a cópia passou por `PRAGMA integrity_check` com resultado `ok`, preservou as quatro contagens e teve SHA-256 `80443B7A5002805757A24FF2626385F358FCB4FB01E2F72BA00A762C8B41D795`. `data/`, `backups/` e `db.sqlite3` permanecem ignorados pelo Git.
+- Task 7: `8c13fdb` — revogação e filtros por Lar.
+- Task 8: `f0a95e9` — histórico e reconciliação de memberships.
+- Task 9: `12a5fe3`, `0d2b132`, `b033c8d` — integridade, auditoria e
+  regressões legadas.
+- Task 10: segurança operacional, privacidade dos artefatos e runbook EasyPanel
+  neste fechamento.
 
-## Ensaio de upgrade, rollback e novo upgrade
+O histórico Git é a fonte exata dos hashes completos.
 
-Todo o ciclo abaixo ocorreu em `backups/sprint-1-before-migrations.sqlite3`:
+## Migrações e compatibilidade
 
-| Etapa | Resultado |
-| --- | --- |
-| Primeiro upgrade | Aplicou `households.0002` e as migrations `0003` de contas, categorias e movimentações sem erro. Criou 1 Lar, 1 associação e 3 responsáveis. |
-| Auditoria após upgrade | Preservou 1 conta, 1 categoria e 1 movimentação. Conta e movimentação ficaram com `shared` (“Conjunto”); todos os registros apontaram para o mesmo Lar e não houve órfãos. |
-| Rollback para `households.0001` | Reverteu primeiro as três migrations `0003` e depois o backfill. Removeu Lar, associação e responsáveis, restaurou os cinco vínculos a `NULL` e preservou as três linhas do ledger. |
-| Segundo upgrade | Reaplicou as quatro migrations sem erro. `PRAGMA integrity_check` retornou `ok`; os três tipos de responsável voltaram a existir e todas as contagens e valores sintéticos foram preservados. |
+`households.0003_reconcile_membership_uniqueness` reconhece os schemas físicos
+legados suportados e converge para:
 
-A auditoria final encontrou zero contas sem Lar, zero contas sem responsável, zero categorias sem Lar, zero movimentações sem Lar e zero movimentações sem responsável. Isso comprova, na base representativa, que os registros legados são atribuídos a “Conjunto”. Nenhum dado real do usuário foi inspecionado ou migrado neste worktree.
+- unicidade do par `(household, user)`;
+- histórico inativo permitido;
+- no máximo uma membership ativa por usuário.
+
+As migrations `0004_protect_legacy_user` de contas, categorias e transações
+preservam o livro financeiro quando a exclusão de um usuário é tentada. No
+SQLite, a alteração de `on_delete` é um no-op de DDL esperado, pois a regra é
+aplicada pelo ORM.
+
+Preflights abortam antes de alteração quando encontram dados incompatíveis.
+Nenhuma migration deve ser executada na base real sem backup verificado, cópia
+externa e ensaio em restauração descartável.
+
+## Auditoria
+
+```bash
+python manage.py audit_household_integrity
+```
+
+O comando é somente leitura e informa apenas contagens. Ele verifica:
+
+- memberships duplicadas e múltiplas memberships ativas;
+- ausência/inatividade de `self`, `spouse` e `shared`;
+- usuários legados sem membership ativa no mesmo Lar;
+- conta, categoria ou responsável divergente do Lar da movimentação.
+
+Qualquer contagem inconsistente encerra com erro.
 
 ## Verificação final
 
-- Ruff: `All checks passed!`.
-- Django check: nenhum problema identificado.
-- Drift de migrations: `No changes detected`.
-- Suíte completa: 108 testes, todos aprovados em 49,427 segundos.
-- Cobertura: 98% (1.846 statements, 42 não cobertos), acima do mínimo de 90%.
-- `git diff --check`: sem erros de whitespace.
-- `manage.py check --deploy`, com configuração equivalente à produção: nenhum problema identificado.
-- Busca nas views financeiras: nenhuma query web usa `User` sozinho como fronteira; o escopo obrigatório é o Lar.
+- Suíte: 151 testes aprovados.
+- Cobertura: 98% (2.664 statements, 41 não cobertos), acima do mínimo de 90%.
+- Ruff: aprovado com a configuração do projeto.
+- Django check e drift de migrations: aprovados, sem alterações pendentes.
+- Check de deploy estrito: aprovado com `--fail-level WARNING` e ambiente CI.
+- Revisão independente: aprovada sem achados críticos, importantes ou menores.
+- Sincronização remota: confirmar `0 0` após o push desta task.
 
 ## Rollback operacional
 
-Antes de qualquer migration em uma instalação real, criar e retirar do servidor um backup SQLite verificado. Para voltar ao estado anterior ao backfill, apontar `SQLITE_PATH` para uma cópia restaurável e executar `python manage.py migrate households 0001`. O ensaio confirmou que essa volta preserva contas, categorias e movimentações e limpa apenas os vínculos criados pela sprint. Bancos híbridos ou categorias incompatíveis com a unicidade legada abortam deliberadamente e exigem reconciliação antes de nova tentativa.
+O ensaio sintético antigo de downgrade não representa sozinho o grafo completo
+atual. Em produção, o rollback prioritário é:
 
-## Riscos restantes e próximo passo
+1. interromper escrita;
+2. reimplantar uma imagem compatível;
+3. restaurar o backup SQLite verificado;
+4. executar a auditoria;
+5. liberar tráfego somente após smoke checks.
 
-- Trocar a senha antiga caso ela ainda esteja em uso.
-- Avaliar a limpeza opcional do histórico Git se ainda houver material sensível em commits antigos.
-- Validar backup, migrations, variáveis seguras e operação com um worker no EasyPanel; este ensaio sintético não substitui a validação no ambiente real.
-- Em seguida, vincular UUID/versão e preparar a API. Nenhum trabalho de API ou design visual foi iniciado nesta sprint.
+Downgrade de migrations só pode ser usado depois de ensaio do mesmo grafo e da
+mesma cópia de banco. Consulte `docs/deploy-easypanel.md`.
+
+## Bloqueios de produção
+
+Mesmo com a branch aprovada, o deploy permanece bloqueado até:
+
+- o proprietário rotacionar a credencial histórica;
+- o runbook ser validado no EasyPanel real;
+- um backup externo ser restaurado com sucesso em ensaio;
+- volume `/app/data`, uma réplica/worker, TLS e rate limit de login serem
+  confirmados.
+
+Nenhum dado real ou servidor EasyPanel foi alterado nesta sprint.
+
+## Próximo passo
+
+Após integração segura da branch, planejar a API versionada que atenderá o
+Flutter para Windows, iOS e Android. O design system será decidido com o
+proprietário antes de qualquer redesenho visual.

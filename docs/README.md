@@ -1,10 +1,13 @@
-# Finanpy — Documentação
+# Lar Finance — Documentação
 
-Sistema web de gestão de finanças pessoais desenvolvido em Django.
+- [Setup local](setup.md)
+- [Arquitetura atual](architecture.md)
+- [Runbook EasyPanel](deploy-easypanel.md)
+- [PRD do produto](../PRD.md)
+- [Sprint 1 — Household Ledger](sprints/sprint-1-household-ledger.md)
+- [Design system atual](design-system.md)
+- [Padrões de código](coding-standards.md)
 
-## Índice
-
-- [Setup](./setup.md) — como instalar e rodar o projeto localmente
-- [Arquitetura](./architecture.md) — estrutura de apps, models e URLs
-- [Design System](./design-system.md) — paleta de cores, tipografia e componentes
-- [Padrões de Código](./coding-standards.md) — convenções e guidelines de desenvolvimento
+O PRD descreve o produto e o roadmap. A arquitetura e o runbook registram o
+estado técnico executável. Em divergência, confirme a evidência no código e
+marque como `[INVESTIGAR]` em vez de presumir comportamento.

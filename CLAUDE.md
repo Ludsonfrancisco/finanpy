@@ -1,110 +1,84 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Orientações para agentes que trabalham neste repositório.
 
-## Commands
+## Comandos
 
 ```bash
-# Activate virtualenv (Windows)
-.venv\Scripts\activate
-# or if using venv/
-venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Run migrations
 python manage.py migrate
-
-# Start dev server
 python manage.py runserver
-
-# Create superuser
-python manage.py createsuperuser
-
-# Run tests
 python manage.py test
-
-# Run tests for a single app
-python manage.py test accounts
-
-# Run tests for a single class/method
-python manage.py test accounts.tests.AccountModelTest.test_current_balance
-
-# Generate migrations after model changes
-python manage.py makemigrations
+ruff check . --config pyproject.toml
+python manage.py check
+python manage.py makemigrations --check
 ```
 
-## Architecture
+`SECRET_KEY` é obrigatória. Configure o ambiente antes de qualquer comando
+Django. Em Docker/EasyPanel, use `SQLITE_PATH=/app/data/db.sqlite3`.
 
-Finanpy is a monolithic Django 5.2 application for personal finance management. Users register with email (no username), manage bank accounts, categories, and transactions, and view a consolidated dashboard.
+## Arquitetura
 
-### App structure
+Lar Finance é um monólito Django 5.2.13 de finanças domésticas. O acesso é
+privado: não há cadastro público. O login usa e-mail por meio do modelo
+`users.User`.
 
-| App | Responsibility |
+| App | Responsabilidade |
 |---|---|
-| `core` | Global settings (`core/settings.py`), root URL conf (`core/urls.py`), WSGI/ASGI |
-| `users` | Custom `User` model: email as `USERNAME_FIELD`, no `username` field |
-| `profiles` | `Profile` 1:1 with `User`, auto-created via `post_save` signal |
-| `accounts` | Bank accounts with `initial_balance` and computed `current_balance` |
-| `categories` | Income/expense categories with color and icon |
-| `transactions` | Financial transactions linked to an account and category |
+| `core` | settings, URLs raiz, dashboard, backup e comandos globais |
+| `users` | usuário customizado, login e logout |
+| `profiles` | perfil 1:1 do usuário |
+| `households` | Lar, memberships, responsáveis, bootstrap e auditoria |
+| `accounts` | contas financeiras do Lar |
+| `categories` | categorias de receita e despesa do Lar |
+| `transactions` | movimentações vinculadas a conta, categoria e responsável |
+| `ai` | app instalado sem fluxo financeiro ativo documentado [INVESTIGAR] |
 
-### Data relationships
+## Fronteira de dados
 
-```
-User ──── Profile      (1:1, signal-created)
-User ──── Account      (1:N)
-User ──── Category     (1:N)
-User ──── Transaction  (1:N)
-Account ── Transaction (1:N)
-Category ─ Transaction (1:N)
-```
+O `Household` é a fronteira obrigatória de leitura e escrita. Uma
+`HouseholdMembership` ativa autoriza o acesso. `FinancialOwner` classifica
+`self`, `spouse` e `shared`; ele não substitui autorização.
 
-### Two visual contexts
+Todas as views financeiras autenticadas devem:
 
-- **Public area** — uses `templates/layouts/base_public.html` (landing, signup, login)
-- **Authenticated area** — uses `templates/layouts/base_app.html` (sidebar + topbar layout)
+1. usar `HouseholdContextMixin`;
+2. filtrar por `self.household`;
+3. nunca confiar apenas em `request.user` como fronteira;
+4. validar que conta, categoria e responsável pertencem ao mesmo Lar;
+5. preservar `financial_owner` de uma transação durante edição, salvo uma
+   mudança explícita de produto.
 
-All authenticated views require `LoginRequiredMixin`. Reusable partials live in `templates/partials/`.
+As FKs legadas `user` permanecem para rastreabilidade e usam `PROTECT`.
 
-## Code conventions
+## Migrações e integridade
 
-- **Python:** PEP-8, single quotes, code in English, UI text in pt-BR
-- **Views:** always Class-Based Views (`ListView`, `CreateView`, `UpdateView`, `DeleteView`)
-- **Data isolation:** every view that reads or mutates user data must scope the queryset to `request.user`:
-  ```python
-  def get_queryset(self):
-      return super().get_queryset().filter(user=self.request.user)
-  ```
-- **Signals:** declared in `<app>/signals.py`, registered in `<app>/apps.py` via `ready()`
-- **Models:** always include `created_at` and `updated_at` fields
-- **URL namespacing:** `accounts:list`, `categories:create`, etc.
-- **Templates:** always inherit from a base layout; never inline raw HTML pages
+- Não reescreva migrations aplicadas.
+- Execute `python manage.py audit_household_integrity` antes e depois de
+  migrations na cópia de ensaio e no deploy controlado.
+- SQLite exige uma réplica e um worker Gunicorn.
+- Antes de migrations reais, crie backup verificado e retire uma cópia do host.
+- Rollback operacional prioriza imagem compatível + restauração do backup.
 
-## Design system
+## Convenções
 
-TailwindCSS via CDN (no build step). Core palette:
+- Python em inglês, interface em pt-BR, strings Python com aspas simples.
+- Views baseadas em classes.
+- Templates herdam layouts compartilhados.
+- Erros de modelos referentes a campos omitidos do ModelForm devem aparecer
+  como erros gerais, nunca provocar HTTP 500.
+- Novas mudanças precisam de testes, Ruff, Django check, migrations check e
+  revisão antes de commit/push.
 
-| Token | Class |
-|---|---|
-| Primary action | `emerald-500` / `emerald-600` |
-| Income (positive) | `emerald-400` |
-| Expense (negative) | `rose-400` / `rose-500` |
-| App background | `slate-950` |
-| Card background | `slate-900` |
-| Input background | `slate-800` |
-| Border | `slate-700` |
-| Body text | `slate-100` |
-| Muted text | `slate-400` |
-| Hero gradient | `from-emerald-500 via-teal-500 to-cyan-500` |
+## Produção
 
-Font: **Inter** (Google Fonts). Border radius: `rounded-xl` for inputs/buttons, `rounded-2xl` for cards.
+- `SECRET_KEY` somente por ambiente, única e longa.
+- `SQLITE_PATH` absoluto em volume persistente.
+- TLS termina no proxy; configure os flags seguros documentados no runbook.
+- Uma réplica, um worker e migrations controladas.
+- Rate limit de `POST /login/` no proxy/EasyPanel.
+- Implantação bloqueada até rotação da credencial histórica e validação real do
+  runbook.
 
-## Settings notes
-
-- `AUTH_USER_MODEL` must be set to `'users.User'` before any migration that references `User`
-- `LANGUAGE_CODE` should be `'pt-br'`, `TIME_ZONE` should be `'America/Sao_Paulo'`
-- `TEMPLATES['DIRS']` must include `BASE_DIR / 'templates'`; `APP_DIRS` should be `False` once a global `templates/` dir is in use
-- `LOGIN_REDIRECT_URL = '/dashboard/'`, `LOGOUT_REDIRECT_URL = '/'`
-- TailwindCSS is loaded via CDN — no npm or build tooling required in the MVP
+Consulte `docs/architecture.md`, `docs/setup.md` e
+`docs/deploy-easypanel.md`.
