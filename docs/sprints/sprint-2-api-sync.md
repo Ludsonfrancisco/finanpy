@@ -97,7 +97,7 @@ O contrato normativo está em [`docs/openapi-v1.yaml`](../openapi-v1.yaml).
 | 6 | `08e073c442583b3594612f65b49afa2aeb12de16`, `b26f0a2eb63ec277d2bfb4aaefedd2ae2194432d`, `6b2a75d431a5c82be8035e066c8ff528c130cb45` |
 | 7 | `42d3a85aa37ec0aab48818156f4e48490603edd2`, `850e13cbc94f36e5a3c235759efef0189a16fb89` |
 | 8 | `a52290f4190a7270ced630786541c223d449323e`, `1bb867a122bbf20b058ed601994ac2bb36aacbf4`, `97830c03ff67cb7404b3a9b32409417bc4018ae6`, `7c8ac2fc65d6c73a219a1ac474ec363e30016870`, `0c2017e50a9ba19d555bf8d8c39d0ac78f92386b` |
-| 9 | este commit candidato, mensagem `test: verify private api sync sprint` |
+| 9 | `2230bc4a43c189bb6b7abb58b99b00b3d57b4f62`; follow-up neste commit, mensagem `test: start legacy rehearsal from sprint one` |
 
 ## Ensaios de migration
 
@@ -107,9 +107,10 @@ temporário e o banco SQLite temporário do test runner.
 | Ensaio | Evidência |
 |---|---|
 | Fresh | 1 banco novo migrou as 22 migrations dos apps do projeto até todos os heads |
-| Legado | 2 contas, 2 categorias e 2 transações em estado Sprint 1 migraram para head |
+| Legado inicial | 2 contas, 2 categorias e 2 transações; 0 das 4 tabelas Sprint 2 presentes |
+| Legado forward | o primeiro forward criou as 4 tabelas `api/sync` e migrou os 6 registros para head |
 | Metadados | 6 UUIDs presentes/únicos por entidade e 6 versões iguais a 1 |
-| Estado inicial | 0 sessões, 0 refresh usados, 0 operações idempotentes e 0 mudanças |
+| Estado após forward | 0 sessões, 0 refresh usados, 0 operações idempotentes e 0 mudanças |
 | Rollback | 1 ciclo removeu as 4 tabelas `api/sync` e os campos Sprint 2 |
 | Preservação | as mesmas 6 linhas financeiras e todos os seus campos Sprint 1 permaneceram |
 | Replay | 1 segundo forward voltou ao head sem sessões/mudanças residuais |
@@ -118,8 +119,8 @@ temporário e o banco SQLite temporário do test runner.
 ## Matriz de qualidade
 
 - `python -Wd -W error::DeprecationWarning manage.py test`: 276 testes, 0
-  falhas, 124,000 s;
-- coverage: 276 testes, 5.462 statements, 96 não cobertos, 98%; gate mínimo
+  falhas, 124,488 s;
+- coverage: 276 testes, 5.463 statements, 96 não cobertos, 98%; gate mínimo
   de 90% aprovado;
 - Ruff: 0 erros;
 - `manage.py check`: 0 issues;

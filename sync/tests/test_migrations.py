@@ -30,7 +30,7 @@ class SyncMetadataMigrationTest(TransactionTestCase):
     def setUp(self):
         super().setUp()
         executor = MigrationExecutor(connection)
-        executor.migrate([*self.migrate_from, ('sync', None)])
+        executor.migrate([*self.migrate_from, ('sync', None), ('api', None)])
         self.old_apps = executor.loader.project_state(self.migrate_from).apps
         self.legacy_ids = self._create_legacy_fixture(self.old_apps)
         self.legacy_snapshot = self._legacy_snapshot(self.old_apps)
@@ -199,6 +199,10 @@ class SyncMetadataMigrationTest(TransactionTestCase):
         self.assertEqual(SyncChange.objects.count(), 0)
 
     def test_legacy_forward_rollback_forward_and_audit(self):
+        self.assertTrue(
+            SPRINT_2_TABLES.isdisjoint(connection.introspection.table_names())
+        )
+
         new_apps = self._migrate(self.migrate_to)
         self._assert_forward_state(new_apps)
 

@@ -300,7 +300,7 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-No candidato final da Sprint 2, 276 testes Django passaram, com 98% de cobertura (5.462 statements, 96 não cobertos). Ruff, warnings/deprecations, Django check, migrations check e deploy check estrito também passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI, observabilidade e migrations fresh/legadas/rollback/replay.
+No candidato final da Sprint 2, 276 testes Django passaram, com 98% de cobertura (5.463 statements, 96 não cobertos). Ruff, warnings/deprecations, Django check, migrations check e deploy check estrito também passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI, observabilidade e migrations fresh/legadas/rollback/replay.
 
 Sem cobertura comprovada:
 
