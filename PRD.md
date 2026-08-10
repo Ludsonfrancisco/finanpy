@@ -1,454 +1,478 @@
-# PRD — Finanpy
+# Lar Finance — PRD do estado atual e evolução do produto
 
-**Documento de Requisitos de Produto**
-**Versão:** 1.0
-**Data:** 18 de abril de 2026
-**Status:** Draft
+> Fonte única de verdade do produto. Atualizado em 09/08/2026 a partir do código da branch `main`, migrations, testes, configuração Docker, documentação e interface observada.
 
----
+## Status e convenções
+
+- **Nome oficial:** Lar Finance.
+- **Nome técnico legado:** Finanpy, mantido temporariamente no repositório, módulos Django e implantação até uma migração segura.
+- **Estado atual:** aplicação web Django funcional, com contas, categorias, transações e dashboard.
+- **Produto alvo:** aplicativo Flutter para iOS, Android e Windows, sincronizado com o backend Django no servidor Linux/EasyPanel.
+- **Estratégia de dados aprovada:** importação de arquivos primeiro; integração paga automática somente após o produto estar maduro e em uso.
+- **Usuários do produto:** uma família, com um login e dois proprietários financeiros iniciais, “Eu” e “Esposa”.
+- **Identidade visual:** em avaliação. A preferência por uma linguagem fintech premium semelhante em espírito ao C6 Bank é uma referência candidata, não uma decisão final.
+- **Regra visual irrevogável:** não usar roxo.
+- **`[INVESTIGAR]`:** decisão ou comportamento sem evidência suficiente. Não deve ser implementado por suposição.
+- **`As-is`:** comportamento comprovado no código atual.
+- **`To-be`:** comportamento alvo aprovado para construção incremental.
 
 ## 1. Visão geral
 
-O **Finanpy** é um sistema web de gestão de finanças pessoais desenvolvido em Django (full stack), com interface em Django Template Language (DTL) estilizada com TailwindCSS. O produto permite que usuários organizem suas contas bancárias, categorizem despesas e receitas, acompanhem transações e visualizem o fluxo financeiro em um dashboard moderno, responsivo e com identidade visual de nível premium SaaS.
+### 1.1 Problema
 
-O projeto é intencionalmente simples e enxuto, priorizando entrega de valor imediata sobre complexidade arquitetural. Nada de microserviços, filas, caches distribuídos ou containers na fase inicial — apenas Django, SQLite e boas práticas.
+As informações financeiras do casal estão fragmentadas entre Nubank, Inter, Santander e Mercado Pago. O controle precisa reunir movimentações, cartões, faturas, limites, empréstimos, investimentos, patrimônio, compromissos e objetivos sem depender de uma assinatura cara na primeira fase.
 
----
+### 1.2 Proposta de valor
 
-## 2. Sobre o produto
+O Lar Finance será o painel financeiro privado da família: uma visão confiável do que entrou, saiu, está comprometido, deve ser pago, pertence a cada pessoa e compõe o patrimônio conjunto. O sistema ajuda a tomar decisões, mas não movimenta dinheiro, não guarda senhas bancárias e não substitui aconselhamento financeiro profissional.
 
-Finanpy é uma aplicação monolítica Django organizada em apps por domínio (`users`, `profiles`, `accounts`, `categories`, `transactions`) e um app de configurações globais (`core`). O usuário se cadastra com e-mail e senha, acessa um dashboard e passa a registrar contas, categorias e transações, obtendo uma visão consolidada de sua vida financeira.
+### 1.3 Escopo funcional alvo
 
-O sistema possui dois contextos visuais:
+- Visão individual, da esposa e consolidada do lar.
+- Contas, carteiras e saldos.
+- Cartões, limites, faturas, vencimentos, fechamentos, parcelamentos e cartões adicionais.
+- Receitas, despesas, transferências, estornos, juros, tarifas e ajustes.
+- Importação OFX e CSV; PDF e planilhas por adaptadores específicos quando viável.
+- Conciliação, deduplicação e trilha de auditoria de toda importação.
+- Categorias, tags, favorecidos, regras de categorização e recorrências.
+- Orçamentos, metas, reserva de emergência e previsão de caixa.
+- Empréstimos e financiamentos, incluindo saldo, parcelas, taxa e CET quando disponíveis.
+- Investimentos, bens, direitos, dívidas e patrimônio líquido.
+- Relatórios e indicadores explicáveis, sem “score” opaco.
+- Sincronização entre Windows, iOS e Android.
+- Exportação e backup dos próprios dados.
+- Adaptador futuro para Pierre ou outro provedor, sem acoplar o domínio ao fornecedor.
 
-- **Área pública** — landing page de apresentação com chamadas para cadastro e login.
-- **Área autenticada** — dashboard e telas de gestão (CRUDs) de contas, categorias e transações.
+### 1.4 Fora de escopo inicial
 
-Ambas compartilham a mesma identidade visual, baseada em um design system único.
+- Iniciar pagamentos, Pix, transferências ou operações de investimento.
+- Web scraping de internet banking ou armazenamento de credenciais bancárias.
+- Cadastro público, landing page, marketing, múltiplas famílias ou cobrança de assinatura.
+- Open Finance direto como participante regulado.
+- Recomendações personalizadas tratadas como consultoria financeira.
 
----
+### 1.5 Critérios de sucesso
 
-## 3. Propósito
+- O casal consegue responder quanto possui, deve, gastou e terá comprometido em um único lugar.
+- Toda quantia mostra origem, proprietário, data de atualização e nível de confiança.
+- Reimportar o mesmo arquivo não duplica lançamentos.
+- O app abre a visão inicial em menos de 2 segundos com dados locais já sincronizados.
+- Operações feitas offline sincronizam depois sem perda silenciosa.
+- O usuário consegue exportar e restaurar os dados.
 
-Oferecer uma ferramenta simples, rápida e visualmente agradável para que pessoas físicas tenham controle sobre seu dinheiro sem precisar de planilhas manuais ou aplicativos sobrecarregados de funcionalidades. O propósito é reduzir o atrito entre "querer organizar as finanças" e "efetivamente organizar as finanças".
+## 2. Personas e jornadas
 
----
+### 2.1 Administrador do lar
 
-## 4. Público alvo
+Pessoa que instala, configura fontes, importa arquivos, resolve conflitos, acompanha o consolidado e mantém backup. No primeiro uso será o titular do login.
 
-- Pessoas físicas entre 20 e 50 anos com renda ativa e múltiplas fontes/contas.
-- Usuários que já tentaram planilhas e desistiram pela fricção de manutenção.
-- Pessoas que não querem sincronizar dados bancários via Open Finance e preferem lançamento manual com total privacidade.
-- Perfil alfabetizado digitalmente, confortável com interfaces web modernas.
+### 2.2 Proprietário financeiro
 
----
+Pessoa a quem pertencem contas, cartões, dívidas, investimentos e transações. Inicialmente existem “Eu” e “Esposa”. Proprietário financeiro não é uma credencial separada.
 
-## 5. Objetivos
-
-1. Entregar um MVP funcional de gestão financeira pessoal em Django com autenticação, contas, categorias e transações.
-2. Garantir experiência visual consistente e premium em todas as telas via design system próprio.
-3. Manter a base de código simples, aderente à PEP-8 e aos padrões idiomáticos do Django (CBVs, signals, ORM).
-4. Permitir que um novo usuário consiga cadastrar-se, criar uma conta, uma categoria e registrar sua primeira transação em menos de 3 minutos.
-5. Isolar domínios em apps Django distintos para facilitar evolução e manutenção.
-
----
-
-## 6. Requisitos funcionais
-
-### 6.1 Autenticação e perfil
-
-- RF01 — Cadastro de usuário via e-mail e senha (sem username).
-- RF02 — Login via e-mail e senha.
-- RF03 — Logout autenticado.
-- RF04 — Criação automática de `Profile` ao criar `User` (via signal).
-- RF05 — Edição do perfil do usuário (nome, data de nascimento, avatar opcional).
-
-### 6.2 Contas bancárias
-
-- RF06 — Criar, listar, editar e excluir contas bancárias do usuário autenticado.
-- RF07 — Cada conta possui nome, tipo (corrente, poupança, carteira, investimento), saldo inicial e moeda (BRL como padrão).
-- RF08 — Exibir saldo atual calculado a partir de saldo inicial + transações.
-
-### 6.3 Categorias
-
-- RF09 — Criar, listar, editar e excluir categorias do usuário autenticado.
-- RF10 — Categorias possuem nome, tipo (receita ou despesa), cor e ícone.
-
-### 6.4 Transações
-
-- RF11 — Criar, listar, editar e excluir transações do usuário autenticado.
-- RF12 — Cada transação possui descrição, valor, data, tipo (entrada/saída), conta associada e categoria associada.
-- RF13 — Listagem de transações com filtros por período, conta, categoria e tipo.
-- RF14 — Paginação da listagem.
-
-### 6.5 Dashboard
-
-- RF15 — Exibir saldo total consolidado de todas as contas.
-- RF16 — Exibir total de receitas e despesas do mês corrente.
-- RF17 — Exibir lista das últimas transações.
-- RF18 — Exibir distribuição de despesas por categoria (texto/lista, sem gráficos complexos no MVP).
-
-### 6.6 Site público
-
-- RF19 — Landing page com hero, seção de features, CTA de cadastro e link para login.
-- RF20 — Rotas públicas acessíveis sem autenticação.
-
-### 6.7 Fluxograma de UX (Mermaid)
+### 2.3 Jornada principal
 
 ```mermaid
-flowchart TD
-    A[Visitante acessa /] --> B{Autenticado?}
-    B -- Não --> C[Landing Page Pública]
-    C --> D[Clica em Cadastrar]
-    C --> E[Clica em Entrar]
-    D --> F[Formulário de cadastro]
-    F --> G[Cria User + Profile via signal]
-    G --> H[Login automático]
-    E --> I[Formulário de login]
-    I --> J{Credenciais válidas?}
-    J -- Não --> I
-    J -- Sim --> H
-    B -- Sim --> K[Dashboard]
-    H --> K
-    K --> L[Contas]
-    K --> M[Categorias]
-    K --> N[Transações]
-    K --> O[Perfil]
-    L --> L1[Listar/Criar/Editar/Excluir conta]
-    M --> M1[Listar/Criar/Editar/Excluir categoria]
-    N --> N1[Listar com filtros]
-    N --> N2[Criar/Editar/Excluir transação]
-    N2 --> K
-    L1 --> K
-    M1 --> K
-    O --> O1[Editar dados do perfil]
-    K --> P[Logout]
-    P --> C
+flowchart LR
+    A["Entrar no Lar Finance"] --> B["Ver resumo sincronizado"]
+    B --> C["Importar arquivo do banco"]
+    C --> D["Identificar instituição, conta e proprietário"]
+    D --> E["Revisar duplicatas e pendências"]
+    E --> F["Confirmar importação"]
+    F --> G["Categorizar e conciliar"]
+    G --> H["Acompanhar caixa, faturas, dívidas e patrimônio"]
+    H --> I["Planejar orçamento e metas"]
 ```
 
----
+## 3. Stack atual com versões exatas
 
-## 7. Requisitos não-funcionais
+### 3.1 As-is comprovado
 
-- RNF01 — **Performance:** páginas devem renderizar em menos de 500ms em condições locais.
-- RNF02 — **Responsividade:** layouts adaptáveis de 320px (mobile) a 1920px (desktop).
-- RNF03 — **Acessibilidade:** contraste mínimo AA e navegação por teclado nos formulários.
-- RNF04 — **Segurança:** proteção CSRF nativa do Django, senhas com hashing PBKDF2, sessões seguras.
-- RNF05 — **Manutenibilidade:** aderência à PEP-8, uso de aspas simples, código em inglês, interface em pt-BR.
-- RNF06 — **Persistência:** SQLite padrão do Django.
-- RNF07 — **Auditoria mínima:** todos os models possuem `created_at` e `updated_at`.
-- RNF08 — **Isolamento de domínios:** cada domínio em seu próprio app Django.
-- RNF09 — **Simplicidade:** preferência por Class-Based Views e recursos nativos; sem dependências desnecessárias.
-
----
-
-## 8. Arquitetura técnica
-
-### 8.1 Stack
-
-| Camada | Tecnologia |
-|---|---|
-| Linguagem | Python 3.12+ |
-| Framework | Django 5.x |
-| Template engine | Django Template Language (DTL) |
-| Estilização | TailwindCSS (via CDN no MVP) |
-| Banco de dados | SQLite |
-| Autenticação | `django.contrib.auth` customizado (login por e-mail) |
-| Forms | Django Forms / ModelForms |
-| Views | Class-Based Views (CBVs) |
-| Versionamento | Git |
-
-### 8.2 Estrutura de apps
-
-- `core` — settings, urls raiz, wsgi/asgi.
-- `users` — `User` customizado herdando de `AbstractUser` com e-mail como USERNAME_FIELD.
-- `profiles` — `Profile` 1:1 com `User`, criado via signal.
-- `accounts` — contas bancárias.
-- `categories` — categorias de transações.
-- `transactions` — transações financeiras.
-
-### 8.3 Estrutura de dados (Mermaid)
-
-```mermaid
-erDiagram
-    USER ||--|| PROFILE : possui
-    USER ||--o{ ACCOUNT : possui
-    USER ||--o{ CATEGORY : possui
-    USER ||--o{ TRANSACTION : possui
-    ACCOUNT ||--o{ TRANSACTION : registra
-    CATEGORY ||--o{ TRANSACTION : classifica
-
-    USER {
-        int id PK
-        string email UK
-        string password
-        bool is_active
-        bool is_staff
-        datetime date_joined
-        datetime created_at
-        datetime updated_at
-    }
-    PROFILE {
-        int id PK
-        int user_id FK
-        string first_name
-        string last_name
-        date birth_date
-        string avatar
-        datetime created_at
-        datetime updated_at
-    }
-    ACCOUNT {
-        int id PK
-        int user_id FK
-        string name
-        string type
-        decimal initial_balance
-        string currency
-        datetime created_at
-        datetime updated_at
-    }
-    CATEGORY {
-        int id PK
-        int user_id FK
-        string name
-        string type
-        string color
-        string icon
-        datetime created_at
-        datetime updated_at
-    }
-    TRANSACTION {
-        int id PK
-        int user_id FK
-        int account_id FK
-        int category_id FK
-        string description
-        decimal amount
-        date date
-        string type
-        datetime created_at
-        datetime updated_at
-    }
-```
-
----
-
-## 9. Design system
-
-### 9.1 Filosofia
-
-Design moderno, clean e premium, fugindo do clichê black/purple. Paleta principal baseada em **teal/emerald** para ações positivas combinada com **slate** frio nos fundos e acentos em **amber** para destaques financeiros. Gradientes suaves em hero e cards de métricas.
-
-### 9.2 Paleta de cores (Tailwind)
-
-| Token | Uso | Classe Tailwind |
+| Camada | Tecnologia e versão | Evidência |
 |---|---|---|
-| Primária | CTAs, links, destaques | `emerald-500`, `emerald-600` |
-| Primária hover | Interação | `emerald-700` |
-| Secundária | Acento, destaques financeiros | `amber-400`, `amber-500` |
-| Sucesso (receitas) | Valores positivos | `emerald-500` |
-| Erro (despesas) | Valores negativos | `rose-500` |
-| Fundo app | Background global | `slate-950` |
-| Fundo card | Cards e painéis | `slate-900` |
-| Fundo input | Inputs e selects | `slate-800` |
-| Borda | Divisores e bordas | `slate-700` |
-| Texto principal | Conteúdo | `slate-100` |
-| Texto secundário | Legendas, placeholders | `slate-400` |
-| Gradiente hero | Landing/banners | `from-emerald-500 via-teal-500 to-cyan-500` |
-| Gradiente card destaque | Cards métricos | `from-slate-800 to-slate-900` |
+| Linguagem | Python 3.12, imagem `python:3.12-slim` | `Dockerfile` |
+| Framework | Django 5.2.13 | `requirements.txt` |
+| WSGI | Gunicorn 23.0.0, 2 workers | requirements, Docker e Compose |
+| Imagens | Pillow 12.2.0 | `requirements.txt` |
+| Ambiente | python-dotenv 1.2.2 | `requirements.txt` |
+| Runtime indireto | asgiref 3.11.1, sqlparse 0.5.5, tzdata 2026.1 | `requirements.txt` |
+| Qualidade | Ruff 0.15.11, Coverage 7.13.5 | `requirements.txt` |
+| Banco | SQLite, arquivo `db.sqlite3` | `core/settings.py` |
+| Frontend | Django Templates, HTML/CSS/JavaScript e Tailwind via CDN | templates e documentação |
+| Fila/cache | inexistentes | settings e dependências |
+| Container | Docker multi-stage + Docker Compose | arquivos raiz |
+| Produção informada | Linux em EasyPanel, servidor doméstico | informação do proprietário; configuração externa não versionada `[INVESTIGAR]` |
 
-### 9.3 Tipografia
+Nenhuma dependência Flutter, API REST, PostgreSQL, parser OFX/CSV, fila ou provedor financeiro está presente na `main`.
 
-- Fonte: **Inter** (Google Fonts).
-- Títulos: `font-semibold tracking-tight`.
-- Corpo: `font-normal leading-relaxed`.
-- Escala: `text-sm` (12–14px), `text-base` (16px), `text-lg`, `text-xl`, `text-2xl`, `text-4xl` para hero.
+### 3.2 Stack alvo, ainda não instalada
 
-### 9.4 Componentes padrão (classes Tailwind)
+| Camada | Direção | Estado |
+|---|---|---|
+| Cliente | Flutter, um código-base para iOS, Android e Windows | aprovado; versão exata será fixada no Sprint 0 `[INVESTIGAR]` |
+| Backend | Django preservado e transformado em API versionada | aprovado |
+| API | Django REST Framework ou alternativa compatível | escolha e versão `[INVESTIGAR]` por ADR |
+| Banco servidor | PostgreSQL | aprovado como direção; versão/imagem EasyPanel `[INVESTIGAR]` |
+| Banco local | SQLite com camada reativa e fila de sincronização | aprovado; pacote `[INVESTIGAR]` |
+| Autenticação | tokens curtos + renovação rotativa em armazenamento seguro | desenho alvo; pacote `[INVESTIGAR]` |
+| Importação | OFX e CSV primeiro; PDF/XLSX por adaptadores | aprovado |
+| Automação futura | adaptador de provedor, inicialmente candidato Pierre | contratação e suporte a dois CPFs `[INVESTIGAR]` |
 
-**Botão primário**
-```html
-<button class='inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:from-emerald-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-emerald-400'>
-  Salvar
-</button>
+Não há versões exatas para componentes ainda não adicionados ao repositório. Inventá-las agora violaria a política de evidência; o Sprint 0 cria o lockfile e registra as versões escolhidas.
+
+## 4. Arquitetura
+
+### 4.1 As-is
+
+Monólito Django MVC/MTV server-rendered, separado por apps de domínio simples. Regras e acesso a dados estão concentrados em models, forms e class-based views. Não há camada de API nem serviço de sincronização.
+
+```mermaid
+flowchart TB
+    Browser["Navegador"] --> Templates["Django Templates + CSS/JS"]
+    Templates --> Views["CBVs e Forms"]
+    Views --> ORM["Django ORM"]
+    ORM --> SQLite[("SQLite")]
+    Views --> Auth["Sessão Django"]
+    Gunicorn["Gunicorn no container"] --> Views
 ```
 
-**Botão secundário**
-```html
-<button class='inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-semibold text-slate-100 transition hover:bg-slate-700'>
-  Cancelar
-</button>
+Apps: `core`, `users`, `profiles`, `accounts`, `categories`, `transactions` e `ai`. O app `ai` está instalado, porém sua função produtiva precisa ser validada `[INVESTIGAR]`.
+
+### 4.2 To-be incremental
+
+```mermaid
+flowchart TB
+    subgraph Clients["Clientes Flutter"]
+        IOS["iOS"]
+        Android["Android"]
+        Windows["Windows"]
+        Local[("SQLite local + outbox")]
+        IOS --> Local
+        Android --> Local
+        Windows --> Local
+    end
+    Clients -->|"HTTPS / API v1"| API["Django API"]
+    API --> Domain["Serviços de domínio financeiro"]
+    Domain --> PG[("PostgreSQL")]
+    API --> Import["Pipeline de importação e conciliação"]
+    Import --> PG
+    Provider["Adaptadores: arquivos / futuro provedor"] --> Import
+    Worker["Jobs assíncronos, se necessários"] --> Import
+    Ops["Logs, métricas, alertas e backup"] --> API
+    Ops --> PG
 ```
 
-**Input padrão**
-```html
-<input class='w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-slate-100 placeholder-slate-500 transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40' />
-```
+Princípios:
 
-**Label padrão**
-```html
-<label class='mb-1.5 block text-sm font-medium text-slate-300'>E-mail</label>
-```
+- evolução por módulos, sem rewrite total do backend;
+- API e domínio não conhecem widgets Flutter;
+- importadores e provedores implementam contratos substituíveis;
+- PostgreSQL no servidor é a fonte canônica;
+- SQLite local sustenta leitura rápida, offline e fila de mudanças;
+- todo registro sincronizável recebe UUID, versão, timestamps e marcador de exclusão;
+- conflitos financeiros nunca são sobrescritos silenciosamente.
 
-**Card**
-```html
-<div class='rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-black/20 backdrop-blur'>
-  ...
-</div>
-```
+Detalhes: [arquitetura](docs/architecture.md) e [segurança/operação](docs/security-and-operations.md).
 
-**Card de métrica (dashboard)**
-```html
-<div class='rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 p-6 ring-1 ring-slate-700/50'>
-  <p class='text-sm text-slate-400'>Saldo total</p>
-  <p class='mt-2 text-3xl font-semibold text-emerald-400'>R$ 12.430,00</p>
-</div>
-```
+## 5. Modelo de dados
 
-**Tabela/grid de listagem**
-```html
-<div class='overflow-hidden rounded-2xl border border-slate-800'>
-  <table class='w-full text-sm'>
-    <thead class='bg-slate-800/60 text-slate-300'>
-      <tr><th class='px-4 py-3 text-left font-medium'>...</th></tr>
-    </thead>
-    <tbody class='divide-y divide-slate-800 bg-slate-900'>
-      <tr class='hover:bg-slate-800/50'><td class='px-4 py-3'>...</td></tr>
-    </tbody>
-  </table>
-</div>
-```
+### 5.1 As-is extraído das migrations/models
 
-**Menu lateral (sidebar autenticada)**
-```html
-<aside class='w-64 border-r border-slate-800 bg-slate-950 p-4'>
-  <nav class='flex flex-col gap-1'>
-    <a class='flex items-center gap-3 rounded-xl px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white' href='...'>...</a>
-    <a class='flex items-center gap-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-emerald-400' href='...'>Ativo</a>
-  </nav>
-</aside>
-```
+| Entidade | Campos de domínio | Relações e restrições |
+|---|---|---|
+| `users.User` | email único; flags e senha do Django; timestamps | autenticação por email |
+| `profiles.Profile` | nome, sobrenome, nascimento, avatar, timestamps | 1:1 com User |
+| `accounts.Account` | nome, tipo, saldo inicial, moeda, timestamps | N:1 User |
+| `categories.Category` | nome, tipo receita/despesa, cor, ícone | N:1 User; único por user+nome+tipo |
+| `transactions.Transaction` | descrição, valor, data, tipo, timestamps | N:1 User, Account e Category |
 
-**Topbar**
-```html
-<header class='flex items-center justify-between border-b border-slate-800 bg-slate-950/80 px-6 py-4 backdrop-blur'>
-  ...
-</header>
-```
+Lacunas comprovadas: não há proprietário financeiro, instituição, conta bancária normalizada, transferência com duas pontas, fatura, limite, parcela, recorrência, dívida, investimento, importação, deduplicação, moeda por cotação, anexo ou trilha de auditoria.
 
-**Alerta/mensagem Django messages**
-```html
-<div class='rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300'>
-  Operação realizada com sucesso.
-</div>
-```
+### 5.2 To-be
 
-### 9.5 Layout base
+Núcleo proposto: `Household`, `FinancialOwner`, `Institution`, `FinancialAccount`, `CreditCard`, `CardStatement`, `CardTransaction`, `Transaction`, `Transfer`, `Category`, `Tag`, `Counterparty`, `RecurringRule`, `Budget`, `Goal`, `Loan`, `LoanInstallment`, `InvestmentPosition`, `Asset`, `Liability`, `ImportBatch`, `ImportRecord`, `ReconciliationIssue`, `ProviderConnection`, `SyncDevice` e `AuditEvent`.
 
-- **Layout público:** `base_public.html` com topbar simples, conteúdo centralizado e footer discreto.
-- **Layout autenticado:** `base_app.html` com sidebar à esquerda, topbar superior e área de conteúdo com `max-w-7xl mx-auto p-6`.
-- **Espaçamento:** múltiplos de 4 (Tailwind default).
-- **Raios:** `rounded-xl` (12px) padrão, `rounded-2xl` (16px) em cards.
-- **Sombras:** sutis com tons de preto translúcido (`shadow-black/20`).
+Regras essenciais:
 
----
+- valores monetários usam decimal e moeda explícita, nunca ponto flutuante;
+- cartão não é tratado como conta corrente;
+- compra no cartão afeta fatura/limite, não o caixa imediatamente;
+- pagamento da fatura liga saída da conta à quitação da fatura;
+- transferência liga débito e crédito, sem contar como receita/despesa do lar;
+- toda entidade financeira pertence a um `FinancialOwner` e a um `Household`;
+- campos ausentes no arquivo ficam “não informado”, jamais zero presumido;
+- saldo calculado e saldo informado pela fonte são distintos;
+- importações preservam arquivo hash, linha original normalizada e decisões de conciliação.
 
-## 10. User stories
+Diagrama e campos: [modelo de dados](docs/data-model.md).
 
-### 10.1 Épico: Autenticação
+## 6. Endpoints, rotas e comandos expostos
 
-**US01 — Cadastro com e-mail**
-Como visitante, quero me cadastrar informando e-mail e senha para acessar o sistema.
-- Aceite: formulário valida e-mail único, senha mínima de 8 caracteres, cria `User` + `Profile`, loga automaticamente.
+### 6.1 Rotas web atuais
 
-**US02 — Login com e-mail**
-Como usuário, quero fazer login com e-mail e senha.
-- Aceite: autenticação por e-mail, mensagem de erro clara em falha, redirecionamento ao dashboard.
-
-**US03 — Logout**
-Como usuário autenticado, quero sair do sistema.
-- Aceite: encerra sessão e redireciona para landing.
-
-### 10.2 Épico: Perfil
-
-**US04 — Editar perfil**
-Como usuário, quero editar meus dados pessoais.
-- Aceite: formulário com nome, sobrenome, data de nascimento, avatar opcional; salva com mensagem de sucesso.
-
-### 10.3 Épico: Contas
-
-**US05 — Gerenciar contas bancárias**
-Como usuário, quero criar, listar, editar e excluir minhas contas.
-- Aceite: CRUD completo, apenas contas do usuário são exibidas, saldo inicial aceita valores positivos e negativos.
-
-### 10.4 Épico: Categorias
-
-**US06 — Gerenciar categorias**
-Como usuário, quero criar, listar, editar e excluir categorias de receita e despesa.
-- Aceite: CRUD completo, tipo obrigatório (receita/despesa), cor e ícone opcionais.
-
-### 10.5 Épico: Transações
-
-**US07 — Registrar transação**
-Como usuário, quero registrar uma entrada ou saída vinculada a uma conta e categoria.
-- Aceite: formulário com descrição, valor, data, tipo, conta e categoria; validação de campos obrigatórios.
-
-**US08 — Listar transações com filtros**
-Como usuário, quero filtrar transações por período, conta, categoria e tipo.
-- Aceite: filtros via querystring, paginação, ordenação por data decrescente.
-
-**US09 — Editar e excluir transação**
-Como usuário, quero editar ou excluir uma transação existente.
-- Aceite: somente o dono da transação pode alterá-la; confirmação antes da exclusão.
-
-### 10.6 Épico: Dashboard
-
-**US10 — Visão consolidada**
-Como usuário, quero ver meu saldo total, receitas e despesas do mês e últimas transações.
-- Aceite: dashboard renderiza cards com valores corretos, lista últimas 10 transações.
-
-### 10.7 Épico: Site público
-
-**US11 — Landing page**
-Como visitante, quero entender o que é o Finanpy e me cadastrar.
-- Aceite: página pública com hero, features, CTAs de cadastro e login.
-
----
-
-## 11. Métricas de sucesso
-
-### 11.1 KPIs de produto
-
-- **Ativação:** % de usuários cadastrados que criam ao menos 1 conta e 1 transação nos primeiros 7 dias (meta: > 60%).
-- **Retenção D7:** % de usuários que retornam após 7 dias (meta: > 35%).
-- **Time to value:** tempo médio entre cadastro e primeira transação registrada (meta: < 5 minutos).
-
-### 11.2 KPIs de usuário
-
-- Número médio de transações registradas por usuário por mês.
-- Número médio de contas por usuário.
-- Número médio de categorias por usuário.
-
-### 11.3 KPIs técnicos
-
-- Tempo médio de resposta das views (meta: < 300ms).
-- Taxa de erro 500 (meta: < 0,1%).
-- Cobertura de testes (medida nas sprints finais, meta: > 70%).
-
----
-
-## 12. Riscos e mitigações
-
-| Risco | Impacto | Probabilidade | Mitigação |
+| Método | Rota | Acesso | Função |
 |---|---|---|---|
-| Escopo crescer e virar over-engineering | Alto | Média | Congelar escopo MVP; novas features só após entrega do MVP. |
-| Customização de `User` feita tarde e gerar migration dolorosa | Alto | Alta | Criar `User` customizado na **primeira** migration, antes de qualquer outro model. |
-| Design inconsistente entre telas | Médio | Média | Design system centralizado em templates base e parciais reutilizáveis. |
-| SQLite limitar concorrência em produção | Baixo (MVP) | Baixa | Aceito no MVP; migração para Postgres prevista em sprint futura. |
-| Ausência de testes iniciais gerar regressões | Médio | Média | Testes planejados para sprints finais; uso intenso de recursos nativos reduz superfície de bugs. |
-| Signals mal posicionados causando acoplamento | Médio | Baixa | Manter signals em `signals.py` por app e registrá-los em `apps.py`. |
-| CDN do Tailwind indisponível | Baixo | Baixa | Migrar para build local do Tailwind em sprint futura. |
+| GET | `/` | público | landing atual, a remover |
+| GET/POST | `/signup/` | público | cadastro atual, a remover/desativar |
+| GET/POST | `/login/` | público | login |
+| POST/GET `[INVESTIGAR]` | `/logout/` | autenticado | logout |
+| GET | `/dashboard/` | autenticado | resumo financeiro |
+| GET/POST | `/profile/edit/` | autenticado | edição do perfil |
+| GET/POST | `/accounts/`, `/accounts/new/` | autenticado | listar/criar contas |
+| GET/POST | `/accounts/<id>/edit/`, `/delete/` | autenticado | editar/excluir conta |
+| GET/POST | `/categories/`, `/categories/novo/` | autenticado | listar/criar categorias |
+| GET/POST | `/categories/<id>/editar/`, `/excluir/` | autenticado | editar/excluir categoria |
+| GET/POST | `/transacoes/`, `/transacoes/nova/` | autenticado | listar/criar transações |
+| GET/POST | `/transacoes/<id>/editar/`, `/excluir/` | autenticado | editar/excluir transação |
+| vários | `/admin/` | staff | Django Admin |
+| GET | `/media/*` | conforme settings | mídia servida pelo Django na configuração atual |
 
----
-**Fim do documento.**
+### 6.2 API alvo
+
+Prefixo `/api/v1/`. Recursos previstos: autenticação, sessão/dispositivos, household/owners, instituições, contas, cartões/faturas, transações/transferências, categorias/tags, recorrências, orçamentos/metas, empréstimos, investimentos/patrimônio, importações/conciliação, dashboard/relatórios e sincronização incremental.
+
+O contrato exato e verbos serão definidos antes do código em OpenAPI `[INVESTIGAR]`. O app Flutter não consumirá páginas HTML.
+
+### 6.3 Comandos atuais
+
+`manage.py migrate`, `collectstatic`, `runserver`, `test`, `check`, `makemigrations --check`, `createsuperuser`, `coverage` e `ruff`. Scripts de QA presentes criam contas de teste, mas dois deles contêm credenciais/PII em texto claro e devem ser removidos e rotacionados imediatamente.
+
+## 7. Integrações backend e externas
+
+### 7.1 Comprovadas hoje
+
+- SMTP, Open Finance, webhooks, filas e analytics: ausentes.
+- Docker/EasyPanel: implantação informada; manifesto real do EasyPanel não está versionado `[INVESTIGAR]`.
+- Tailwind e fontes por CDN: dependência de rede no frontend web atual.
+
+### 7.2 Importação aprovada
+
+- **OFX:** primeira opção para extrato de conta e movimentações quando o banco oferece.
+- **CSV:** suportado por perfis de instituição e mapeamento revisável.
+- **PDF:** útil para faturas/extratos, mas exige parser específico; não entra no primeiro importador genérico.
+- **XLS/XLSX:** útil para exportações e planilhas existentes; esquema varia por origem.
+- **Manual:** obrigatório para limite, CET, bens ou posições que a fonte não exportar.
+
+Arquivos transacionais normalmente não garantem limite de cartão, empréstimos, investimentos ou patrimônio. A cobertura de Nubank, Inter, Santander e Mercado Pago será testada com arquivos reais anonimizados `[INVESTIGAR]`.
+
+### 7.3 Automação futura
+
+Pierre é candidato por caber aproximadamente no teto informado de R$40/mês para uma conta, mas a cobertura de sete conexões e dois CPFs/consentimentos precisa de confirmação contratual `[INVESTIGAR]`. O domínio deve aceitar qualquer provedor que implemente o contrato interno e nunca depender do formato proprietário.
+
+Detalhes: [importação e sincronização](docs/imports-and-sync.md).
+
+## 8. Débitos técnicos
+
+| Severidade | Evidência | Impacto | Tratamento |
+|---|---|---|---|
+| Crítico | credenciais/PII em scripts versionados | acesso indevido e vazamento | remover do histórico quando aprovado, rotacionar e usar fixtures/env |
+| Crítico | volume Docker monta um volume no caminho de arquivo SQLite | persistência/boot não confiáveis | corrigir de imediato e migrar para PostgreSQL |
+| Alto | settings únicos para dev/prod e headers de segurança não evidenciados | exposição em produção | settings por ambiente e `check --deploy` |
+| Alto | SQLite com múltiplos clientes e sincronização futura | concorrência, lock e backup frágil | PostgreSQL incremental |
+| Alto | nenhuma API versionada | bloqueia Flutter | API v1 + OpenAPI |
+| Alto | modelo mistura cartão e conta | saldos/faturas incorretos | separar agregados antes da importação completa |
+| Alto | ausência de importação/deduplicação/auditoria | trabalho manual e dados duplicados | pipeline idempotente |
+| Médio | documentação de arquitetura diz que só `/admin/` existe | onboarding e operação incorretos | documentação atualizada neste PRD |
+| Médio | UI por CDN e assets remotos | indisponibilidade/CSP | bundle local no fallback web |
+| Médio | cálculos no dashboard e propriedade `current_balance` podem causar consultas repetidas | degradação com volume | consultas agregadas/testes de performance |
+| Médio | cobertura percentual não estava configurada como gate | regressões invisíveis | limiar incremental por domínio |
+| Baixo | arquivos de screenshots/QA e referências pesadas na raiz | ruído e repositório grande | política de artefatos e limpeza segura |
+
+## 9. Riscos de segurança e privacidade
+
+- Dados financeiros do casal são dados pessoais sensíveis no contexto do produto, mesmo quando a classificação legal exata deve ser confirmada `[INVESTIGAR LGPD]`.
+- O app não deve armazenar senha bancária, cookie de internet banking ou token bruto em logs.
+- Tokens móveis ficam em Keychain/Keystore/Credential Locker com fallback seguro documentado.
+- Biometria apenas desbloqueia credencial local já autorizada; senha do Lar Finance permanece fallback.
+- Arquivos importados são criptografados em repouso ou descartados depois de normalizados conforme política escolhida `[INVESTIGAR]`.
+- Backup deve ser criptografado, testado por restauração e mantido fora do mesmo disco do servidor doméstico.
+- Acesso externo exige HTTPS, proxy confiável, rate limit e allowlist administrativa quando possível.
+- Cadastro público e landing serão removidos; criação de usuário será administrativa.
+- Exclusões financeiras usam retenção/auditoria e confirmação; nada relevante some sem trilha.
+
+## 10. Cobertura de testes atual
+
+Na auditoria, 72 testes Django passaram e `manage.py check` não apontou problemas. Há testes de isolamento por usuário, CRUD, filtros, formulário e cálculo básico de saldo.
+
+Sem cobertura comprovada:
+
+- login, logout, signup e recuperação de acesso em cenários completos;
+- dashboard e suas agregações;
+- upload de avatar/mídia;
+- settings e deploy de produção;
+- concorrência e persistência Docker;
+- API, importações, deduplicação, cartões, faturas, sincronização, offline e Flutter, pois não existem;
+- testes end-to-end reais no EasyPanel;
+- teste de restauração de backup;
+- cobertura numérica atual reproduzível no relatório versionado `[INVESTIGAR]`.
+
+Novos recursos seguirão TDD: teste falha, implementação mínima, refatoração e suíte completa.
+
+## 11. Observabilidade atual
+
+As-is: logs padrão do Django/Gunicorn e visualização pelo Docker/EasyPanel. Não há configuração comprovada de logs estruturados, correlação, métricas, tracing, health/readiness checks, alertas, rastreamento de erros ou auditoria financeira.
+
+To-be mínimo:
+
+- logs JSON com `request_id`, sem valores financeiros completos nem PII;
+- health, readiness e métrica de última sincronização/backup;
+- auditoria separada de eventos financeiros;
+- alertas para falha repetida de importação, backup, banco, login suspeito e indisponibilidade;
+- painel local ou solução gratuita/self-hosted antes de serviço pago `[INVESTIGAR]`.
+
+## 12. Mapa de telas
+
+```mermaid
+flowchart TB
+    Login["Login"] --> Home["Visão geral"]
+    Home --> Activity["Movimentações"]
+    Home --> Cards["Cartões e faturas"]
+    Home --> Plan["Planejamento"]
+    Home --> Wealth["Patrimônio"]
+    Activity --> Import["Importar e conciliar"]
+    Activity --> Detail["Detalhe do lançamento"]
+    Cards --> Statement["Detalhe da fatura"]
+    Plan --> Budgets["Orçamentos e recorrências"]
+    Plan --> Goals["Metas e reserva"]
+    Wealth --> Loans["Empréstimos e dívidas"]
+    Wealth --> Investments["Investimentos e bens"]
+    Home --> More["Mais"]
+    More --> Sources["Contas, fontes e proprietários"]
+    More --> Reports["Relatórios e exportação"]
+    More --> Settings["Segurança, dispositivos e backup"]
+```
+
+Navegação mobile: no máximo cinco destinos, com hierarquia a validar em protótipo. Windows usa rail/sidebar adaptativa preservando os mesmos nomes e fluxos. Especificações: [UX mobile](docs/mobile-ux.md).
+
+## 13. Especificação resumida das telas e estados
+
+- **Login:** email, senha, estado carregando/erro/offline e biometria depois do primeiro acesso. Sem cadastro público.
+- **Visão geral:** patrimônio, caixa disponível, compromissos próximos, faturas, evolução e origem/atualização dos dados.
+- **Movimentações:** busca, filtros por proprietário/conta/período/tipo, agrupamento por data, pendências de categorização.
+- **Importar:** seleção do arquivo, prévia, mapeamento, duplicatas, erros por linha, confirmação e recibo.
+- **Cartões:** limite informado, utilizado, disponível, fatura atual, melhor data, fechamento, vencimento e parcelas. Campo desconhecido aparece como “não informado”.
+- **Planejamento:** orçamento realizado/previsto, recorrências, calendário e metas.
+- **Patrimônio:** ativos, passivos, investimentos, empréstimos e evolução do patrimônio líquido.
+- **Relatórios:** fluxo de caixa, categorias, favorecidos, comparação mensal, exportação.
+- **Configurações:** proprietários, instituições, dispositivos, segurança, backups, fonte futura e tema.
+
+Toda tela deve ter loading, vazio útil, erro recuperável, offline, dado desatualizado, acesso negado e sucesso. Gráficos só entram quando respondem uma pergunta clara.
+
+## 14. Integrações nativas, offline e storage
+
+| Capacidade | Uso | Permissão/fallback |
+|---|---|---|
+| Arquivos | importar OFX/CSV/PDF/XLSX | seletor nativo; digitação manual como fallback |
+| Câmera | fotografar documento/fatura em fase posterior | só ao acionar; seleção de arquivo como fallback |
+| Biometria | desbloqueio rápido do token local | opt-in; senha como fallback |
+| Push | avisos de sincronização, vencimento e backup | opt-in; central interna como fallback |
+| Share | receber/compartilhar arquivo financeiro/exportação | seletor de arquivo como fallback |
+| Geolocalização | sem necessidade comprovada | não solicitar |
+
+Offline-first:
+
+- leitura vem do SQLite local;
+- mudanças entram em outbox com UUID e versão;
+- sincronização ocorre ao abrir, por ação manual e em segundo plano quando permitido;
+- iOS/Android podem limitar execução em background, portanto “sincronização imediata” não é garantida `[INVESTIGAR]`;
+- importação pesada deve subir o arquivo/manifesto e acompanhar o job;
+- conflitos são apresentados ao usuário quando não houver regra determinística segura.
+
+## 15. Autenticação, i18n, acessibilidade e telemetria
+
+- Interface inicial em `pt-BR`, moeda BRL e datas locais; arquitetura preparada para outros idiomas/moedas sem prometer lançamento.
+- VoiceOver, TalkBack e Narrator; alvos de toque, foco visível, contraste WCAG AA, escala de fonte e redução de movimento.
+- Valores não dependem apenas de cor; receitas/despesas têm sinal, texto e ícone.
+- Analytics será privativo e opt-in quando possível, sem descrição de transação, saldo, CPF, arquivo ou token.
+- Eventos úteis: tempo de abertura, importação iniciada/concluída/falha, conflito resolvido, sync concluído/falhou. Eventos não carregam valores financeiros.
+
+## 16. CI/CD e publicação
+
+- GitHub Actions para lint, testes Django, migrations, segurança de dependências, testes Flutter e builds por plataforma.
+- Imagens do backend identificadas por commit e implantadas no EasyPanel com migração controlada.
+- Windows: pacote assinado/instalável `[INVESTIGAR certificado]`.
+- Android: distribuição privada primeiro; Play Store depois se fizer sentido `[INVESTIGAR conta e política]`.
+- iOS: instalação privada exige Apple Developer/TestFlight ou alternativa permitida; custo e método serão confirmados antes do Sprint de distribuição `[INVESTIGAR]`.
+- Segredos ficam no ambiente/secret store, nunca no repositório ou no app.
+
+## 17. Roadmap em sprints
+
+O roteiro completo, dependências, riscos e critérios de aceite estão em [ROADMAP.md](docs/ROADMAP.md). Ordem resumida:
+
+- [ ] Sprint 0: segurança, backup, baseline e decisões arquiteturais.
+- [ ] Sprint 1: household, proprietários, instituições e integridade do modelo.
+- [ ] Sprint 2: API v1, autenticação e contrato de sincronização.
+- [ ] Sprint 3: importação OFX/CSV, deduplicação e conciliação.
+- [ ] Sprint 4: cartões, faturas, limites e parcelamentos.
+- [ ] Sprint 5: shell Flutter, login, storage seguro e offline.
+- [ ] Sprint 6: visão geral, movimentações e proprietários.
+- [ ] Sprint 7: orçamento, recorrências, calendário e metas.
+- [ ] Sprint 8: empréstimos, financiamentos e dívidas.
+- [ ] Sprint 9: investimentos, bens e patrimônio líquido.
+- [ ] Sprint 10: relatórios, previsões e saúde financeira explicável.
+- [ ] Sprint 11: PostgreSQL, EasyPanel, backup e observabilidade.
+- [ ] Sprint 12: performance, acessibilidade, segurança e testes finais.
+- [ ] Sprint 13: distribuição Windows, Android e iOS.
+- [ ] Sprint 14: piloto opcional do adaptador Pierre/provedor.
+
+## 18. Quick wins
+
+- Rotacionar e remover credenciais/PII dos scripts de QA.
+- Corrigir o volume SQLite antes de qualquer novo deploy.
+- Desativar signup e transformar `/` em redirecionamento para login/dashboard.
+- Criar `FinancialOwner` antes de importar novos dados do casal.
+- Adicionar hash idempotente e `ImportBatch` antes do primeiro importador.
+- Separar “cartão” de “conta” antes de calcular saldos.
+- Exibir “não informado” em vez de `R$ 0,00` para dados ausentes.
+- Criar backup automatizado com teste de restauração.
+- Corrigir documentação divergente e padronizar UTF-8.
+
+## 19. Riscos por eixo
+
+- **Dados:** arquivos de cada banco mudam de formato. Mitigação: fixtures anonimizadas, perfis versionados e falha explícita.
+- **Sincronização:** conflitos e exclusões podem corromper o histórico. Mitigação: versões, tombstones e auditoria.
+- **Cartões:** compra, fatura e pagamento podem ser contados duas vezes. Mitigação: agregados separados e conciliação de duas pontas.
+- **Servidor doméstico:** energia, internet e disco são pontos únicos de falha. Mitigação: modo offline, UPS `[INVESTIGAR]`, backup externo e monitoramento.
+- **Distribuição iOS:** publicação/instalação tem exigências e custo Apple. Mitigação: validar antes de comprometer o sprint.
+- **Fornecedor futuro:** preço, cobertura e regra de dois CPFs podem inviabilizar Pierre. Mitigação: adapter portável e importação manual mantida.
+- **Escopo:** “trazer tudo” pode virar promessa impossível. Mitigação: matriz de cobertura por fonte e estado “não informado”.
+- **Design:** copiar marca de banco cria risco legal e produto sem identidade. Mitigação: inspiração por princípios, identidade própria e gate de aprovação.
+
+## 20. Glossário
+
+- **Household/Lar:** contêiner dos dados financeiros da família.
+- **Proprietário financeiro:** pessoa a quem um ativo, passivo ou lançamento pertence; não é login.
+- **Fonte:** origem do dado, como manual, OFX, CSV ou provedor.
+- **ImportBatch:** lote imutável que registra uma importação.
+- **Conciliação:** ligação entre registros que representam o mesmo evento ou duas pontas relacionadas.
+- **Idempotência:** reexecutar uma importação sem duplicar o efeito.
+- **Outbox:** fila local de alterações ainda não confirmadas pelo servidor.
+- **Tombstone:** marcador de exclusão sincronizável.
+- **Saldo informado:** saldo declarado pela fonte em uma data.
+- **Saldo calculado:** saldo reconstruído a partir de lançamentos.
+- **CET:** custo efetivo total de uma operação de crédito.
+- **Fatura:** ciclo de compras e ajustes de um cartão, fechado em uma data e vencendo em outra.
+- **Patrimônio líquido:** ativos menos passivos.
+- **ADR:** registro de decisão arquitetural com contexto e consequências.
+
+## 21. Decisões pendentes `[INVESTIGAR]`
+
+- Design system final do Lar Finance, incluindo claro/escuro, paleta, tipografia, ícones e motion.
+- Arquivos reais exportados por cada instituição e campos disponíveis.
+- Titularidade exata das sete conexões e nomes dos cartões adicionais.
+- Política de retenção dos arquivos originais.
+- Forma de acesso externo ao EasyPanel, domínio, TLS e disponibilidade do servidor.
+- Versões/pacotes do Flutter, API, SQLite local e PostgreSQL.
+- Estratégia exata de conflitos e exclusões por entidade.
+- Método/custo de distribuição privada no iPhone.
+- Cobertura, preço e regra familiar de Pierre no momento do piloto.
+- Necessidade real de PDF/OCR após medir OFX/CSV.
+
+## 22. Evidências de auditoria
+
+- Branch local `main` estava sincronizada com `origin/main` no commit `f029c14e2ba6ac55567bc1a33fb7ce32080be1aa` antes das alterações de documentação.
+- Branches remotas `final-sprints`, `finapy-pwa` e `fix/easytunnel-deploy` têm commits não incorporados; devem ser auditadas por diff, nunca mescladas em bloco.
+- 72 testes Django passaram durante a auditoria.
+- `manage.py check` estava limpo e não havia migration pendente.
+- A interface observada usa login/cadastro públicos, sidebar web e dashboard de contas/categorias/transações.
+- Este documento e os arquivos em `docs/` são alterações locais ainda não enviadas ao GitHub até que sejam revisadas e publicadas.

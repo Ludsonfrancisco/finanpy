@@ -1,0 +1,179 @@
+# UX multiplataforma do Lar Finance
+
+## Plataforma e princípios
+
+- Flutter para iOS, Android e Windows.
+- Linguagem cross-platform consistente, respeitando safe areas, navegação, teclado, voltar, sheets e acessibilidade de cada plataforma.
+- Conteúdo financeiro e confiança antes de efeitos visuais.
+- Offline-first, com origem e atualização do dado sempre visíveis.
+- Uma família, um login, dois proprietários financeiros iniciais.
+- Sem landing e sem cadastro público.
+
+O design system final está em `[INVESTIGAR]`. Não produzir telas finais antes do gate visual em [design-system.md](design-system.md).
+
+## Arquitetura da informação
+
+### Navegação candidata
+
+| Destino | Conteúdo |
+|---|---|
+| Início | visão do lar, compromissos e atalhos |
+| Movimentações | extrato, busca, filtros, importação e conciliação |
+| Planejar | orçamento, recorrências, calendário e metas |
+| Patrimônio | contas, cartões, dívidas, investimentos e bens |
+| Mais | fontes, relatórios, segurança, dispositivos e backup |
+
+Os nomes e a divisão final serão validados em protótipo `[INVESTIGAR]`. No Windows, a barra inferior vira rail/sidebar e detalhes podem usar master-detail.
+
+## Fluxos críticos
+
+### Login e desbloqueio
+
+```mermaid
+flowchart TD
+    A["Abrir app"] --> B{"Há sessão local?"}
+    B -->|"não"| C["Email e senha"]
+    B -->|"sim"| D{"Biometria habilitada?"}
+    D -->|"sim"| E["Biometria"]
+    D -->|"não"| F["Senha do Lar Finance"]
+    C --> G["Sincronizar e abrir Início"]
+    E --> G
+    F --> G
+    E -->|"falha/cancelamento"| F
+```
+
+### Importação
+
+Selecionar arquivo, detectar formato, escolher proprietário/fonte, revisar mapeamento, visualizar novos/duplicados/erros, confirmar e receber resumo. Importação em andamento pode ser fechada e retomada.
+
+### Revisão diária
+
+Abrir Início, verificar atualização, ver pendências, abrir movimentação, corrigir proprietário/categoria, reconciliar e voltar ao resumo atualizado.
+
+## Especificação de telas
+
+### Login
+
+Componentes: marca Lar Finance, email, senha, mostrar/ocultar, entrar, recuperação administrativa `[INVESTIGAR]`, status do servidor e opção biométrica após primeiro login. Estados: inicial, preenchendo, validando, credencial inválida, servidor indisponível, dispositivo revogado e offline sem sessão.
+
+### Início
+
+Ordem recomendada:
+
+1. contexto “Lar / Eu / Esposa”;
+2. patrimônio líquido e data de referência;
+3. caixa disponível e compromissos até próximo recebimento;
+4. faturas e vencimentos próximos;
+5. pendências de importação/conciliação;
+6. tendência curta e explicável;
+7. atalhos contextuais.
+
+Evitar grade de cartões genéricos. Um número sem origem ou data é considerado incompleto.
+
+### Movimentações
+
+Lista agrupada por data, busca imediata, filtros em sheet, filtros ativos legíveis, avatar/indicador do proprietário, instituição/conta, categoria, valor e estado. Swipe só para ação reversível; exclusão exige confirmação. Desktop oferece tabela adaptada, não tabela comprimida no celular.
+
+### Detalhe de movimentação
+
+Valor, descrição original e editada, datas, proprietário, conta/cartão, categoria/tags, contraparte, parcela, recorrência, fonte, lote e histórico de alterações. Ações: editar, conciliar, dividir `[INVESTIGAR]`, anexar e excluir.
+
+### Importação e conciliação
+
+Stepper curto, progresso persistente, resumo antes de confirmar e problemas priorizados. Cada erro indica linha/campo e ação possível. Um lote nunca apresenta apenas “falhou”.
+
+### Cartões e faturas
+
+Cada cartão mostra proprietário, instituição, final opcional, limite e data de referência. Fatura mostra status, total calculado/informado, fechamento, vencimento, parcelas futuras e pagamento conciliado. “Não informado” substitui zeros artificiais.
+
+### Planejamento
+
+Orçamento por mês e categoria, compromissos fixos, calendário de entradas/saídas, metas e reserva. Projeção diferencia confirmado, recorrente e estimado.
+
+### Empréstimos e dívidas
+
+Saldo devedor, instituição, titular, parcelas pagas/restantes, próxima parcela, taxa/CET quando conhecida e custo total. Não calcular CET ausente a partir de dados insuficientes.
+
+### Investimentos e patrimônio
+
+Ativos e passivos por proprietário/classe, valor e data de referência, origem manual/importada e evolução. Cotação automática está fora do primeiro escopo `[INVESTIGAR]`.
+
+### Relatórios
+
+Fluxo de caixa, categorias, favorecidos, evolução patrimonial, dívidas e comparação mensal. Gráficos têm tabela/texto alternativo e exportação.
+
+### Configurações
+
+Proprietários, instituições, contas/cartões, categorias/regras, dispositivos, biometria, notificações, tema, servidor, exportação, backup e sessão.
+
+## Estados globais obrigatórios
+
+- skeleton/loading sem bloquear navegação;
+- vazio com explicação e ação útil;
+- offline com dados locais e fila pendente;
+- sincronizando com progresso discreto;
+- desatualizado com timestamp;
+- erro parcial preservando conteúdo conhecido;
+- conflito que exige decisão;
+- acesso expirado/revogado;
+- sucesso com confirmação não intrusiva.
+
+## Integrações nativas
+
+### Biometria
+
+Opt-in após login válido. Motivo: proteger acesso local. Fallback: senha. Não enviar template biométrico ao servidor.
+
+### Arquivos e compartilhamento
+
+Permissão apenas durante a seleção. Suportar receber arquivo pelo share sheet se viável. Fallback: seletor interno.
+
+### Câmera
+
+Somente fase de PDF/OCR, após ação explícita. Motivo exibido antes do prompt. Fallback: escolher arquivo. Não pedir na instalação.
+
+### Notificações
+
+Opt-in para vencimentos, sync/backup e pendências. Sem mostrar valor/saldo na tela bloqueada por padrão. Fallback: central interna.
+
+### Geolocalização e contatos
+
+Sem caso de uso aprovado; não solicitar.
+
+## Performance
+
+- Início percebido em menos de 2s usando cache local.
+- Primeiro quadro útil, não tela vazia aguardando servidor.
+- listas paginadas/virtualizadas;
+- agregações pré-computadas no backend quando necessário;
+- importação não bloqueia a UI;
+- metas técnicas exatas de hardware/rede serão medidas no Sprint 5 `[INVESTIGAR]`.
+
+## Acessibilidade
+
+- VoiceOver, TalkBack e Narrator;
+- ordem de foco e atalhos de teclado no Windows;
+- escala de texto sem truncar valores críticos;
+- contraste AA e foco visível;
+- mínimo de toque conforme plataforma;
+- receita/despesa não depende de verde/vermelho;
+- gráficos com descrição e tabela;
+- `Reduce Motion` elimina transições não essenciais.
+
+## Privacidade na interface
+
+- botão para ocultar valores em todas as plataformas;
+- blur no app switcher `[INVESTIGAR suporte por plataforma]`;
+- notificações sem conteúdo sensível por padrão;
+- confirmação antes de exportar/compartilhar;
+- aviso claro quando dado é manual, importado ou desatualizado.
+
+## Critérios de aceite do design
+
+- tarefa principal alcançável sem conhecer termos bancários técnicos;
+- nenhuma tela parece website reduzido;
+- navegação funciona com uma mão no mobile e teclado/mouse no Windows;
+- texto real pt-BR cabe em tamanhos acessíveis;
+- todos os estados têm protótipo;
+- nenhum tom roxo em UI, ilustração, gráfico ou marca;
+- identidade própria, sem copiar logo, tipografia proprietária ou componentes do C6.

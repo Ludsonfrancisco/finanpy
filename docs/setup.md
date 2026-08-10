@@ -1,5 +1,7 @@
 # Setup
 
+> Este setup descreve apenas o backend Django atual. Flutter, PostgreSQL e a API ainda não estão presentes e serão documentados quando suas versões forem fixadas no Sprint 0.
+
 ## Pré-requisitos
 
 - Python 3.12+

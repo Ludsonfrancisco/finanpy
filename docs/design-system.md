@@ -1,133 +1,173 @@
-# Design System
+# Direção visual do Lar Finance
 
-Design moderno, clean e premium. Paleta principal baseada em **teal/emerald** para ações positivas, **slate** frio nos fundos e **amber** para destaques financeiros.
+> Status: **candidato em investigação**. Este documento define critérios e proibições, não congela ainda a identidade final.
 
-## Paleta de cores
+## Decisões firmes
 
-| Token | Uso | Classe Tailwind |
-|---|---|---|
-| Primária | CTAs, links, destaques | `emerald-500`, `emerald-600` |
-| Primária hover | Interação | `emerald-700` |
-| Secundária | Destaques financeiros | `amber-400`, `amber-500` |
-| Receitas | Valores positivos | `emerald-500` |
-| Despesas | Valores negativos | `rose-500` |
-| Fundo app | Background global | `slate-950` |
-| Fundo card | Cards e painéis | `slate-900` |
-| Fundo input | Inputs e selects | `slate-800` |
-| Borda | Divisores e bordas | `slate-700` |
-| Texto principal | Conteúdo | `slate-100` |
-| Texto secundário | Legendas, placeholders | `slate-400` |
-| Gradiente hero | Landing/banners | `from-emerald-500 via-teal-500 to-cyan-500` |
+- nome público: Lar Finance;
+- linguagem: fintech premium, confiável, adulta e doméstica, sem parecer planilha amadora;
+- dados e números são protagonistas;
+- nunca usar roxo, lavanda, violeta, magenta arroxeado ou gradiente azul-roxo;
+- não copiar marca, logo, fonte proprietária, cartões ou composição de outro banco;
+- não usar “AI slop”: glassmorphism gratuito, blobs, neon, cards flutuantes e gráfico sem propósito;
+- claro e escuro devem ser projetados juntos;
+- acessibilidade AA e redução de movimento são requisitos, não acabamento.
+
+## Referência candidata: princípios observados no C6 Bank
+
+O usuário citou o C6 Bank como preferência. A referência oficial descreve uma identidade inspirada em carbono, com contraste, tipografia precisa, iconografia geométrica sóbria e linguagem sofisticada. Isso pode orientar princípios, nunca reprodução.
+
+Fontes para análise:
+
+- [Carbon Brand Space](https://www.c6bank.com.br/carbon-brand-space/)
+- [Iconografia C6](https://www.c6bank.com.br/carbon-brand-space/iconografia/)
+- [Aplicativo C6 Bank na App Store](https://apps.apple.com/br/app/c6-bank-cart%C3%A3o-conta-e-mais/id1463463143)
+
+Princípios potencialmente aproveitáveis:
+
+- superfícies minerais e contraste controlado;
+- hierarquia numérica forte;
+- espaço negativo e composição calma;
+- um acento quente usado com economia;
+- geometria sóbria, não infantil;
+- sensação de segurança e autonomia.
+
+## Design read provisório
+
+- **Intenção:** painel financeiro familiar confiável, completo e privado.
+- **Tom emocional:** calma, clareza, domínio e proteção.
+- **Densidade:** média-alta por ser produto de dados, com respiro entre blocos.
+- **Motion:** baixo a moderado, funcional.
+- **Plataforma:** cross-platform premium neutral, com adaptações nativas.
+- **Referência visual:** carbono/mineral como uma opção, ainda `[INVESTIGAR]`.
+
+## Dials provisórios
+
+- `DESIGN_VARIANCE = 5`
+- `MOTION_INTENSITY = 3`
+- `VISUAL_DENSITY = 6`
+
+Revisar no gate visual. Esses números documentam intenção, não tokens de código.
+
+## Gate de decisão visual
+
+Antes de implementar componentes finais:
+
+- [ ] coletar 3 a 5 referências aprovadas pelo usuário;
+- [ ] registrar o que agrada/desagrada em cada uma;
+- [ ] criar três moodboards próprios, sem copiar marca;
+- [ ] escolher modo base e estratégia claro/escuro;
+- [ ] validar paleta completa em contraste e daltonismo;
+- [ ] validar tipografia aberta/licenciada em iOS, Android e Windows;
+- [ ] criar conceitos separados de Login, Início, Movimentações, Fatura e Patrimônio;
+- [ ] testar com textos e valores reais anonimizados;
+- [ ] aprovar um conceito e documentar tokens;
+- [ ] registrar a escolha em ADR-008.
+
+Enquanto este gate não terminar, qualquer paleta ou tipografia é experimental.
+
+## Três territórios a explorar
+
+### A. Mineral quente
+
+Grafite, pedra clara e acento dourado/âmbar. É o território mais próximo dos princípios admirados no C6, mas precisa de personalidade própria ligada ao lar.
+
+### B. Editorial financeiro
+
+Off-white, carvão, tipografia editorial e acento azul petróleo ou verde profundo. Mais leve e informativo, com menos associação a banco tradicional.
+
+### C. Arquitetura doméstica
+
+Neutros quentes, materiais foscos e acento terracota ou verde oliva. Reforça o conceito de lar sem perder precisão financeira.
+
+Todos devem excluir roxo. A escolha entre A/B/C está `[INVESTIGAR]`.
+
+## Tokens que serão obrigatórios
+
+Os valores hexadecimais ainda não estão decididos. O sistema final deve declarar:
+
+- `surface.canvas`, `surface.base`, `surface.raised`, `surface.sunken`;
+- `text.primary`, `text.secondary`, `text.muted`, `text.inverse`;
+- `border.subtle`, `border.strong`, `focus`;
+- `accent.primary`, `accent.onPrimary`;
+- `semantic.income`, `semantic.expense`, `semantic.warning`, `semantic.info`, `semantic.success`;
+- `data.series.*`, com padrões/labels além de cor;
+- escalas de spacing, radius, elevation, type e motion;
+- tokens equivalentes light/dark.
+
+Regra de cor: uma cor de marca principal. Cores semânticas são reservadas a significado e não competem como acentos decorativos.
 
 ## Tipografia
 
-- Fonte: **Inter** (Google Fonts)
-- Títulos: `font-semibold tracking-tight`
-- Corpo: `font-normal leading-relaxed`
-- Escala: `text-sm`, `text-base`, `text-lg`, `text-xl`, `text-2xl`, `text-4xl`
+Critérios:
 
-## Layouts base
+- licença aberta ou distribuição permitida;
+- números tabulares para dinheiro/tabelas;
+- boa leitura de `R$`, vírgula decimal e números longos;
+- pesos suficientes sem carregar muitos arquivos;
+- acentos pt-BR completos;
+- compatibilidade consistente nas três plataformas.
 
-| Template | Uso |
-|---|---|
-| `base.html` | Base global com doctype, meta, CDN Tailwind e fonte Inter |
-| `layouts/base_public.html` | Área pública: topbar simples + footer |
-| `layouts/base_app.html` | Área autenticada: sidebar + topbar + conteúdo |
+Inter não será adotada automaticamente apenas por ser comum. Candidatas serão testadas `[INVESTIGAR]`.
 
-A área autenticada usa `max-w-7xl mx-auto p-6` na área de conteúdo.
+Escala mínima proposta, sujeita a teste: display financeiro, título de tela, título de seção, corpo, label e caption. Valores críticos não usam caption.
 
-## Componentes
+## Componentes estruturais
 
-### Botão primário
+- app shell adaptativo;
+- owner switcher “Lar / Eu / Esposa”;
+- money value com esconder/mostrar;
+- data freshness/source badge sem formato de pill excessivo;
+- transaction row;
+- account/card/loan/investment summary;
+- statement progress e due-date status;
+- import progress, mapping table e reconciliation issue;
+- empty/error/offline/stale/conflict states;
+- chart + table alternative;
+- confirmation sheet/dialog;
+- secure file picker e export receipt.
 
-```html
-<button class='inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:from-emerald-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-emerald-400'>
-  Salvar
-</button>
-```
+Componentes evitam box-in-box. Pills ficam restritas a status, filtro compacto e seleção, não a todo texto.
 
-### Botão secundário
+## Iconografia
 
-```html
-<button class='inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-semibold text-slate-100 transition hover:bg-slate-700'>
-  Cancelar
-</button>
-```
+- uma família coerente e licenciada;
+- traço/peso consistente;
+- símbolos financeiros reconhecíveis e rótulos quando houver ambiguidade;
+- não misturar packs;
+- não usar emoji como ícone funcional;
+- categorias podem usar ícone + nome, nunca só cor.
 
-### Input
+## Motion
 
-```html
-<input class='w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-slate-100 placeholder-slate-500 transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40' />
-```
+- 160 a 240 ms como faixa inicial `[INVESTIGAR por plataforma]`;
+- movimento explica mudança de estado, hierarquia ou navegação;
+- nada se move perpetuamente;
+- sincronização/importação usa progresso acessível;
+- `Reduce Motion` troca movimentos por fade/estado instantâneo.
 
-### Label
+## Auditoria da interface atual
 
-```html
-<label class='mb-1.5 block text-sm font-medium text-slate-300'>E-mail</label>
-```
+Problemas observados nas screenshots:
 
-### Card
+- identidade “Finanpy” e teal dominam sem relação com “Lar Finance”;
+- cadastro público contradiz o uso privado;
+- dashboard replica padrão de três cards e gráfico vazio;
+- cartão é uma linha genérica de conta, sem limite/fatura;
+- excesso de containers e grandes áreas vazias;
+- tela pensada para desktop, não para celular;
+- zero é exibido onde o dado pode simplesmente não existir;
+- sem estados de sincronização, origem, confiança ou proprietário.
 
-```html
-<div class='rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-black/20 backdrop-blur'>
-  ...
-</div>
-```
+O frontend taste skill foi aplicado como crítica e princípios para login/fallback web. Ele não define dashboards nativos; a direção mobile governa as telas Flutter.
 
-### Card de métrica (dashboard)
+## Critérios de aprovação
 
-```html
-<div class='rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 p-6 ring-1 ring-slate-700/50'>
-  <p class='text-sm text-slate-400'>Saldo total</p>
-  <p class='mt-2 text-3xl font-semibold text-emerald-400'>R$ 12.430,00</p>
-</div>
-```
-
-### Tabela de listagem
-
-```html
-<div class='overflow-hidden rounded-2xl border border-slate-800'>
-  <table class='w-full text-sm'>
-    <thead class='bg-slate-800/60 text-slate-300'>
-      <tr><th class='px-4 py-3 text-left font-medium'>...</th></tr>
-    </thead>
-    <tbody class='divide-y divide-slate-800 bg-slate-900'>
-      <tr class='hover:bg-slate-800/50'><td class='px-4 py-3'>...</td></tr>
-    </tbody>
-  </table>
-</div>
-```
-
-### Sidebar
-
-```html
-<aside class='w-64 border-r border-slate-800 bg-slate-950 p-4'>
-  <nav class='flex flex-col gap-1'>
-    <a class='flex items-center gap-3 rounded-xl px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white' href='...'>Item</a>
-    <a class='flex items-center gap-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-emerald-400' href='...'>Ativo</a>
-  </nav>
-</aside>
-```
-
-### Topbar
-
-```html
-<header class='flex items-center justify-between border-b border-slate-800 bg-slate-950/80 px-6 py-4 backdrop-blur'>
-  ...
-</header>
-```
-
-### Mensagem de feedback
-
-```html
-<div class='rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300'>
-  Operação realizada com sucesso.
-</div>
-```
-
-## Convenções de espaçamento e bordas
-
-- Espaçamento: múltiplos de 4 (padrão Tailwind)
-- Border radius padrão: `rounded-xl` (12px)
-- Border radius em cards: `rounded-2xl` (16px)
-- Sombras: `shadow-black/20`
+- leitura clara em 5 segundos do estado financeiro;
+- visual reconhecível como Lar Finance sem logo de terceiros;
+- números e ações principais acessíveis;
+- nenhuma ocorrência de roxo, inclusive gráficos/ilustrações;
+- sem mais de um acento de marca;
+- telas variadas, mas pertencentes ao mesmo sistema;
+- versões mobile e Windows parecem nativas, não páginas web esticadas;
+- estados vazios/erro/offline são tão projetados quanto o happy path.

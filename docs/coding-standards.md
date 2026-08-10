@@ -1,5 +1,19 @@
 # Padrões de Código
 
+> Estas regras valem para o backend legado e para toda evolução do Lar Finance. Convenções Flutter específicas serão adicionadas quando o workspace e suas versões forem aprovados.
+
+## Regras transversais
+
+- Desenvolvimento orientado a testes: escrever o teste que falha antes do código de produção.
+- Dinheiro usa decimal e código de moeda; nunca `float`.
+- Ausência de dado é `null`/estado desconhecido, nunca zero presumido.
+- Toda entidade financeira é isolada por `household` e `owner` conforme o domínio.
+- APIs usam UUID externo, idempotência e erros estruturados.
+- Logs nunca contêm token, arquivo, CPF, email completo, saldo, valor ou descrição de transação.
+- Importadores preservam origem, são idempotentes e não alteram o ledger antes da confirmação.
+- Mudanças de arquitetura exigem ADR em `docs/adr/`.
+- Código, docs e fixtures usam UTF-8.
+
 ## Python
 
 - Aderência à **PEP-8**
