@@ -4,6 +4,7 @@ from pathlib import Path
 from django.conf import settings
 from django.test import SimpleTestCase
 from django.urls import URLPattern, URLResolver, get_resolver
+from rest_framework.permissions import AllowAny
 
 OPENAPI_EXPECTATIONS = (
     ('version', '3.1.0'),
@@ -28,38 +29,38 @@ REQUIRED_SCHEMAS = {
     'DeltaPage',
 }
 
-EXPECTED_PATH_METHODS = {
-    '/health/': {'get'},
-    '/auth/login/': {'post'},
-    '/auth/refresh/': {'post'},
-    '/auth/logout/': {'post'},
-    '/devices/': {'get'},
-    '/devices/current/': {'patch'},
-    '/devices/{device_uuid}/revoke/': {'post'},
-    '/household/': {'get'},
-    '/owners/': {'get'},
-    '/accounts/': {'get'},
-    '/categories/': {'get'},
-    '/transactions/': {'get'},
-    '/summary/': {'get'},
-    '/bootstrap/': {'get'},
-    '/sync/push/': {'post'},
-    '/sync/changes/': {'get'},
-}
+OPENAPI_HTTP_METHODS = {'get', 'post', 'put', 'patch', 'delete'}
 
 
-def api_routes(patterns=None, prefix=''):
+def runtime_api_operations(patterns=None, prefix=''):
     patterns = patterns or get_resolver().url_patterns
-    routes = set()
+    operations = {}
     for pattern in patterns:
         route = prefix + str(pattern.pattern)
         if isinstance(pattern, URLResolver):
-            routes.update(api_routes(pattern.url_patterns, route))
+            operations.update(runtime_api_operations(pattern.url_patterns, route))
         elif isinstance(pattern, URLPattern) and route.startswith('api/v1/'):
             relative = route.removeprefix('api/v1')
             normalized = relative.replace('<uuid:device_uuid>', '{device_uuid}')
-            routes.add(normalized)
-    return routes
+            view_class = pattern.callback.view_class
+            methods = {
+                method
+                for method in view_class.http_method_names
+                if method in OPENAPI_HTTP_METHODS
+                and callable(getattr(view_class, method, None))
+            }
+            is_public = (
+                not view_class.authentication_classes
+                and any(
+                    issubclass(permission, AllowAny)
+                    for permission in view_class.permission_classes
+                )
+            )
+            operations[normalized] = {
+                method: [] if is_public else [{'opaqueBearer': []}]
+                for method in methods
+            }
+    return operations
 
 
 class OpenApiContractTest(SimpleTestCase):
@@ -93,31 +94,26 @@ class OpenApiContractTest(SimpleTestCase):
         self.assertIn('ErrorEnvelope', schemas)
 
     def test_all_api_routes_are_represented(self):
-        routes = api_routes()
+        routes = runtime_api_operations()
 
         self.assertEqual(len(routes), 16)
-        self.assertEqual(set(self.contract['paths']), routes)
+        self.assertEqual(set(self.contract['paths']), set(routes))
 
     def test_path_http_methods_are_exact(self):
+        expected = {
+            path: set(methods) for path, methods in runtime_api_operations().items()
+        }
         actual = {
             path: set(path_item).difference({'parameters'})
             for path, path_item in self.contract['paths'].items()
         }
 
-        self.assertEqual(actual, EXPECTED_PATH_METHODS)
+        self.assertEqual(actual, expected)
 
     def test_operation_security_is_explicit_and_exact(self):
-        public_operations = {
-            ('/health/', 'get'),
-            ('/auth/login/', 'post'),
-            ('/auth/refresh/', 'post'),
-        }
-        for path, methods in EXPECTED_PATH_METHODS.items():
-            for method in methods:
+        for path, methods in runtime_api_operations().items():
+            for method, expected in methods.items():
                 with self.subTest(path=path, method=method):
-                    expected = [] if (path, method) in public_operations else [
-                        {'opaqueBearer': []}
-                    ]
                     self.assertEqual(
                         self.contract['paths'][path][method].get('security'),
                         expected,

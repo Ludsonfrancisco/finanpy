@@ -1,6 +1,6 @@
 import json
 import logging
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stderr
 from io import StringIO
 from uuid import UUID, uuid4
 
@@ -34,6 +34,7 @@ def capture_configured_log_stream():
     handlers = {}
     for logger_name in (
         'lar_finance.api',
+        'lar_finance.api.diagnostic',
         'django',
         'django.request',
         'django.server',
@@ -281,7 +282,7 @@ class ApiObservabilityTest(TestCase):
         ):
             self.assertNotIn(forbidden, serialized)
 
-    def test_django_loggers_use_safe_json_handlers(self):
+    def test_django_request_and_security_loggers_use_safe_json_handlers(self):
         request = RequestFactory().get(
             '/web/private/?token=private-django-query',
             HTTP_AUTHORIZATION='Bearer private-django-token',
@@ -295,7 +296,6 @@ class ApiObservabilityTest(TestCase):
             except RuntimeError:
                 for logger_name in (
                     'django.request',
-                    'django.server',
                     'django.security',
                 ):
                     logging.getLogger(logger_name).error(
@@ -306,10 +306,10 @@ class ApiObservabilityTest(TestCase):
                     )
 
         events = parse_json_log_lines(stream)
-        self.assertEqual(len(events), 3)
+        self.assertEqual(len(events), 2)
         self.assertEqual(
             {event['logger'] for event in events},
-            {'django.request', 'django.server', 'django.security'},
+            {'django.request', 'django.security'},
         )
         serialized = json.dumps(events)
         for forbidden in (
@@ -320,6 +320,27 @@ class ApiObservabilityTest(TestCase):
             'private-django-message',
         ):
             self.assertNotIn(forbidden, serialized)
+
+    def test_django_server_emits_no_parallel_access_output(self):
+        request_without_path = type(
+            'RequestWithoutPath',
+            (),
+            {'request_id': str(uuid4())},
+        )()
+
+        stderr = StringIO()
+        with redirect_stderr(stderr):
+            with capture_configured_log_stream() as stream:
+                logging.getLogger('django.server').error(
+                    '%s %s %s',
+                    'GET',
+                    '/api/v1/health/?token=private-server-query',
+                    500,
+                    extra={'request': request_without_path, 'status_code': 500},
+                )
+
+        self.assertEqual(stream.getvalue(), '')
+        self.assertEqual(stderr.getvalue(), '')
 
     def test_web_session_does_not_mark_unmatched_api_route_as_device_authenticated(self):
         self.client.force_login(self.user)

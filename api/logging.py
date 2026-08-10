@@ -22,6 +22,22 @@ class SafeDjangoFormatter(logging.Formatter):
         return json.dumps(event, ensure_ascii=False, separators=(',', ':'))
 
 
+class DiagnosticJsonFormatter(logging.Formatter):
+    def format(self, record):
+        diagnostic = record.diagnostic_event
+        event = {
+            'timestamp': datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
+            'level': record.levelname,
+            'service': 'lar-finance-api-diagnostic',
+            'request_id': diagnostic['request_id'],
+            'event': diagnostic['event'],
+            'error_type': diagnostic['error_type'],
+            'exception_type': diagnostic['exception_type'],
+            'fingerprint': diagnostic['fingerprint'],
+        }
+        return json.dumps(event, ensure_ascii=False, separators=(',', ':'))
+
+
 class SkipApiRequestLogFilter(logging.Filter):
     def filter(self, record):
         request = getattr(record, 'request', None)

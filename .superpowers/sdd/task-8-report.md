@@ -70,3 +70,27 @@ observed failing before the corresponding minimal change.
 - Optimistic and idempotency conflicts are per-operation results inside HTTP 200
   sync batches; the reusable HTTP 409 response remains reserved for a future
   non-batch conflict endpoint.
+
+## Final observability contract closure
+
+- The OpenAPI gate now derives every path, implemented HTTP handler, and public
+  versus opaque-bearer policy from Django resolver callbacks and DRF view class
+  configuration. It no longer maintains a second route/auth contract in tests.
+- `django.server` uses a null handler with propagation disabled, so a realistic
+  server record cannot render a raw API request target in stdout or stderr.
+- The outer request-ID middleware converts non-contract API 5xx responses from
+  downstream middleware/rendering into the stable `internal_error` envelope,
+  preserving the request ID and reporting the matching access error code.
+- Internal failures emit one separate safe diagnostic JSON event per request.
+  Its fingerprint is derived only from the qualified exception type and safe
+  structural code location; messages, arguments, request data, financial values,
+  and traceback text are never serialized.
+
+TDD reproduced the four findings before implementation: parallel
+`django.server` output, HTML downstream 500, absent diagnostics, and duplicated
+OpenAPI expectations. The final focused observability/error/OpenAPI run is 24
+tests PASS. The final full suite is 270 tests PASS in 122.667 seconds with 97%
+coverage (`5423` statements, `166` missed); the focused changed modules and tests
+are 98% combined. Production deploy checks, repository Ruff, and diff checks all
+pass. Auto-review also made downstream fallback access events report
+`internal_error` instead of a null error code.

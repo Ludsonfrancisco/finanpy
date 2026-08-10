@@ -111,13 +111,20 @@ O evento não inclui query string, corpo ou headers e não inclui email, CPF,
 token, saldo, valor, descrição, arquivo ou payload de provedor. Retenção,
 coleta centralizada, métricas e alertas ainda não foram implantados.
 
-Os loggers `django`, `django.request`, `django.server` e `django.security` usam
-stdout JSON seguro com timestamp, nível, nome do logger, status e request ID.
-Esse formatter não serializa mensagem, argumentos, traceback, target da
-requisição ou headers. Registros genéricos de `django.request` e `django.server`
-para `/api/v1/` são filtrados porque o access log `lar_finance.api` já preserva
-status, correlação e código de erro; assim cada acesso da API produz uma única
-evidência, enquanto eventos de segurança e requisições web continuam registrados.
+Os loggers `django`, `django.request` e `django.security` usam stdout JSON seguro
+com timestamp, nível, nome do logger, status e request ID. Esse formatter não
+serializa mensagem, argumentos, traceback, target da requisição ou headers.
+`django.server` usa um handler nulo para não criar access output paralelo; o
+access log `lar_finance.api` é a única evidência de acesso da API. Registros de
+`django.request` sob `/api/v1/` também são filtrados, enquanto eventos de
+segurança e requisições web continuam registrados.
+
+Falhas internas produzem ainda um evento diagnóstico JSON separado e único por
+requisição, contendo request ID, tipo permitido do evento, tipo qualificado da
+exceção e fingerprint estável. A fingerprint usa somente o tipo e a localização
+estrutural do código; mensagem, argumentos, payload e traceback não são emitidos.
+Se uma falha após o dispatch produzir resposta 5xx fora do contrato, a camada
+externa a substitui pelo `ErrorEnvelope` estável com código `internal_error`.
 
 ### Métricas
 

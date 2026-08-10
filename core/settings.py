@@ -206,12 +206,23 @@ LOGGING = {
         'safe_django_json': {
             '()': 'api.logging.SafeDjangoFormatter',
         },
+        'api_diagnostic_json': {
+            '()': 'api.logging.DiagnosticJsonFormatter',
+        },
     },
     'handlers': {
         'api_stdout': {
             'class': 'logging.StreamHandler',
             'formatter': 'api_json',
             'stream': 'ext://sys.stdout',
+        },
+        'api_diagnostic_stdout': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'api_diagnostic_json',
+            'stream': 'ext://sys.stdout',
+        },
+        'null': {
+            'class': 'logging.NullHandler',
         },
         'safe_django_stdout': {
             'class': 'logging.StreamHandler',
@@ -231,6 +242,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'lar_finance.api.diagnostic': {
+            'handlers': ['api_diagnostic_stdout'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
         'django': {
             'handlers': ['safe_django_stdout'],
             'level': 'WARNING',
@@ -242,7 +258,7 @@ LOGGING = {
             'propagate': False,
         },
         'django.server': {
-            'handlers': ['safe_django_request_stdout'],
+            'handlers': ['null'],
             'level': 'WARNING',
             'propagate': False,
         },
