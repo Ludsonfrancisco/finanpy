@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, Sum
 
@@ -24,9 +25,19 @@ class Account(models.Model):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='accounts',
         verbose_name='usuário',
+    )
+    household = models.ForeignKey(
+        'households.Household',
+        on_delete=models.PROTECT,
+        related_name='accounts',
+    )
+    financial_owner = models.ForeignKey(
+        'households.FinancialOwner',
+        on_delete=models.PROTECT,
+        related_name='accounts',
     )
     name = models.CharField(max_length=120, verbose_name='nome')
     type = models.CharField(
@@ -52,6 +63,26 @@ class Account(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.user_id and self.household_id:
+            from households.validators import has_active_household_membership
+
+            if not has_active_household_membership(
+                user_id=self.user_id,
+                household_id=self.household_id,
+            ):
+                errors['user'] = 'Usuário sem associação ativa neste Lar.'
+        if (
+            self.household_id
+            and self.financial_owner_id
+            and self.financial_owner.household_id != self.household_id
+        ):
+            errors['financial_owner'] = 'Responsável pertence a outro Lar.'
+        if errors:
+            raise ValidationError(errors)
 
     @property
     def current_balance(self):

@@ -1,5 +1,7 @@
 from django import forms
 
+from households.forms import HouseholdModelFormMixin
+
 from .models import Account
 
 _INPUT_CLASSES = (
@@ -10,7 +12,7 @@ _INPUT_CLASSES = (
 )
 
 
-class AccountForm(forms.ModelForm):
+class AccountForm(HouseholdModelFormMixin, forms.ModelForm):
     class Meta:
         model = Account
         fields = ['name', 'type', 'initial_balance', 'currency']

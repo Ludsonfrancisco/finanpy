@@ -1,8 +1,12 @@
 import { chromium } from 'playwright';
 
-const BASE = 'http://localhost:8000';
-const EMAIL = 'admin@admin.com';
-const PASS  = 'admin';
+const BASE = (process.env.FINANPY_QA_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+const EMAIL = process.env.FINANPY_QA_EMAIL;
+const PASS = process.env.FINANPY_QA_PASSWORD;
+
+if (!EMAIL || !PASS) {
+  throw new Error('FINANPY_QA_EMAIL and FINANPY_QA_PASSWORD are required.');
+}
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
@@ -98,7 +102,7 @@ function reportForm(formName, steps, requiredNames) {
 // ─── auth helper ───────────────────────────────────────────────────────────
 
 async function login(page) {
-  await page.goto(`${BASE}/users/login/`);
+  await page.goto(`${BASE}/login/`);
   await page.fill('input[name="username"]', EMAIL);
   await page.fill('input[name="password"]', PASS);
   await page.click('button[type="submit"]');
@@ -114,23 +118,13 @@ async function login(page) {
   const allResults = [];
 
   // ── 1. Signup form ────────────────────────────────────────────────────────
-  console.log('\n=== 1. Signup form (/users/signup/) ===');
-  await page.goto(`${BASE}/users/signup/`);
-  const signupSteps = await tabThrough(page, 30);
-  console.log('Focused elements:', signupSteps.map(describeEl));
-  allResults.push(reportForm(
-    '/users/signup/',
-    signupSteps,
-    ['email', 'password', 'confirm']
-  ));
-
   // ── 2. Login form ─────────────────────────────────────────────────────────
-  console.log('\n=== 2. Login form (/users/login/) ===');
-  await page.goto(`${BASE}/users/login/`);
+  console.log('\n=== 1. Login form (/login/) ===');
+  await page.goto(`${BASE}/login/`);
   const loginSteps = await tabThrough(page, 20);
   console.log('Focused elements:', loginSteps.map(describeEl));
   allResults.push(reportForm(
-    '/users/login/',
+    '/login/',
     loginSteps,
     ['email', 'password']
   ));
@@ -139,12 +133,12 @@ async function login(page) {
   await login(page);
 
   // ── 3. Create Account ─────────────────────────────────────────────────────
-  console.log('\n=== 3. Create Account (/accounts/create/) ===');
-  await page.goto(`${BASE}/accounts/create/`);
+  console.log('\n=== 2. Create Account (/accounts/new/) ===');
+  await page.goto(`${BASE}/accounts/new/`);
   const accCreateSteps = await tabThrough(page, 30);
   console.log('Focused elements:', accCreateSteps.map(describeEl));
   allResults.push(reportForm(
-    '/accounts/create/',
+    '/accounts/new/',
     accCreateSteps,
     ['name', 'balance']
   ));
@@ -170,23 +164,23 @@ async function login(page) {
   }
 
   // ── 5. Create Category ────────────────────────────────────────────────────
-  console.log('\n=== 5. Create Category (/categories/create/) ===');
-  await page.goto(`${BASE}/categories/create/`);
+  console.log('\n=== 4. Create Category (/categories/novo/) ===');
+  await page.goto(`${BASE}/categories/novo/`);
   const catCreateSteps = await tabThrough(page, 30);
   console.log('Focused elements:', catCreateSteps.map(describeEl));
   allResults.push(reportForm(
-    '/categories/create/',
+    '/categories/novo/',
     catCreateSteps,
     ['name', 'type']
   ));
 
   // ── 6. Create Transaction ─────────────────────────────────────────────────
-  console.log('\n=== 6. Create Transaction (/transactions/create/) ===');
-  await page.goto(`${BASE}/transactions/create/`);
+  console.log('\n=== 5. Create Transaction (/transacoes/nova/) ===');
+  await page.goto(`${BASE}/transacoes/nova/`);
   const txSteps = await tabThrough(page, 40);
   console.log('Focused elements:', txSteps.map(describeEl));
   allResults.push(reportForm(
-    '/transactions/create/',
+    '/transacoes/nova/',
     txSteps,
     ['title', 'amount', 'date', 'account', 'category']
   ));
