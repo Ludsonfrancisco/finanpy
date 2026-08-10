@@ -70,7 +70,7 @@ INSTALLED_APPS = [
     'users',
     'ai',
     'api',
-    'sync',
+    'sync.apps.SyncConfig',
 ]
 
 MIDDLEWARE = [
