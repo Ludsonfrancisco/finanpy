@@ -2,6 +2,7 @@ from django import forms
 
 from accounts.models import Account
 from categories.models import Category
+from households.forms import HouseholdModelFormMixin
 
 from .models import Transaction
 
@@ -13,7 +14,7 @@ _INPUT_CLASSES = (
 )
 
 
-class TransactionForm(forms.ModelForm):
+class TransactionForm(HouseholdModelFormMixin, forms.ModelForm):
     class Meta:
         model = Transaction
         fields = ['account', 'category', 'description', 'amount', 'date', 'type']

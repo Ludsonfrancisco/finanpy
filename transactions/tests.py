@@ -1,5 +1,6 @@
 import datetime
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -219,6 +220,34 @@ class TransactionViewTest(TestCase):
         self.assertRedirects(response, '/transacoes/')
         self.tx.refresh_from_db()
         self.assertEqual(self.tx.description, 'Atualizado')
+
+    def test_create_transaction_with_revoked_membership_shows_form_error(self):
+        with patch(
+            'households.validators.has_active_household_membership',
+            return_value=False,
+        ):
+            response = self.client.post('/transacoes/nova/', self._post_data())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.assertFalse(
+            Transaction.objects.filter(description='Nova transação').exists()
+        )
+
+    def test_update_transaction_with_revoked_membership_preserves_data(self):
+        with patch(
+            'households.validators.has_active_household_membership',
+            return_value=False,
+        ):
+            response = self.client.post(
+                f'/transacoes/{self.tx.pk}/editar/',
+                self._post_data(description='Transação bloqueada'),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.tx.refresh_from_db()
+        self.assertNotEqual(self.tx.description, 'Transação bloqueada')
 
     def test_update_account_preserves_existing_financial_owner(self):
         self_owner = self.household.financial_owners.get(type='self')

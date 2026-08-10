@@ -1,5 +1,6 @@
 import datetime
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -133,6 +134,39 @@ class AccountViewTest(TestCase):
         self.assertRedirects(response, '/accounts/')
         self.account.refresh_from_db()
         self.assertEqual(self.account.name, 'Conta Atualizada')
+
+    def test_create_account_with_revoked_membership_shows_form_error(self):
+        with patch(
+            'households.validators.has_active_household_membership',
+            return_value=False,
+        ):
+            response = self.client.post('/accounts/new/', {
+                'name': 'Conta bloqueada',
+                'type': Account.SAVINGS,
+                'initial_balance': '1000.00',
+                'currency': 'BRL',
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.assertFalse(Account.objects.filter(name='Conta bloqueada').exists())
+
+    def test_update_account_with_revoked_membership_preserves_data(self):
+        with patch(
+            'households.validators.has_active_household_membership',
+            return_value=False,
+        ):
+            response = self.client.post(f'/accounts/{self.account.pk}/edit/', {
+                'name': 'Conta bloqueada',
+                'type': Account.CHECKING,
+                'initial_balance': '500.00',
+                'currency': 'BRL',
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.name, 'Minha Conta')
 
     def test_delete_account(self):
         response = self.client.post(f'/accounts/{self.account.pk}/delete/')

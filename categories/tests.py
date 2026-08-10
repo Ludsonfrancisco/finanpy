@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.test import TestCase
@@ -160,6 +162,39 @@ class CategoryViewTest(TestCase):
         self.assertRedirects(response, '/categories/')
         self.category.refresh_from_db()
         self.assertEqual(self.category.name, 'Lazer Atualizado')
+
+    def test_create_category_with_revoked_membership_shows_form_error(self):
+        with patch(
+            'households.validators.has_active_household_membership',
+            return_value=False,
+        ):
+            response = self.client.post('/categories/novo/', {
+                'name': 'Categoria bloqueada',
+                'type': Category.EXPENSE,
+                'color': '#10b981',
+                'icon': '',
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.assertFalse(Category.objects.filter(name='Categoria bloqueada').exists())
+
+    def test_update_category_with_revoked_membership_preserves_data(self):
+        with patch(
+            'households.validators.has_active_household_membership',
+            return_value=False,
+        ):
+            response = self.client.post(f'/categories/{self.category.pk}/editar/', {
+                'name': 'Categoria bloqueada',
+                'type': Category.EXPENSE,
+                'color': '#10b981',
+                'icon': '',
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.category.refresh_from_db()
+        self.assertEqual(self.category.name, 'Lazer')
 
     def test_delete_category(self):
         response = self.client.post(f'/categories/{self.category.pk}/excluir/')

@@ -197,12 +197,45 @@ class HouseholdIntegrityCommandTest(TestCase):
         call_command('audit_household_integrity', stdout=stdout)
 
         output = stdout.getvalue()
+        self.assertIn('duplicate_household_user_pairs=0', output)
+        self.assertIn('multiple_active_memberships=0', output)
         self.assertIn('legacy_account_user_membership=0', output)
         self.assertIn('transaction_account_household=0', output)
         self.assertIn('integrity_status=ok', output)
         self.assertNotIn(self.user.email, output)
         self.assertNotIn(self.account.name, output)
         self.assertEqual(self._snapshot(), before)
+
+    def test_audit_reports_each_required_owner_type(self):
+        for owner_type in (
+            FinancialOwner.SELF,
+            FinancialOwner.SPOUSE,
+            FinancialOwner.SHARED,
+        ):
+            with self.subTest(owner_type=owner_type):
+                owner = FinancialOwner.objects.get(
+                    household=self.household,
+                    type=owner_type,
+                )
+                owner.is_active = False
+                owner.save(update_fields=['is_active'])
+                stdout = StringIO()
+                stderr = StringIO()
+
+                with self.assertRaises(CommandError):
+                    call_command(
+                        'audit_household_integrity',
+                        stdout=stdout,
+                        stderr=stderr,
+                    )
+
+                output = stdout.getvalue() + stderr.getvalue()
+                self.assertIn(
+                    f'inactive_or_missing_owner_{owner_type}=1',
+                    output,
+                )
+                owner.is_active = True
+                owner.save(update_fields=['is_active'])
 
     def test_audit_reports_all_ledger_mismatch_families_without_pii(self):
         outsider = User.objects.create_user(
