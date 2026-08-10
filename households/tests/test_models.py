@@ -1,7 +1,7 @@
 import threading
 
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError, close_old_connections
+from django.db import IntegrityError, close_old_connections, models
 from django.test import TestCase, TransactionTestCase
 
 from households.models import FinancialOwner, Household, HouseholdMembership
@@ -57,7 +57,7 @@ class HouseholdModelTest(TestCase):
                 name='Outro conjunto',
             )
 
-    def test_user_cannot_belong_to_two_households(self):
+    def test_user_cannot_have_two_active_household_memberships(self):
         ensure_household_for_user(self.user)
         another_household = Household.objects.create(name='Outro Lar')
 
@@ -67,6 +67,51 @@ class HouseholdModelTest(TestCase):
                 user=self.user,
                 role=HouseholdMembership.ADMIN,
             )
+
+    def test_user_can_keep_inactive_membership_history_with_one_active(self):
+        historical_household = ensure_household_for_user(self.user)
+        historical_membership = HouseholdMembership.objects.get(user=self.user)
+        historical_membership.is_active = False
+        historical_membership.save(update_fields=['is_active'])
+        active_household = Household.objects.create(name='Lar Atual')
+
+        active_membership = HouseholdMembership.objects.create(
+            household=active_household,
+            user=self.user,
+            role=HouseholdMembership.ADMIN,
+        )
+
+        self.assertEqual(active_membership.household, active_household)
+        self.assertEqual(
+            HouseholdMembership.objects.filter(user=self.user).count(),
+            2,
+        )
+        self.assertTrue(
+            HouseholdMembership.objects.filter(
+                user=self.user,
+                household=historical_household,
+                is_active=False,
+            ).exists()
+        )
+
+    def test_membership_model_declares_pair_and_partial_active_constraints(self):
+        constraints = {
+            constraint.name: constraint
+            for constraint in HouseholdMembership._meta.constraints
+        }
+
+        self.assertEqual(
+            constraints['unique_household_membership'].fields,
+            ('household', 'user'),
+        )
+        active_constraint = constraints[
+            'unique_active_household_membership_user'
+        ]
+        self.assertEqual(active_constraint.fields, ('user',))
+        self.assertEqual(
+            active_constraint.condition,
+            models.Q(is_active=True),
+        )
 
     def test_bootstrap_reactivates_existing_inactive_household(self):
         household = ensure_household_for_user(self.user)
@@ -85,6 +130,68 @@ class HouseholdModelTest(TestCase):
         self.assertTrue(membership.is_active)
         self.assertEqual(HouseholdMembership.objects.filter(user=self.user).count(), 1)
         self.assertEqual(FinancialOwner.objects.filter(household=household).count(), 3)
+
+    def test_bootstrap_prefers_active_membership_over_older_inactive_history(self):
+        historical_household = Household.objects.create(name='Lar HistÃ³rico')
+        historical_membership = HouseholdMembership.objects.create(
+            household=historical_household,
+            user=self.user,
+            role=HouseholdMembership.ADMIN,
+            is_active=False,
+        )
+        active_household = Household.objects.create(name='Lar Atual')
+        active_membership = HouseholdMembership.objects.create(
+            household=active_household,
+            user=self.user,
+            role=HouseholdMembership.ADMIN,
+            is_active=True,
+        )
+
+        restored_household = ensure_household_for_user(self.user)
+
+        historical_membership.refresh_from_db()
+        active_membership.refresh_from_db()
+        self.assertEqual(restored_household, active_household)
+        self.assertFalse(historical_membership.is_active)
+        self.assertTrue(active_membership.is_active)
+        self.assertEqual(
+            FinancialOwner.objects.filter(household=active_household).count(),
+            3,
+        )
+        self.assertFalse(
+            FinancialOwner.objects.filter(household=historical_household).exists()
+        )
+
+    def test_bootstrap_rejects_ambiguous_inactive_membership_history(self):
+        for name in ('Lar HistÃ³rico Um', 'Lar HistÃ³rico Dois'):
+            HouseholdMembership.objects.create(
+                household=Household.objects.create(name=name),
+                user=self.user,
+                role=HouseholdMembership.ADMIN,
+                is_active=False,
+            )
+        before_memberships = list(
+            HouseholdMembership.objects.filter(user=self.user)
+            .order_by('pk')
+            .values('pk', 'household_id', 'is_active')
+        )
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            'multiple inactive household memberships',
+        ) as caught:
+            ensure_household_for_user(self.user)
+
+        self.assertNotIn(self.user.email, str(caught.exception))
+        self.assertEqual(
+            list(
+                HouseholdMembership.objects.filter(user=self.user)
+                .order_by('pk')
+                .values('pk', 'household_id', 'is_active')
+            ),
+            before_memberships,
+        )
+        self.assertFalse(FinancialOwner.objects.exists())
 
     def test_bootstrap_restores_missing_and_inactive_owners_with_canonical_names(self):
         household = ensure_household_for_user(self.user)

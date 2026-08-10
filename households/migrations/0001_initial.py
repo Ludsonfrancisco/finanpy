@@ -57,7 +57,7 @@ class Migration(migrations.Migration):
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='household_memberships', to=settings.AUTH_USER_MODEL)),
             ],
             options={
-                'constraints': [models.UniqueConstraint(fields=('user',), name='unique_household_membership_user')],
+                'constraints': [models.UniqueConstraint(fields=('household', 'user'), name='unique_household_membership')],
             },
         ),
     ]

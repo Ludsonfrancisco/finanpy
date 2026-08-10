@@ -1,6 +1,6 @@
 import uuid
 
-from django.db import migrations
+from django.db import migrations, models
 
 
 OWNER_NAMES = {
@@ -24,6 +24,7 @@ def forwards(apps, schema_editor):
     Account = apps.get_model('accounts', 'Account')
     Category = apps.get_model('categories', 'Category')
     Transaction = apps.get_model('transactions', 'Transaction')
+    database_alias = schema_editor.connection.alias
 
     preflight_counts = {
         'households': Household.objects.count(),
@@ -38,6 +39,16 @@ def forwards(apps, schema_editor):
         'transactions.financial_owner': Transaction.objects.filter(
             financial_owner__isnull=False
         ).count(),
+        'transactions.account_user_mismatch': (
+            Transaction.objects.using(database_alias)
+            .exclude(user_id=models.F('account__user_id'))
+            .count()
+        ),
+        'transactions.category_user_mismatch': (
+            Transaction.objects.using(database_alias)
+            .exclude(user_id=models.F('category__user_id'))
+            .count()
+        ),
     }
     inconsistencies = {
         inconsistency: count

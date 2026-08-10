@@ -39,9 +39,14 @@ class HouseholdMembership(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
+                fields=['household', 'user'],
+                name='unique_household_membership',
+            ),
+            models.UniqueConstraint(
                 fields=['user'],
-                name='unique_household_membership_user',
-            )
+                condition=models.Q(is_active=True),
+                name='unique_active_household_membership_user',
+            ),
         ]
 
 

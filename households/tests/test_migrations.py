@@ -89,6 +89,13 @@ class BackfillExistingFinancialDataMigrationTest(TransactionTestCase):
         Transaction = self.old_apps.get_model('transactions', 'Transaction')
         Household = self.old_apps.get_model('households', 'Household')
 
+        for transaction in Transaction.objects.order_by('pk'):
+            Account.objects.filter(pk=transaction.account_id).update(
+                user_id=transaction.user_id,
+            )
+            Category.objects.filter(pk=transaction.category_id).update(
+                user_id=transaction.user_id,
+            )
         Account.objects.update(household=None, financial_owner=None)
         Category.objects.update(household=None)
         Transaction.objects.update(household=None, financial_owner=None)
@@ -123,8 +130,28 @@ class BackfillExistingFinancialDataMigrationTest(TransactionTestCase):
             for label, (app_label, model_name) in model_names.items()
         }
 
+    def _schema_snapshot(self):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT type, name, tbl_name, sql
+                FROM sqlite_master
+                WHERE tbl_name IN (
+                    'households_household',
+                    'households_householdmembership',
+                    'households_financialowner',
+                    'accounts_account',
+                    'categories_category',
+                    'transactions_transaction'
+                )
+                ORDER BY type, name
+                """
+            )
+            return cursor.fetchall()
+
     def _assert_preflight_aborts_without_changes(self, expected_counts):
         before = self._database_snapshot()
+        before_schema = self._schema_snapshot()
 
         with self.assertRaises(RuntimeError) as caught:
             self._migrate_to_backfill()
@@ -137,6 +164,7 @@ class BackfillExistingFinancialDataMigrationTest(TransactionTestCase):
         self.assertNotIn('Conta Legada', message)
         self.assertNotIn('875.25', message)
         self.assertEqual(self._database_snapshot(), before)
+        self.assertEqual(self._schema_snapshot(), before_schema)
         self.assertFalse(self._migration_is_applied())
 
     def test_backfills_every_user_and_reverses_without_data_loss(self):
@@ -191,6 +219,22 @@ class BackfillExistingFinancialDataMigrationTest(TransactionTestCase):
         self.assertEqual(transaction.amount, Decimal('125.50'))
         self.assertEqual(transaction.account_id, self.account_id)
         self.assertEqual(transaction.category_id, self.category_id)
+        self.assertEqual(
+            transaction.household_id,
+            transaction.account.household_id,
+        )
+        self.assertEqual(
+            transaction.household_id,
+            transaction.category.household_id,
+        )
+        self.assertEqual(
+            transaction.household_id,
+            transaction.financial_owner.household_id,
+        )
+        self.assertEqual(
+            account.household_id,
+            account.financial_owner.household_id,
+        )
 
         unmarked_household = Household.objects.create(name='Unmarked post-migration household')
         unmarked_household_id = unmarked_household.pk
@@ -287,6 +331,48 @@ class BackfillExistingFinancialDataMigrationTest(TransactionTestCase):
                 'categories.household': 1,
                 'transactions.financial_owner': 1,
             }
+        )
+
+    def test_preflight_aborts_for_transaction_account_user_mismatch(self):
+        User = self.old_apps.get_model('users', 'User')
+        Account = self.old_apps.get_model('accounts', 'Account')
+        Transaction = self.old_apps.get_model('transactions', 'Transaction')
+        other_user = User.objects.create(
+            email='other-account-owner@example.com',
+            password='other-password-hash',
+        )
+        other_account = Account.objects.create(
+            user=other_user,
+            name='Conta de outro usuÃ¡rio',
+            initial_balance=Decimal('10.00'),
+        )
+        Transaction.objects.filter(pk=self.transaction_id).update(
+            account=other_account,
+        )
+
+        self._assert_preflight_aborts_without_changes(
+            {'transactions.account_user_mismatch': 1}
+        )
+
+    def test_preflight_aborts_for_transaction_category_user_mismatch(self):
+        User = self.old_apps.get_model('users', 'User')
+        Category = self.old_apps.get_model('categories', 'Category')
+        Transaction = self.old_apps.get_model('transactions', 'Transaction')
+        other_user = User.objects.create(
+            email='other-category-owner@example.com',
+            password='other-password-hash',
+        )
+        other_category = Category.objects.create(
+            user=other_user,
+            name='Categoria de outro usuÃ¡rio',
+            type='expense',
+        )
+        Transaction.objects.filter(pk=self.transaction_id).update(
+            category=other_category,
+        )
+
+        self._assert_preflight_aborts_without_changes(
+            {'transactions.category_user_mismatch': 1}
         )
 
 

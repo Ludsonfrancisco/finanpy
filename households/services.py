@@ -16,6 +16,10 @@ _SQLITE_USER_LOCKS = {}
 _SQLITE_USER_LOCKS_GUARD = threading.Lock()
 
 
+class HouseholdBootstrapError(RuntimeError):
+    pass
+
+
 def _get_sqlite_user_lock(user_pk):
     with _SQLITE_USER_LOCKS_GUARD:
         lock, references = _SQLITE_USER_LOCKS.get(user_pk, (threading.Lock(), 0))
@@ -50,12 +54,29 @@ def ensure_household_for_user(user):
 @transaction.atomic
 def _ensure_household_for_user(user):
     locked_user = user.__class__.objects.select_for_update().get(pk=user.pk)
+    memberships = HouseholdMembership.objects.select_related('household').filter(
+        user=locked_user,
+    )
     membership = (
-        HouseholdMembership.objects.select_related('household')
-        .filter(user=locked_user)
+        memberships
+        .filter(is_active=True)
         .order_by('pk')
         .first()
     )
+    if membership is None:
+        inactive_memberships = list(
+            memberships
+            .filter(is_active=False)
+            .order_by('pk')[:2]
+        )
+        if len(inactive_memberships) > 1:
+            raise HouseholdBootstrapError(
+                'multiple inactive household memberships require explicit '
+                'administrative selection'
+            )
+        if inactive_memberships:
+            membership = inactive_memberships[0]
+
     if membership:
         household = membership.household
         if not household.is_active:
