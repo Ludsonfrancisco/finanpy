@@ -94,3 +94,20 @@ coverage (`5423` statements, `166` missed); the focused changed modules and test
 are 98% combined. Production deploy checks, repository Ruff, and diff checks all
 pass. Auto-review also made downstream fallback access events report
 `internal_error` instead of a null error code.
+
+## Device-authentication contract binding
+
+The runtime OpenAPI gate now resolves each view's explicit authentication and
+permission overrides through its class hierarchy, falling back to DRF's
+`DEFAULT_AUTHENTICATION_CLASSES` and `DEFAULT_PERMISSION_CLASSES`. Public
+operations must have no authentication classes and exactly `AllowAny`; every
+private operation must use only `DeviceTokenAuthentication` before it can map to
+the documented `opaqueBearer` scheme. A resolver-callback regression replaces a
+private view's authentication with `SessionAuthentication` and proves the gate
+rejects it.
+
+TDD evidence: the new regression failed because the previous helper assumed any
+non-public view was opaque bearer, then passed after effective authentication
+validation was added. Final focused OpenAPI/observability/error suite: 25 PASS.
+Final full suite: 271 PASS in 111.180 seconds. Repository Ruff and diff checks:
+PASS.

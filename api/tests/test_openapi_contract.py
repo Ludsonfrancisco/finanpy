@@ -1,10 +1,16 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 from django.conf import settings
 from django.test import SimpleTestCase
 from django.urls import URLPattern, URLResolver, get_resolver
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny
+from rest_framework.settings import api_settings
+from rest_framework.views import APIView
+
+from api.authentication import DeviceTokenAuthentication
 
 OPENAPI_EXPECTATIONS = (
     ('version', '3.1.0'),
@@ -32,6 +38,42 @@ REQUIRED_SCHEMAS = {
 OPENAPI_HTTP_METHODS = {'get', 'post', 'put', 'patch', 'delete'}
 
 
+def effective_view_setting(view_class, setting_name, default):
+    for parent in view_class.__mro__:
+        if parent is APIView:
+            break
+        if setting_name in parent.__dict__:
+            return parent.__dict__[setting_name]
+    return default
+
+
+def runtime_security(view_class, route):
+    authentication_classes = tuple(
+        effective_view_setting(
+            view_class,
+            'authentication_classes',
+            api_settings.DEFAULT_AUTHENTICATION_CLASSES,
+        )
+    )
+    permission_classes = tuple(
+        effective_view_setting(
+            view_class,
+            'permission_classes',
+            api_settings.DEFAULT_PERMISSION_CLASSES,
+        )
+    )
+    if not authentication_classes and permission_classes == (AllowAny,):
+        return []
+
+    assert authentication_classes == (DeviceTokenAuthentication,), (
+        f'{route} must use only DeviceTokenAuthentication.'
+    )
+    assert AllowAny not in permission_classes, (
+        f'{route} cannot combine private device authentication with AllowAny.'
+    )
+    return [{'opaqueBearer': []}]
+
+
 def runtime_api_operations(patterns=None, prefix=''):
     patterns = patterns or get_resolver().url_patterns
     operations = {}
@@ -49,16 +91,9 @@ def runtime_api_operations(patterns=None, prefix=''):
                 if method in OPENAPI_HTTP_METHODS
                 and callable(getattr(view_class, method, None))
             }
-            is_public = (
-                not view_class.authentication_classes
-                and any(
-                    issubclass(permission, AllowAny)
-                    for permission in view_class.permission_classes
-                )
-            )
+            security = runtime_security(view_class, normalized)
             operations[normalized] = {
-                method: [] if is_public else [{'opaqueBearer': []}]
-                for method in methods
+                method: security for method in methods
             }
     return operations
 
@@ -118,6 +153,20 @@ class OpenApiContractTest(SimpleTestCase):
                         self.contract['paths'][path][method].get('security'),
                         expected,
                     )
+
+    def test_runtime_contract_rejects_non_device_authentication(self):
+        callback = get_resolver().resolve('/api/v1/devices/').func
+
+        with patch.object(
+            callback.view_class,
+            'authentication_classes',
+            [SessionAuthentication],
+        ):
+            with self.assertRaisesRegex(
+                AssertionError,
+                'DeviceTokenAuthentication',
+            ):
+                runtime_api_operations()
 
     def test_every_response_documents_request_id_header(self):
         components = self.contract['components']['responses']
