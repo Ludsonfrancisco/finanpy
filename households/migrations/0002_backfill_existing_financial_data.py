@@ -25,10 +25,36 @@ def forwards(apps, schema_editor):
     Category = apps.get_model('categories', 'Category')
     Transaction = apps.get_model('transactions', 'Transaction')
 
-    for user in User.objects.order_by('pk').iterator():
-        if Membership.objects.filter(user_id=user.pk).exists():
-            continue
+    preflight_counts = {
+        'households': Household.objects.count(),
+        'memberships': Membership.objects.count(),
+        'financial_owners': Owner.objects.count(),
+        'accounts.household': Account.objects.filter(household__isnull=False).count(),
+        'accounts.financial_owner': Account.objects.filter(
+            financial_owner__isnull=False
+        ).count(),
+        'categories.household': Category.objects.filter(household__isnull=False).count(),
+        'transactions.household': Transaction.objects.filter(household__isnull=False).count(),
+        'transactions.financial_owner': Transaction.objects.filter(
+            financial_owner__isnull=False
+        ).count(),
+    }
+    inconsistencies = {
+        inconsistency: count
+        for inconsistency, count in preflight_counts.items()
+        if count
+    }
+    if inconsistencies:
+        details = ', '.join(
+            f'{inconsistency}={count}'
+            for inconsistency, count in inconsistencies.items()
+        )
+        raise RuntimeError(
+            'household backfill preflight failed: expected empty household tables '
+            f'and null ledger links; found {details}'
+        )
 
+    for user in User.objects.order_by('pk').iterator():
         household = Household.objects.create(
             uuid=backfill_household_uuid(user.pk),
             name='Lar Finance',
@@ -47,14 +73,14 @@ def forwards(apps, schema_editor):
             for owner_type, name in OWNER_NAMES.items()
         }
         shared = owners['shared']
-        Account.objects.filter(user_id=user.pk, household__isnull=True).update(
+        Account.objects.filter(user_id=user.pk).update(
             household=household,
             financial_owner=shared,
         )
-        Category.objects.filter(user_id=user.pk, household__isnull=True).update(
+        Category.objects.filter(user_id=user.pk).update(
             household=household,
         )
-        Transaction.objects.filter(user_id=user.pk, household__isnull=True).update(
+        Transaction.objects.filter(user_id=user.pk).update(
             household=household,
             financial_owner=shared,
         )
