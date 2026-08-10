@@ -12,9 +12,10 @@ OWNER_NAMES = {
 
 @transaction.atomic
 def ensure_household_for_user(user):
+    locked_user = user.__class__.objects.select_for_update().get(pk=user.pk)
     membership = (
         HouseholdMembership.objects.select_related('household')
-        .filter(user=user, is_active=True, household__is_active=True)
+        .filter(user=locked_user, is_active=True, household__is_active=True)
         .order_by('pk')
         .first()
     )
@@ -24,7 +25,7 @@ def ensure_household_for_user(user):
         household = Household.objects.create(name='Lar Finance')
         HouseholdMembership.objects.create(
             household=household,
-            user=user,
+            user=locked_user,
             role=HouseholdMembership.ADMIN,
         )
 

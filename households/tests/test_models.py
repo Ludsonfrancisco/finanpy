@@ -53,6 +53,17 @@ class HouseholdModelTest(TestCase):
                 name='Outro conjunto',
             )
 
+    def test_user_cannot_belong_to_two_households(self):
+        ensure_household_for_user(self.user)
+        another_household = Household.objects.create(name='Outro Lar')
+
+        with self.assertRaises(IntegrityError):
+            HouseholdMembership.objects.create(
+                household=another_household,
+                user=self.user,
+                role=HouseholdMembership.ADMIN,
+            )
+
     def test_get_household_for_user_returns_active_household(self):
         household = ensure_household_for_user(self.user)
 
