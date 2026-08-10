@@ -62,7 +62,7 @@
 - Produces: `get_financial_owner(household, owner_type=FinancialOwner.SHARED) -> FinancialOwner`.
 - Later tasks consume `Household`, `FinancialOwner` and these three functions.
 
-- [ ] **Step 1: Criar os testes que descrevem as invariantes**
+- [x] **Step 1: Criar os testes que descrevem as invariantes**
 
 Criar `households/tests/test_models.py`:
 
@@ -119,7 +119,7 @@ class HouseholdModelTest(TestCase):
             )
 ```
 
-- [ ] **Step 2: Executar o teste e confirmar a falha esperada**
+- [x] **Step 2: Executar o teste e confirmar a falha esperada**
 
 Run:
 
@@ -130,7 +130,7 @@ $env:SECRET_KEY='local-test-only'; $env:DEBUG='True'; $env:ALLOWED_HOSTS='testse
 
 Expected: `ModuleNotFoundError: No module named 'households'`.
 
-- [ ] **Step 3: Implementar os modelos mínimos**
+- [x] **Step 3: Implementar os modelos mínimos**
 
 Criar `households/models.py`:
 
@@ -230,7 +230,7 @@ class HouseholdsConfig(AppConfig):
     name = 'households'
 ```
 
-- [ ] **Step 4: Implementar o serviço idempotente**
+- [x] **Step 4: Implementar o serviço idempotente**
 
 Criar `households/services.py`:
 
@@ -293,7 +293,7 @@ def get_financial_owner(household, owner_type=FinancialOwner.SHARED):
     )
 ```
 
-- [ ] **Step 5: Registrar os modelos no admin**
+- [x] **Step 5: Registrar os modelos no admin**
 
 Criar `households/admin.py`:
 
@@ -324,7 +324,7 @@ class FinancialOwnerAdmin(admin.ModelAdmin):
     search_fields = ('name', 'uuid', 'household__name')
 ```
 
-- [ ] **Step 6: Gerar e inspecionar a migration inicial**
+- [x] **Step 6: Gerar e inspecionar a migration inicial**
 
 Run:
 
@@ -335,7 +335,7 @@ Run:
 
 Expected: criação de três tabelas, UUIDs únicos e duas constraints de unicidade.
 
-- [ ] **Step 7: Verificar e publicar a task**
+- [x] **Step 7: Verificar e publicar a task**
 
 Run:
 
@@ -371,7 +371,7 @@ Expected: testes verdes, sem nova migration pendente e push aceito.
 - Produces: `Account.household`, `Account.financial_owner`, `Category.household`, `Transaction.household` e `Transaction.financial_owner`, inicialmente opcionais.
 - Produces: `clean()` explícito em conta e movimentação para validar a fronteira do Lar.
 
-- [ ] **Step 1: Escrever testes de fronteira que falham**
+- [x] **Step 1: Escrever testes de fronteira que falham**
 
 Criar `households/tests/test_boundaries.py` com dois usuários, dois lares e os seguintes casos:
 
@@ -469,7 +469,7 @@ def test_transaction_rejects_owner_from_another_household(self):
         self._transaction(financial_owner=self.other_owner).full_clean()
 ```
 
-- [ ] **Step 2: Executar o teste e confirmar a falha esperada**
+- [x] **Step 2: Executar o teste e confirmar a falha esperada**
 
 Run:
 
@@ -479,7 +479,7 @@ Run:
 
 Expected: falha porque os novos campos ainda não existem.
 
-- [ ] **Step 3: Adicionar os campos opcionais**
+- [x] **Step 3: Adicionar os campos opcionais**
 
 Adicionar a `Account`:
 
@@ -531,7 +531,7 @@ financial_owner = models.ForeignKey(
 )
 ```
 
-- [ ] **Step 4: Implementar validações explícitas**
+- [x] **Step 4: Implementar validações explícitas**
 
 Adicionar a `Account.clean()`:
 
@@ -568,7 +568,7 @@ def clean(self):
 
 Importar `ValidationError` de `django.core.exceptions` nos dois arquivos.
 
-- [ ] **Step 5: Gerar as migrations opcionais**
+- [x] **Step 5: Gerar as migrations opcionais**
 
 Run:
 
@@ -581,7 +581,7 @@ Run:
 
 Expected: uma migration `0002` em cada app, sem pedido de valor padrão.
 
-- [ ] **Step 6: Verificar e publicar a task**
+- [x] **Step 6: Verificar e publicar a task**
 
 Run:
 
@@ -613,7 +613,7 @@ Expected: testes existentes continuam verdes porque os campos ainda aceitam nulo
 - Produces: um Lar, uma associação administrativa e três responsáveis para cada usuário legado.
 - Produces: todos os registros existentes preenchidos; contas e movimentações usam `shared`.
 
-- [ ] **Step 1: Escrever o teste de migration antes do backfill**
+- [x] **Step 1: Escrever o teste de migration antes do backfill**
 
 Criar `households/tests/test_migrations.py` usando `MigrationExecutor`. Migrar inicialmente para:
 
@@ -641,7 +641,7 @@ self.assertEqual(Transaction.objects.get().financial_owner.type, 'shared')
 self.assertEqual(Transaction.objects.get().amount, Decimal('125.50'))
 ```
 
-- [ ] **Step 2: Executar o teste e confirmar a falha esperada**
+- [x] **Step 2: Executar o teste e confirmar a falha esperada**
 
 Run:
 
@@ -651,7 +651,7 @@ Run:
 
 Expected: falha porque `0002_backfill_existing_financial_data` ainda não existe.
 
-- [ ] **Step 3: Criar a migration de dados reversível**
+- [x] **Step 3: Criar a migration de dados reversível**
 
 Criar `households/migrations/0002_backfill_existing_financial_data.py`:
 
@@ -736,7 +736,7 @@ class Migration(migrations.Migration):
     operations = [migrations.RunPython(forwards, backwards)]
 ```
 
-- [ ] **Step 4: Testar ida, preservação e volta**
+- [x] **Step 4: Testar ida, preservação e volta**
 
 Completar o teste com uma segunda execução do `MigrationExecutor` até o estado `migrate_from` e afirmar que conta, categoria e movimentação continuam existindo, agora com os campos novos nulos.
 
@@ -748,7 +748,7 @@ Run:
 
 Expected: backfill verde, valores preservados e reversão sem apagar o ledger legado.
 
-- [ ] **Step 5: Verificar e publicar a task**
+- [x] **Step 5: Verificar e publicar a task**
 
 Run:
 
@@ -789,7 +789,7 @@ Expected: migration test prova ida e volta sem perda.
 - Produces: `TransactionForm(..., household=household)`.
 - Mantém o painel consolidado; não adiciona filtro visual nesta task.
 
-- [ ] **Step 1: Escrever testes de escopo que falham**
+- [x] **Step 1: Escrever testes de escopo que falham**
 
 Atualizar os testes de views para criar dois usuários com lares distintos por `ensure_household_for_user()`. Criar os registros com Lar/responsável explícitos e adicionar estas afirmações:
 
@@ -807,7 +807,7 @@ def test_dashboard_consolidates_all_three_owners(self):
 
 No teste do dashboard, criar contas no mesmo Lar para “Eu”, “Esposa” e “Conjunto”; a soma esperada deve incluir todas.
 
-- [ ] **Step 2: Executar testes focados e confirmar a falha**
+- [x] **Step 2: Executar testes focados e confirmar a falha**
 
 Run:
 
@@ -817,7 +817,7 @@ Run:
 
 Expected: falhas nas novas verificações porque as queries ainda usam somente `user`.
 
-- [ ] **Step 3: Criar o mixin de contexto**
+- [x] **Step 3: Criar o mixin de contexto**
 
 Criar `households/mixins.py`:
 
@@ -835,7 +835,7 @@ class HouseholdContextMixin:
 
 Nas classes de view, manter `LoginRequiredMixin` antes de `HouseholdContextMixin` para que usuários anônimos sejam redirecionados antes da resolução do Lar.
 
-- [ ] **Step 4: Trocar queries e criação de contas/categorias**
+- [x] **Step 4: Trocar queries e criação de contas/categorias**
 
 Em `accounts/views.py`:
 
@@ -853,7 +853,7 @@ def form_valid(self, form):
 
 Em `categories/views.py`, usar o mesmo escopo e preencher `user` e `household`; categoria não recebe responsável.
 
-- [ ] **Step 5: Escopar formulário e views de movimentações**
+- [x] **Step 5: Escopar formulário e views de movimentações**
 
 Alterar `TransactionForm.__init__`:
 
@@ -879,11 +879,11 @@ form.instance.full_clean()
 
 Listagem, edição e exclusão devem filtrar por `household=self.household`.
 
-- [ ] **Step 6: Escopar e manter o dashboard consolidado**
+- [x] **Step 6: Escopar e manter o dashboard consolidado**
 
 Em `DashboardView`, resolver o Lar e substituir todos os filtros `user=user` por `household=household`. Não aplicar filtro por responsável. Manter os cálculos existentes de saldo, receitas, despesas, categorias e movimentações recentes.
 
-- [ ] **Step 7: Atualizar testes legados com contexto explícito**
+- [x] **Step 7: Atualizar testes legados com contexto explícito**
 
 Nos `setUp`, usar:
 
@@ -894,7 +894,7 @@ self.shared_owner = get_financial_owner(self.household)
 
 Criar contas e movimentações com `household=self.household` e `financial_owner=self.shared_owner`; criar categorias com `household=self.household`. Remover o teste que esperava todas as contas quando `TransactionForm` não recebia usuário e substituí-lo por um teste que espera querysets vazios sem Lar.
 
-- [ ] **Step 8: Verificar e publicar a task**
+- [x] **Step 8: Verificar e publicar a task**
 
 Run:
 
@@ -931,7 +931,7 @@ Expected: o painel soma os três responsáveis e um usuário não consulta objet
 - Produces: vínculos não nulos no banco.
 - Produces: unicidade de categoria por `(household, name, type)`.
 
-- [ ] **Step 1: Localizar criações incompatíveis antes de alterar o schema**
+- [x] **Step 1: Localizar criações incompatíveis antes de alterar o schema**
 
 Run:
 
@@ -941,7 +941,7 @@ rg -n "Account\.objects\.create|Category\.objects\.create|Transaction\.objects\.
 
 Para cada ocorrência, garantir os campos definidos na Task 4. O comando deve permanecer como checklist de revisão; não alterar arquivos de migration histórica.
 
-- [ ] **Step 2: Escrever testes de obrigatoriedade e unicidade**
+- [x] **Step 2: Escrever testes de obrigatoriedade e unicidade**
 
 Adicionar em `households/tests/test_boundaries.py`:
 
@@ -967,7 +967,7 @@ def test_categories_are_unique_inside_household(self):
         )
 ```
 
-- [ ] **Step 3: Confirmar o estado vermelho**
+- [x] **Step 3: Confirmar o estado vermelho**
 
 Run:
 
@@ -977,7 +977,7 @@ Run:
 
 Expected: o teste de obrigatoriedade falha enquanto os campos aceitam nulo.
 
-- [ ] **Step 4: Tornar campos obrigatórios e atualizar a constraint de categoria**
+- [x] **Step 4: Tornar campos obrigatórios e atualizar a constraint de categoria**
 
 Remover `null=True, blank=True` dos novos campos. Em `Category.Meta`, substituir `unique_together = ('user', 'name', 'type')` por:
 
@@ -992,7 +992,7 @@ constraints = [
 
 Manter os campos `user` existentes, sem usá-los como fronteira principal.
 
-- [ ] **Step 5: Gerar e inspecionar migrations finais**
+- [x] **Step 5: Gerar e inspecionar migrations finais**
 
 Run:
 
@@ -1007,7 +1007,7 @@ Run:
 
 Expected: alterações `NOT NULL` e troca da constraint de categoria; nenhuma operação apaga dados.
 
-- [ ] **Step 6: Verificar e publicar a task**
+- [x] **Step 6: Verificar e publicar a task**
 
 Run:
 
@@ -1040,7 +1040,7 @@ Expected: nenhum registro novo pode ser salvo sem Lar; conta e movimentação ta
 - Produces: prova de backup, migração, rollback, cobertura e sincronização remota.
 - Não altera comportamento financeiro.
 
-- [ ] **Step 1: Criar backup verificado do banco local de ensaio**
+- [x] **Step 1: Criar backup verificado do banco local de ensaio**
 
 Run:
 
@@ -1051,7 +1051,7 @@ $env:SECRET_KEY='local-test-only'; $env:DEBUG='True'; $env:ALLOWED_HOSTS='localh
 
 Expected: `Backup verified` e arquivo ignorado pelo Git.
 
-- [ ] **Step 2: Ensaiar upgrade, rollback e novo upgrade somente na cópia**
+- [x] **Step 2: Ensaiar upgrade, rollback e novo upgrade somente na cópia**
 
 Run:
 
@@ -1065,7 +1065,7 @@ $env:SQLITE_PATH='backups/sprint-1-before-migrations.sqlite3'
 
 Expected: os três comandos de migration terminam sem erro. Confirmar, com shell Django na cópia, que não há contas, categorias ou movimentações órfãs após o segundo upgrade.
 
-- [ ] **Step 3: Executar a verificação completa com cobertura**
+- [x] **Step 3: Executar a verificação completa com cobertura**
 
 Run:
 
@@ -1082,7 +1082,7 @@ git diff --check
 
 Expected: todos os testes verdes, coverage mínimo de 90%, Ruff e migrations limpos.
 
-- [ ] **Step 4: Verificar configuração equivalente à produção**
+- [x] **Step 4: Verificar configuração equivalente à produção**
 
 Run:
 
@@ -1093,7 +1093,7 @@ $env:SECRET_KEY='production-check-only-0123456789-abcdefghijklmnopqrstuvwxyz-XYZ
 
 Expected: `System check identified no issues`.
 
-- [ ] **Step 5: Documentar resultado e rollback**
+- [x] **Step 5: Documentar resultado e rollback**
 
 Atualizar `README.md` com o conceito de Lar e o comando administrativo utilizado para garantir o Lar do usuário. Criar `docs/sprints/sprint-1-household-ledger.md` contendo:
 

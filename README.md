@@ -4,6 +4,16 @@ Backend Django do Lar Finance. O nome técnico legado Finanpy ainda aparece em m
 
 O acesso é privado: não existe cadastro público. Usuários são criados pelo comando administrativo `createsuperuser` ou pelo Django Admin.
 
+## Lar e responsáveis financeiros
+
+O Lar é a fronteira de segurança e consolidação dos dados financeiros. Contas, categorias e movimentações pertencem ao Lar; “Eu”, “Esposa” e “Conjunto” apenas classificam a responsabilidade financeira. O painel principal soma os três responsáveis.
+
+Depois de criar um usuário, um administrador pode garantir de forma idempotente o Lar, a associação ativa e os três responsáveis com o serviço administrativo abaixo. Substitua `SEU_EMAIL` pelo login privado existente:
+
+```bash
+docker compose exec web python manage.py shell -c "from django.contrib.auth import get_user_model; from households.services import ensure_household_for_user; user = get_user_model().objects.get(email='SEU_EMAIL'); household = ensure_household_for_user(user); print(household.uuid)"
+```
+
 ## Requisitos
 
 - Docker e Docker Compose instalados
