@@ -237,6 +237,36 @@ class HouseholdIntegrityCommandTest(TestCase):
                 owner.is_active = True
                 owner.save(update_fields=['is_active'])
 
+    def test_audit_reports_each_missing_required_owner_type(self):
+        for index, owner_type in enumerate((
+            FinancialOwner.SELF,
+            FinancialOwner.SPOUSE,
+            FinancialOwner.SHARED,
+        )):
+            with self.subTest(owner_type=owner_type):
+                user = User.objects.create_user(
+                    email=f'missing-owner-{index}@example.com',
+                    password='test-pass',
+                )
+                household = ensure_household_for_user(user)
+                household.financial_owners.get(type=owner_type).delete()
+                stdout = StringIO()
+                stderr = StringIO()
+
+                with self.assertRaises(CommandError):
+                    call_command(
+                        'audit_household_integrity',
+                        stdout=stdout,
+                        stderr=stderr,
+                    )
+
+                output = stdout.getvalue() + stderr.getvalue()
+                self.assertIn(
+                    f'inactive_or_missing_owner_{owner_type}=1',
+                    output,
+                )
+                household.delete()
+
     def test_audit_reports_all_ledger_mismatch_families_without_pii(self):
         outsider = User.objects.create_user(
             email='audit-outsider@example.com',

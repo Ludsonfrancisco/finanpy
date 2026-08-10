@@ -4,10 +4,12 @@ from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 class HouseholdModelFormMixin:
     def _update_errors(self, errors):
         error_dict = getattr(errors, 'error_dict', None)
-        if error_dict and 'user' in error_dict and 'user' not in self.fields:
-            error_dict.setdefault(NON_FIELD_ERRORS, []).extend(
-                error_dict.pop('user')
-            )
+        if error_dict:
+            for field in tuple(error_dict):
+                if field != NON_FIELD_ERRORS and field not in self.fields:
+                    error_dict.setdefault(NON_FIELD_ERRORS, []).extend(
+                        error_dict.pop(field)
+                    )
         return super()._update_errors(errors)
 
 

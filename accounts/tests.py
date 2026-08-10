@@ -168,6 +168,24 @@ class AccountViewTest(TestCase):
         self.account.refresh_from_db()
         self.assertEqual(self.account.name, 'Minha Conta')
 
+    def test_update_account_with_invalid_legacy_owner_shows_form_error(self):
+        Account.objects.filter(pk=self.account.pk).update(
+            financial_owner=self.other_shared_owner,
+        )
+
+        response = self.client.post(f'/accounts/{self.account.pk}/edit/', {
+            'name': 'Conta bloqueada',
+            'type': Account.CHECKING,
+            'initial_balance': '500.00',
+            'currency': 'BRL',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.name, 'Minha Conta')
+        self.assertEqual(self.account.financial_owner, self.other_shared_owner)
+
     def test_delete_account(self):
         response = self.client.post(f'/accounts/{self.account.pk}/delete/')
         self.assertRedirects(response, '/accounts/')

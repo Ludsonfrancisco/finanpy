@@ -1,7 +1,10 @@
 import importlib
 from datetime import datetime, timezone
+from io import StringIO
 
 import django
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.db import IntegrityError, connection, models
 from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.recorder import MigrationRecorder
@@ -260,6 +263,16 @@ class ReconcileMembershipUniquenessMigrationTest(TransactionTestCase):
         self.assertEqual(sqlite_integrity(), before_integrity)
         self.assertFalse(self._migration_is_applied())
 
+    def _assert_integrity_audit_failure(self, expected_detail):
+        stdout = StringIO()
+
+        with self.assertRaises(CommandError):
+            call_command('audit_household_integrity', stdout=stdout)
+
+        output = stdout.getvalue()
+        self.assertIn(expected_detail, output)
+        self.assertNotIn('@example.com', output)
+
     def test_original_pair_schema_accepts_history_and_adds_active_constraint(self):
         Household = self.old_apps.get_model('households', 'Household')
         Membership = self.old_apps.get_model('households', 'HouseholdMembership')
@@ -385,6 +398,7 @@ class ReconcileMembershipUniquenessMigrationTest(TransactionTestCase):
                 is_active=True,
             )
 
+        self._assert_integrity_audit_failure('multiple_active_memberships=1')
         self._assert_abort_without_ddl('active_membership_users=1')
 
     def test_duplicate_household_user_pair_aborts_before_ddl(self):
@@ -396,6 +410,9 @@ class ReconcileMembershipUniquenessMigrationTest(TransactionTestCase):
         Membership.objects.create(household=household, user=user, is_active=False)
         Membership.objects.create(household=household, user=user, is_active=False)
 
+        self._assert_integrity_audit_failure(
+            'duplicate_household_user_pairs=1'
+        )
         self._assert_abort_without_ddl('duplicate_household_user_pairs=1')
 
     def test_round_trip_removes_only_partial_constraint_and_preserves_rows(self):

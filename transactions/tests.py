@@ -249,6 +249,22 @@ class TransactionViewTest(TestCase):
         self.tx.refresh_from_db()
         self.assertNotEqual(self.tx.description, 'Transação bloqueada')
 
+    def test_update_transaction_with_invalid_legacy_owner_shows_form_error(self):
+        Transaction.objects.filter(pk=self.tx.pk).update(
+            financial_owner=self.other_shared_owner,
+        )
+
+        response = self.client.post(
+            f'/transacoes/{self.tx.pk}/editar/',
+            self._post_data(description='Transação bloqueada'),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.tx.refresh_from_db()
+        self.assertNotEqual(self.tx.description, 'Transação bloqueada')
+        self.assertEqual(self.tx.financial_owner, self.other_shared_owner)
+
     def test_update_account_preserves_existing_financial_owner(self):
         self_owner = self.household.financial_owners.get(type='self')
         self_account = Account.objects.create(
