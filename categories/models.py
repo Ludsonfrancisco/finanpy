@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -13,7 +14,7 @@ class Category(models.Model):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='categories',
         verbose_name='usuário',
     )
@@ -56,3 +57,16 @@ class Category(models.Model):
 
     def __str__(self):
         return f'{self.name} ({self.get_type_display()})'
+
+    def clean(self):
+        super().clean()
+        if self.user_id and self.household_id:
+            from households.validators import has_active_household_membership
+
+            if not has_active_household_membership(
+                user_id=self.user_id,
+                household_id=self.household_id,
+            ):
+                raise ValidationError(
+                    {'user': 'Usuário sem associação ativa neste Lar.'}
+                )

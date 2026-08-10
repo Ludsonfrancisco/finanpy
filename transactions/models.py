@@ -14,7 +14,7 @@ class Transaction(models.Model):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='transactions',
         verbose_name='usuário',
     )
@@ -67,6 +67,14 @@ class Transaction(models.Model):
     def clean(self):
         super().clean()
         errors = {}
+        if self.user_id and self.household_id:
+            from households.validators import has_active_household_membership
+
+            if not has_active_household_membership(
+                user_id=self.user_id,
+                household_id=self.household_id,
+            ):
+                errors['user'] = 'Usuário sem associação ativa neste Lar.'
         if self.household_id and self.account_id and self.account.household_id != self.household_id:
             errors['account'] = 'Conta pertence a outro Lar.'
         if self.household_id and self.category_id and self.category.household_id != self.household_id:

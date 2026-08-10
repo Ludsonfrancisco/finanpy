@@ -220,6 +220,27 @@ class TransactionViewTest(TestCase):
         self.tx.refresh_from_db()
         self.assertEqual(self.tx.description, 'Atualizado')
 
+    def test_update_account_preserves_existing_financial_owner(self):
+        self_owner = self.household.financial_owners.get(type='self')
+        self_account = Account.objects.create(
+            user=self.user,
+            household=self.household,
+            financial_owner=self_owner,
+            name='Conta individual',
+            type=Account.CHECKING,
+            initial_balance=Decimal('0'),
+        )
+
+        response = self.client.post(
+            f'/transacoes/{self.tx.pk}/editar/',
+            self._post_data(account=self_account.pk),
+        )
+
+        self.assertRedirects(response, '/transacoes/')
+        self.tx.refresh_from_db()
+        self.assertEqual(self.tx.account, self_account)
+        self.assertEqual(self.tx.financial_owner, self.shared_owner)
+
     def test_delete_transaction(self):
         response = self.client.post(f'/transacoes/{self.tx.pk}/excluir/')
         self.assertRedirects(response, '/transacoes/')
