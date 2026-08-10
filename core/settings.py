@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    'rest_framework',
     'core',
     'households',
     'accounts',
@@ -68,7 +69,7 @@ INSTALLED_APPS = [
     'transactions',
     'users',
     'ai',
-    
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -169,3 +170,18 @@ AUTH_USER_MODEL = 'users.User'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.ApiCursorPagination',
+    'PAGE_SIZE': 50,
+    'EXCEPTION_HANDLER': 'api.exceptions.api_exception_handler',
+    'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
+    'DEFAULT_THROTTLE_RATES': {
+        'login': '5/minute',
+        'refresh': '30/minute',
+    },
+}
