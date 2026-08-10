@@ -225,12 +225,6 @@ def _query_current(spec, device_session, entity_uuid):
 
 def _create(device_session, operation, validated) -> OperationResult:
     spec = validated['spec']
-    if spec.model.objects.filter(
-        household=device_session.household,
-        uuid=validated['entity_uuid'],
-    ).exists():
-        return _uuid_collision()
-
     values, errors = _resolve_data(device_session, spec, validated['data'])
     if errors:
         return _invalid(errors)
@@ -305,8 +299,6 @@ def _apply_new(device_session, operation) -> OperationResult:
                 return _create(device_session, operation, validated)
             return _update_or_delete(device_session, operation, validated)
     except ValidationError as exc:
-        if validated['action'] == 'create' and 'uuid' in getattr(exc, 'error_dict', {}):
-            return _uuid_collision()
         return _invalid(_validation_fields(exc))
     except IntegrityError:
         if validated['action'] == 'create':

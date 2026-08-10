@@ -419,7 +419,7 @@ class PushServiceTest(TestCase):
         )
         self.assertEqual(stored.response_body, result)
 
-    def test_uuid_collision_hides_other_validation_differences(self):
+    def test_uuid_collision_preserves_other_validation_errors(self):
         local_operation = self.account_create_operation(
             entity_uuid=str(self.account.uuid),
         )
@@ -431,7 +431,10 @@ class PushServiceTest(TestCase):
         expected = {
             'status': 'invalid',
             'code': 'validation_error',
-            'fields': {'entity_uuid': ['Invalid value.']},
+            'fields': {
+                'entity_uuid': ['Invalid value.'],
+                'name': ['Invalid value.'],
+            },
         }
         account_count = Account.objects.count()
         change_count = SyncChange.objects.count()
