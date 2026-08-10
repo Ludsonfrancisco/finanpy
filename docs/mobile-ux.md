@@ -6,7 +6,7 @@
 - Linguagem cross-platform consistente, respeitando safe areas, navegação, teclado, voltar, sheets e acessibilidade de cada plataforma.
 - Conteúdo financeiro e confiança antes de efeitos visuais.
 - Offline-first, com origem e atualização do dado sempre visíveis.
-- Uma família, um login, dois proprietários financeiros iniciais.
+- Uma família no mesmo Lar, com responsáveis `Eu`, `Esposa` e `Conjunto`. O modelo aceita um ou dois logins; a política de acesso será decidida antes da autenticação mobile `[INVESTIGAR]`.
 - Sem landing e sem cadastro público.
 
 O design system final está em `[INVESTIGAR]`. Não produzir telas finais antes do gate visual em [design-system.md](design-system.md).

@@ -2,148 +2,166 @@
 
 ## Objetivo
 
-Evoluir o monólito Django existente para uma plataforma privada, sincronizada e multiplataforma sem descartar o código funcional. O backend continua no Linux/EasyPanel; Flutter passa a ser a interface principal para iOS, Android e Windows.
+Evoluir incrementalmente o monólito Django para uma plataforma financeira
+privada e multiplataforma. O backend continua no Linux/EasyPanel; Flutter será
+a interface principal para iOS, Android e Windows depois da criação da API.
 
-## Estado atual
+## Estado atual comprovado
 
-O repositório é um monólito Django 5.2.13/Python 3.12 server-rendered com SQLite. Os apps `accounts`, `categories`, `transactions`, `users` e `profiles` implementam CRUD e autenticação por sessão. O `core` agrega dashboard, settings e rotas. Não existe API, fila, cache, importador ou protocolo de sincronização.
+| Camada | Tecnologia |
+|---|---|
+| Linguagem | Python 3.12 |
+| Framework | Django 5.2.13 |
+| Servidor | Gunicorn 23.0.0, um worker no container |
+| Interface | Django Templates e TailwindCSS via CDN |
+| Banco | SQLite em caminho absoluto definido por `SQLITE_PATH` |
+| Autenticação | sessão Django e login por email |
+| Qualidade | Django TestCase, Coverage 7.13.5 e Ruff 0.15.11 |
+| Infra | Docker/Compose; EasyPanel doméstico ainda não validado nesta sprint |
 
 ```mermaid
 flowchart LR
-    Browser["Browser"] --> Django["Django CBVs + Forms"]
-    Django --> Templates["Templates"]
-    Django --> ORM["ORM"]
-    ORM --> DB[("SQLite")]
+    Browser["Navegador"] --> Views["Django CBVs e Forms"]
+    Views --> Templates["Templates"]
+    Views --> Auth["Sessão Django"]
+    Views --> ORM["Django ORM"]
+    ORM --> SQLite[("SQLite")]
+    Gunicorn["Gunicorn"] --> Views
 ```
 
-### O que será preservado
+Não existe API mobile, fila, cache, importador bancário ou protocolo de
+sincronização no código atual.
 
-- custom user por email e validação de senha;
-- isolamento por usuário presente nas views e testes;
-- entidades de conta, categoria e transação como ponto de migração;
-- regras básicas de saldo, reescritas para o novo domínio;
-- suíte Django, Docker e implantação EasyPanel;
-- fallback web administrativo durante a transição.
+## Domínios atuais
 
-### O que não deve ser reaproveitado como arquitetura alvo
+| App | Responsabilidade |
+|---|---|
+| `users` e `profiles` | identidade e perfil |
+| `households` | Lar, associações, responsáveis, autorização e auditoria |
+| `accounts` | contas financeiras |
+| `categories` | categorias do Lar |
+| `transactions` | movimentações |
+| `core` | dashboard, configuração, backup e rotas principais |
+| `ai` | instalado, sem comportamento produtivo confirmado `[INVESTIGAR]` |
 
-- templates web como UI Flutter;
+## Fronteira de segurança entregue na Sprint 1
+
+`Household` é a unidade de autorização e consolidação. O acesso exige uma
+`HouseholdMembership` ativa. Os responsáveis `self`, `spouse` e `shared`
+classificam a responsabilidade financeira; eles não concedem acesso.
+
+As views financeiras usam `HouseholdContextMixin` e filtram pelo Lar. Models e
+forms validam coerência entre Lar, usuário legado, conta, categoria e responsável.
+As FKs legadas de usuário usam `PROTECT` para impedir a exclusão acidental do
+livro financeiro.
+
+```mermaid
+erDiagram
+    USER ||--|| PROFILE : possui
+    USER ||--o{ HOUSEHOLD_MEMBERSHIP : participa
+    HOUSEHOLD ||--o{ HOUSEHOLD_MEMBERSHIP : autoriza
+    HOUSEHOLD ||--o{ FINANCIAL_OWNER : classifica
+    HOUSEHOLD ||--o{ ACCOUNT : contem
+    HOUSEHOLD ||--o{ CATEGORY : contem
+    HOUSEHOLD ||--o{ TRANSACTION : contem
+    FINANCIAL_OWNER ||--o{ ACCOUNT : responsabiliza
+    FINANCIAL_OWNER ||--o{ TRANSACTION : responsabiliza
+    ACCOUNT ||--o{ TRANSACTION : recebe
+    CATEGORY ||--o{ TRANSACTION : classifica
+```
+
+O dashboard consolida os três responsáveis. Um usuário não pode manter mais de
+uma associação ativa, mas o modelo aceita mais de um usuário dentro do mesmo
+Lar. A decisão de usar um ou dois logins no cotidiano será registrada na
+especificação da autenticação `[INVESTIGAR]`.
+
+## Operação atual
+
+- SQLite fica em `/app/data/db.sqlite3` no container.
+- O diretório `/app/data` deve ser volume persistente.
+- Enquanto houver SQLite, operar com uma réplica e um worker.
+- `backup_sqlite` cria uma cópia consistente e verifica sua integridade.
+- `audit_household_integrity` consulta apenas contagens e falha diante de
+  inconsistências.
+- O runbook real do EasyPanel ainda precisa ser validado sem tocar a base real.
+
+## O que será preservado
+
+- autenticação por email e validadores de senha;
+- Lar, membros e responsáveis financeiros;
+- entidades de conta, categoria e movimentação como base de migração;
+- regras de integridade, suíte Django, Docker e operação documentada;
+- interface web como fallback administrativo durante a transição.
+
+## O que não é arquitetura alvo
+
+- templates web reutilizados como interface Flutter;
 - sessão/cookie como autenticação mobile;
-- SQLite do servidor para concorrência e sincronização;
-- cartão de crédito representado como um tipo de conta;
-- landing e signup públicos;
-- scripts de QA com dados/credenciais fixos.
+- SQLite como banco definitivo para concorrência e sincronização;
+- cartão de crédito representado somente como tipo de conta;
+- scraping bancário ou armazenamento de credenciais dos bancos.
 
-## Arquitetura alvo
+## Arquitetura alvo incremental
 
 ```mermaid
 flowchart TB
-    subgraph Flutter["Flutter"]
-      UI["Presentation"] --> App["Application/use cases"]
-      App --> Repo["Repositories"]
-      Repo --> Local[("SQLite local")]
-      App --> Sync["Sync engine + outbox"]
+    subgraph Clients["Clientes Flutter"]
+        IOS["iOS"]
+        Android["Android"]
+        Windows["Windows"]
+        LocalDB[("SQLite local")]
+        Outbox["Fila local e sync"]
+        IOS --> LocalDB
+        Android --> LocalDB
+        Windows --> LocalDB
+        LocalDB <--> Outbox
     end
-    Sync -->|"HTTPS JSON / API v1"| API["Django API"]
-    API --> Services["Serviços de domínio"]
-    Services --> ORM["Django ORM"]
-    ORM --> PG[("PostgreSQL")]
-    API --> Imports["Importação e conciliação"]
-    Adapters["OFX / CSV / PDF / Provider"] --> Imports
-    Imports --> Services
-    Jobs["Worker opcional"] --> Imports
-    Ops["Logs / métricas / backup"] --> API
-    Ops --> PG
+
+    Outbox <--> API["API Django /api/v1"]
+    Web["Web administrativo"] --> Django["Django"]
+    API --> Django
+    Django --> Domain["Serviços de domínio"]
+    Domain --> Postgres[("PostgreSQL")]
+    Domain --> Imports["Importação e conciliação"]
+    Imports --> Files["OFX e CSV"]
+    Provider["Provedor opcional futuro"] --> Imports
 ```
 
-## Limites de domínio propostos
+### Limites propostos
 
-| Módulo | Responsabilidade | Origem atual |
-|---|---|---|
-| Identity | login, sessão, dispositivos e segurança | `users`, `profiles` |
-| Household | lar e proprietários financeiros | novo |
-| Ledger | contas, transações, transferências e categorias | `accounts`, `transactions`, `categories` |
-| Cards | cartões, limites, faturas e parcelas | novo; extrair `Account.CREDIT` |
-| Planning | recorrências, orçamento, calendário e metas | novo |
-| Credit | empréstimos, financiamentos e parcelas | novo |
-| Wealth | investimentos, bens, passivos e patrimônio | novo |
-| Imports | parsing, normalização, deduplicação e conciliação | novo |
-| Sync | delta, outbox, conflitos e dispositivos | novo |
-| Reporting | projeções e indicadores explicáveis | parte do dashboard atual |
-| Audit | eventos imutáveis relevantes | novo |
+- A API controla autenticação de dispositivos, escopo por Lar e serialização.
+- Serviços de domínio concentram regras reutilizáveis por web, API e imports.
+- Importadores convertem fontes para um contrato interno estável.
+- O ledger armazena fatos confirmados; previsões ficam separadas.
+- O cliente Flutter lê primeiro do banco local e sincroniza pela API.
+- O provedor futuro usa o mesmo pipeline de normalização e deduplicação.
 
-Separação em apps Django deve ocorrer quando o modelo de cada domínio existir. Não criar microserviços; o custo operacional não se justifica para uma família.
+## Fluxo de sincronização alvo
 
-## Contratos principais
+1. O cliente registra uma operação local com UUID e versão conhecida.
+2. A operação entra na outbox com chave idempotente.
+3. A API valida membro ativo, Lar, versão e idempotência.
+4. O servidor confirma a versão ou devolve conflito estruturado.
+5. O cliente busca deltas desde o cursor confirmado.
+6. Conflitos financeiros relevantes exigem resolução explícita.
 
-### API
+Exclusões serão tombstones por período definido. `updated_at` do dispositivo não
+decide sozinho qual versão vence.
 
-- prefixo `/api/v1/`;
-- OpenAPI versionado antes do cliente;
-- IDs externos em UUID;
-- timestamps ISO 8601 em UTC e timezone do lar separado;
-- dinheiro como string decimal + código ISO de moeda;
-- paginação por cursor para movimentações;
-- `Idempotency-Key` para criação/importação;
-- erro estruturado com código, mensagem segura e campos;
-- ETag/versão para atualização otimista `[INVESTIGAR decisão final]`.
+## Evolução segura dos dados
 
-### Sincronização
+- Novas migrations são aditivas e testadas em banco novo e legado.
+- Backfills têm preflight, contagens e rollback documentado.
+- A migração futura de SQLite para PostgreSQL exige backup restaurado em ensaio.
+- Nenhuma migration destrutiva é aplicada automaticamente na base real.
 
-1. cliente grava mudança local e item na outbox numa única transação;
-2. cliente envia operações com ID idempotente;
-3. servidor valida versão e aplica ou responde conflito;
-4. cliente busca delta depois do cursor confirmado;
-5. exclusões usam tombstone até todos os dispositivos avançarem;
-6. conflito financeiro não determinístico vira `ReconciliationIssue`.
+## Limites e pontos para investigar
 
-### Importadores
-
-Todo importador implementa:
-
-- `detect(source)`: confiança de que conhece o arquivo;
-- `parse(source)`: registros brutos sem alterar o ledger;
-- `normalize(record)`: estrutura canônica;
-- `fingerprint(record)`: chave estável para deduplicação;
-- `validate(record)`: erros e avisos;
-- `preview(batch)`: resumo antes de confirmar;
-- `commit(batch)`: aplicação atômica e auditada.
-
-## Migração incremental
-
-1. conter segurança e estabilizar backup;
-2. criar `Household` e `FinancialOwner`, migrando todos os dados atuais para o proprietário padrão;
-3. introduzir UUID/versionamento sem remover PKs internos;
-4. separar cartões das contas por migração de dados testada;
-5. criar API sobre o domínio existente;
-6. implementar importador e cliente Flutter em paralelo ao web fallback;
-7. migrar SQLite para PostgreSQL com janela e rollback;
-8. retirar telas web de uso diário apenas quando Flutter atingir paridade.
-
-## ADRs obrigatórios
-
-- ADR-001: pacote e estratégia de API/autenticação.
-- ADR-002: PostgreSQL e plano de migração no EasyPanel.
-- ADR-003: SQLite local e gerenciamento de estado Flutter.
-- ADR-004: protocolo de sync, conflito e tombstones.
-- ADR-005: retenção/criptografia de arquivos importados.
-- ADR-006: jobs assíncronos ou processamento síncrono.
-- ADR-007: distribuição privada iOS/Android/Windows.
-- ADR-008: design system final.
-
-## Restrições de operação
-
-- servidor doméstico pode ficar offline; clientes devem continuar em leitura e cadastro local;
-- backup fora do host é requisito antes de migrar dados reais;
-- tarefas de importação não podem bloquear workers HTTP por tempo indefinido;
-- nenhuma mudança destrutiva de migrations ocorre sem backup e ensaio de restauração;
-- configurações externas do EasyPanel precisam ser documentadas sem segredos.
-
-## Pontos para investigar
-
-- função real e maturidade do app `ai`.
-- proxy, domínio, TLS, volumes e política de restart no EasyPanel.
-- volume real de transações e tamanho esperado dos arquivos.
-- necessidade de worker/Redis depois de medir a duração dos imports.
-- política de conflito para edição simultânea da mesma transação.
-- disponibilidade de push/background sync em cada forma de distribuição.
+- contrato exato da API, tokens e revogação de dispositivos;
+- escolha e versão dos pacotes Flutter, API e banco local;
+- proxy, domínio, TLS, volumes e rate limit no EasyPanel real;
+- política de conflito para edição simultânea;
+- amostras anonimizadas de OFX/CSV das instituições do casal;
+- necessidade de fila/worker após medir importações;
+- função real do app `ai`;
+- método de distribuição privada em iOS, Android e Windows.

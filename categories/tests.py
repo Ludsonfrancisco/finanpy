@@ -1,9 +1,12 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.test import TestCase
 
 from categories.forms import CategoryForm
 from categories.models import Category
+from households.services import ensure_household_for_user
 
 User = get_user_model()
 
@@ -14,10 +17,12 @@ class CategoryModelTest(TestCase):
             email='test@example.com',
             password='password123'
         )
+        self.household = ensure_household_for_user(self.user)
 
     def test_category_creation(self):
         category = Category.objects.create(
             user=self.user,
+            household=self.household,
             name='Alimentação',
             type=Category.EXPENSE,
             color='#FF0000'
@@ -26,15 +31,17 @@ class CategoryModelTest(TestCase):
         self.assertEqual(category.type, Category.EXPENSE)
         self.assertEqual(str(category), 'Alimentação (Despesa)')
 
-    def test_unique_together_constraint(self):
+    def test_unique_household_constraint(self):
         Category.objects.create(
             user=self.user,
+            household=self.household,
             name='Alimentação',
             type=Category.EXPENSE
         )
         with self.assertRaises(IntegrityError):
             Category.objects.create(
                 user=self.user,
+                household=self.household,
                 name='Alimentação',
                 type=Category.EXPENSE
             )
@@ -42,12 +49,14 @@ class CategoryModelTest(TestCase):
     def test_different_types_same_name_allowed(self):
         Category.objects.create(
             user=self.user,
+            household=self.household,
             name='Salário',
             type=Category.INCOME
         )
         # Should NOT raise IntegrityError
-        category = Category.objects.create(
+        Category.objects.create(
             user=self.user,
+            household=self.household,
             name='Salário',
             type=Category.EXPENSE
         )
@@ -60,6 +69,7 @@ class CategoryFormTest(TestCase):
             email='hank@example.com',
             password='pass123',
         )
+        self.household = ensure_household_for_user(self.user)
 
     def _valid_data(self, name='Transporte', tx_type=Category.EXPENSE):
         return {'name': name, 'type': tx_type, 'color': '#10b981', 'icon': ''}
@@ -82,19 +92,23 @@ class CategoryFormTest(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('type', form.errors)
 
-    def test_unique_together_raises_validation_error_via_form(self):
+    def test_household_constraint_raises_validation_error_via_model(self):
         # First save is fine
         Category.objects.create(
             user=self.user,
+            household=self.household,
             name='Lazer',
             type=Category.EXPENSE,
         )
-        # Build the duplicate through the form; bind it to the existing instance's
-        # user by saving manually, then validate_unique via full_clean.
-        duplicate = Category(user=self.user, name='Lazer', type=Category.EXPENSE)
+        duplicate = Category(
+            user=self.user,
+            household=self.household,
+            name='Lazer',
+            type=Category.EXPENSE,
+        )
         from django.core.exceptions import ValidationError
         with self.assertRaises(ValidationError):
-            duplicate.validate_unique()
+            duplicate.full_clean()
 
 
 class CategoryViewTest(TestCase):
@@ -103,16 +117,24 @@ class CategoryViewTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(email='carol@example.com', password='pass123')
         self.other_user = User.objects.create_user(email='dave@example.com', password='pass123')
+        self.household = ensure_household_for_user(self.user)
+        self.other_household = ensure_household_for_user(self.other_user)
         self.client.login(username='carol@example.com', password='pass123')
 
         self.category = Category.objects.create(
-            user=self.user, name='Lazer', type=Category.EXPENSE
+            user=self.user,
+            household=self.household,
+            name='Lazer',
+            type=Category.EXPENSE,
         )
         self.other_category = Category.objects.create(
-            user=self.other_user, name='Salário', type=Category.INCOME
+            user=self.user,
+            household=self.other_household,
+            name='Salário',
+            type=Category.INCOME,
         )
 
-    def test_list_shows_only_own_categories(self):
+    def test_category_list_is_scoped_by_household(self):
         response = self.client.get('/categories/')
         self.assertEqual(response.status_code, 200)
         categories = list(response.context['categories'])
@@ -127,7 +149,8 @@ class CategoryViewTest(TestCase):
             'icon': '',
         })
         self.assertRedirects(response, '/categories/')
-        self.assertTrue(Category.objects.filter(user=self.user, name='Transporte').exists())
+        category = Category.objects.get(user=self.user, name='Transporte')
+        self.assertEqual(category.household, self.household)
 
     def test_update_category(self):
         response = self.client.post(f'/categories/{self.category.pk}/editar/', {
@@ -140,12 +163,45 @@ class CategoryViewTest(TestCase):
         self.category.refresh_from_db()
         self.assertEqual(self.category.name, 'Lazer Atualizado')
 
+    def test_create_category_with_revoked_membership_shows_form_error(self):
+        with patch(
+            'households.validators.has_active_household_membership',
+            return_value=False,
+        ):
+            response = self.client.post('/categories/novo/', {
+                'name': 'Categoria bloqueada',
+                'type': Category.EXPENSE,
+                'color': '#10b981',
+                'icon': '',
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.assertFalse(Category.objects.filter(name='Categoria bloqueada').exists())
+
+    def test_update_category_with_revoked_membership_preserves_data(self):
+        with patch(
+            'households.validators.has_active_household_membership',
+            return_value=False,
+        ):
+            response = self.client.post(f'/categories/{self.category.pk}/editar/', {
+                'name': 'Categoria bloqueada',
+                'type': Category.EXPENSE,
+                'color': '#10b981',
+                'icon': '',
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].non_field_errors())
+        self.category.refresh_from_db()
+        self.assertEqual(self.category.name, 'Lazer')
+
     def test_delete_category(self):
         response = self.client.post(f'/categories/{self.category.pk}/excluir/')
         self.assertRedirects(response, '/categories/')
         self.assertFalse(Category.objects.filter(pk=self.category.pk).exists())
 
-    def test_cannot_update_other_user_category(self):
+    def test_cannot_update_category_from_other_household(self):
         response = self.client.post(f'/categories/{self.other_category.pk}/editar/', {
             'name': 'Hackeada',
             'type': Category.INCOME,
@@ -154,6 +210,6 @@ class CategoryViewTest(TestCase):
         })
         self.assertEqual(response.status_code, 404)
 
-    def test_cannot_delete_other_user_category(self):
+    def test_cannot_delete_category_from_other_household(self):
         response = self.client.post(f'/categories/{self.other_category.pk}/excluir/')
         self.assertEqual(response.status_code, 404)

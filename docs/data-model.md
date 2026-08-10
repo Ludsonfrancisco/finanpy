@@ -15,14 +15,19 @@
 ```mermaid
 erDiagram
     USER ||--|| PROFILE : has
-    USER ||--o{ ACCOUNT : owns
-    USER ||--o{ CATEGORY : owns
-    USER ||--o{ TRANSACTION : owns
+    USER ||--o{ HOUSEHOLD_MEMBERSHIP : accesses
+    HOUSEHOLD ||--o{ HOUSEHOLD_MEMBERSHIP : grants
+    HOUSEHOLD ||--o{ FINANCIAL_OWNER : classifies
+    HOUSEHOLD ||--o{ ACCOUNT : owns
+    HOUSEHOLD ||--o{ CATEGORY : owns
+    HOUSEHOLD ||--o{ TRANSACTION : owns
+    FINANCIAL_OWNER ||--o{ ACCOUNT : classifies
+    FINANCIAL_OWNER ||--o{ TRANSACTION : classifies
     ACCOUNT ||--o{ TRANSACTION : contains
     CATEGORY ||--o{ TRANSACTION : classifies
 ```
 
-O modelo atual cobre somente usuário, perfil, conta genérica, categoria e transação receita/despesa.
+O modelo atual cobre usuário, perfil, Lar, associação ativa, responsáveis `self`, `spouse` e `shared`, conta genérica, categoria e transação receita/despesa. As entidades financeiras ainda preservam a FK legada de usuário com `PROTECT` para migração e auditoria.
 
 ## Modelo alvo conceitual
 
@@ -59,7 +64,7 @@ erDiagram
 | `FinancialOwner` | UUID, household, nome de exibição, tipo pessoa/conjunto, ativo |
 | `SyncDevice` | UUID, user, plataforma, nome, último cursor, revogado em |
 
-No primeiro migration, um `Household` “Lar Finance” e um proprietário “Eu” recebem todos os dados existentes. “Esposa” é criado sem login separado. Futuro acesso separado não será bloqueado pelo modelo, mas está fora do escopo inicial.
+O backfill entregue cria um `Household`, uma associação ativa e os responsáveis `Eu`, `Esposa` e `Conjunto`, ligando os dados existentes ao Lar e ao responsável padrão. O modelo permite mais de um usuário no mesmo Lar; a política cotidiana de um ou dois logins será definida na Sprint 2 `[INVESTIGAR]`.
 
 ### Instituições, contas e caixa
 

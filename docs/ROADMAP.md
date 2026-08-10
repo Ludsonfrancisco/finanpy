@@ -27,12 +27,13 @@
 Objetivo: tornar o projeto seguro e reproduzível antes de adicionar dados reais.
 
 - [ ] rotacionar credenciais expostas e substituir scripts de QA por fixtures;
-- [ ] adicionar secret scanning no CI;
-- [ ] corrigir o volume SQLite com teste de persistência entre restarts;
-- [ ] desativar signup público e redirecionar `/` para login/dashboard;
-- [ ] executar e registrar coverage, Ruff, `check --deploy` e migrations;
-- [ ] documentar EasyPanel atual sem segredos;
-- [ ] criar backup e provar restauração;
+- [x] adicionar secret scanning no CI;
+- [x] corrigir o caminho/volume SQLite no Compose e cobrir configuração;
+- [x] desativar signup público e redirecionar `/` para login/dashboard;
+- [x] executar e registrar coverage, Ruff, `check --deploy` e migrations;
+- [x] documentar operação EasyPanel sem segredos;
+- [x] criar backup SQLite consistente e verificar integridade;
+- [ ] provar restauração em cópia externa/ambiente isolado;
 - [ ] auditar diffs das três branches remotas sem merge automático;
 - [ ] ADR-001 API/autenticação;
 - [ ] ADR-002 PostgreSQL;
@@ -49,17 +50,19 @@ Riscos: rotação quebrar acesso atual; correção de volume apontar para base e
 
 Objetivo: representar corretamente “Eu”, “Esposa” e “Lar”.
 
-- [ ] testes de `Household`, membership e `FinancialOwner`;
-- [ ] migrations e backfill para owner padrão;
-- [ ] criar owner “Esposa” por fluxo administrativo;
-- [ ] ligar account/category/transaction ao household/owner;
+- [x] testes de `Household`, membership e `FinancialOwner`;
+- [x] migrations e backfill para owner padrão;
+- [x] criar responsáveis “Eu”, “Esposa” e “Conjunto” de forma idempotente;
+- [x] ligar account/category/transaction ao household/owner;
 - [ ] adicionar UUID, versão e timestamps de sync;
-- [ ] constraints entre household/owner/entidades;
+- [x] constraints e validações entre household/owner/entidades;
 - [ ] introduzir `Institution` e aliases iniciais;
 - [ ] modelar transferências com duas pontas;
 - [ ] corrigir cálculos que contam transferência como receita/despesa;
-- [ ] criar auditoria mínima de alterações financeiras;
-- [ ] adaptar web fallback para owner switcher.
+- [x] criar auditoria de integridade do Lar, somente leitura e sem PII;
+- [x] consolidar `Eu`, `Esposa` e `Conjunto` no dashboard web;
+
+Entregue nesta sprint: fronteira por Lar, acesso revogável, responsáveis, backfill reversível, integridade do ledger legado, backup, CI e runbook. UUID/versão das entidades legadas, instituições, transferências, auditoria de eventos e switcher visual permanecem para planos específicos; não são considerados concluídos por associação ao nome da sprint.
 
 Aceite: dados atuais pertencem ao owner padrão, novos dados exigem owner e consolidado não duplica transferências.
 

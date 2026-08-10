@@ -1,9 +1,11 @@
 from django import forms
 
+from households.forms import HouseholdModelFormMixin
+
 from .models import Category
 
 
-class CategoryForm(forms.ModelForm):
+class CategoryForm(HouseholdModelFormMixin, forms.ModelForm):
     class Meta:
         model = Category
         fields = ('name', 'type', 'color', 'icon')

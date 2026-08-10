@@ -4,22 +4,21 @@
 
 Ativos: credencial do Lar Finance, tokens, dados financeiros, arquivos importados, backups, dispositivo e servidor doméstico. Ameaças prioritárias: vazamento do repositório/log, roubo de dispositivo, acesso externo indevido, perda/corrupção do disco, import malicioso, sessão não revogada e erro de sincronização.
 
-## Achados imediatos
+## Estado dos achados da Sprint 1
 
-### Crítico: segredo e PII versionados
+### Crítico pendente: rotação da credencial histórica
 
-`create_accounts.py` e `qa_create_accounts.py` contêm credencial/identificador em texto claro. Ações:
+Os valores foram removidos dos scripts no HEAD e o CI ganhou secret scanning. Como a credencial existiu no histórico Git, ainda são necessárias estas ações externas:
 
 - rotacionar a credencial;
-- substituir scripts por fixtures/factories e variáveis de ambiente;
-- impedir nova ocorrência com secret scanning;
+- confirmar que scripts/fixtures usam somente variáveis e dados sintéticos;
 - avaliar remoção do histórico Git após backup e coordenação, pois reescrever histórico é destrutivo `[INVESTIGAR autorização]`.
 
 Não reproduzir os valores em tickets, docs ou logs.
 
-### Crítico: volume SQLite
+### Resolvido no código: volume SQLite
 
-O Compose monta um volume nomeado em `/app/db.sqlite3`, um caminho de arquivo. Volumes Docker são diretórios e essa configuração pode impedir boot ou persistir de forma inesperada. Correção mínima: montar diretório de dados e apontar o banco para ele. Direção final: PostgreSQL.
+O Compose agora monta o diretório `/app/data` e usa `SQLITE_PATH=/app/data/db.sqlite3`, com uma réplica e um worker. A configuração ainda precisa ser ensaiada no EasyPanel real com backup restaurável. PostgreSQL permanece a direção futura, não uma mudança autorizada nesta sprint.
 
 ## Controles de autenticação
 

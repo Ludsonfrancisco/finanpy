@@ -1,15 +1,15 @@
 # Lar Finance — PRD do estado atual e evolução do produto
 
-> Fonte única de verdade do produto. Atualizado em 09/08/2026 a partir do código da branch `main`, migrations, testes, configuração Docker, documentação e interface observada.
+> Fonte única de verdade do produto. Atualizado em 10/08/2026 a partir do código da branch `main`, migrations, 151 testes, configuração Docker e documentação operacional.
 
 ## Status e convenções
 
 - **Nome oficial:** Lar Finance.
 - **Nome técnico legado:** Finanpy, mantido temporariamente no repositório, módulos Django e implantação até uma migração segura.
-- **Estado atual:** aplicação web Django funcional, com contas, categorias, transações e dashboard.
+- **Estado atual:** aplicação web Django privada, com Lar compartilhado, membros, responsáveis financeiros, contas, categorias, transações e dashboard consolidado.
 - **Produto alvo:** aplicativo Flutter para iOS, Android e Windows, sincronizado com o backend Django no servidor Linux/EasyPanel.
 - **Estratégia de dados aprovada:** importação de arquivos primeiro; integração paga automática somente após o produto estar maduro e em uso.
-- **Usuários do produto:** uma família, com um login e dois proprietários financeiros iniciais, “Eu” e “Esposa”.
+- **Usuários do produto:** uma família no mesmo Lar. O domínio já separa credenciais de acesso (`HouseholdMembership`) e responsáveis financeiros (`Eu`, `Esposa` e `Conjunto`). Usar um login compartilhado ou dois logins pessoais é uma decisão pendente da Sprint 2 `[INVESTIGAR]`.
 - **Identidade visual:** em avaliação. A preferência por uma linguagem fintech premium semelhante em espírito ao C6 Bank é uma referência candidata, não uma decisão final.
 - **Regra visual irrevogável:** não usar roxo.
 - **`[INVESTIGAR]`:** decisão ou comportamento sem evidência suficiente. Não deve ser implementado por suposição.
@@ -92,12 +92,12 @@ flowchart LR
 |---|---|---|
 | Linguagem | Python 3.12, imagem `python:3.12-slim` | `Dockerfile` |
 | Framework | Django 5.2.13 | `requirements.txt` |
-| WSGI | Gunicorn 23.0.0, 2 workers | requirements, Docker e Compose |
+| WSGI | Gunicorn 23.0.0, 1 worker | requirements, Docker e Compose |
 | Imagens | Pillow 12.2.0 | `requirements.txt` |
 | Ambiente | python-dotenv 1.2.2 | `requirements.txt` |
 | Runtime indireto | asgiref 3.11.1, sqlparse 0.5.5, tzdata 2026.1 | `requirements.txt` |
 | Qualidade | Ruff 0.15.11, Coverage 7.13.5 | `requirements.txt` |
-| Banco | SQLite, arquivo `db.sqlite3` | `core/settings.py` |
+| Banco | SQLite, caminho absoluto configurável; `/app/data/db.sqlite3` no container | `core/settings.py`, Docker e Compose |
 | Frontend | Django Templates, HTML/CSS/JavaScript e Tailwind via CDN | templates e documentação |
 | Fila/cache | inexistentes | settings e dependências |
 | Container | Docker multi-stage + Docker Compose | arquivos raiz |
@@ -182,11 +182,14 @@ Detalhes: [arquitetura](docs/architecture.md) e [segurança/operação](docs/sec
 |---|---|---|
 | `users.User` | email único; flags e senha do Django; timestamps | autenticação por email |
 | `profiles.Profile` | nome, sobrenome, nascimento, avatar, timestamps | 1:1 com User |
-| `accounts.Account` | nome, tipo, saldo inicial, moeda, timestamps | N:1 User |
-| `categories.Category` | nome, tipo receita/despesa, cor, ícone | N:1 User; único por user+nome+tipo |
-| `transactions.Transaction` | descrição, valor, data, tipo, timestamps | N:1 User, Account e Category |
+| `households.Household` | nome, UUID, status e timestamps | fronteira de autorização e consolidação |
+| `households.HouseholdMembership` | papel, status e timestamps | liga User ao Lar; um Lar ativo por usuário |
+| `households.FinancialOwner` | nome, código `self/spouse/shared`, UUID e status | responsável financeiro dentro do Lar |
+| `accounts.Account` | nome, tipo, saldo inicial, moeda, timestamps | N:1 Household, User legado e FinancialOwner |
+| `categories.Category` | nome, tipo receita/despesa, cor, ícone | N:1 Household e User legado; único no escopo definido |
+| `transactions.Transaction` | descrição, valor, data, tipo, timestamps | N:1 Household, User legado, FinancialOwner, Account e Category |
 
-Lacunas comprovadas: não há proprietário financeiro, instituição, conta bancária normalizada, transferência com duas pontas, fatura, limite, parcela, recorrência, dívida, investimento, importação, deduplicação, moeda por cotação, anexo ou trilha de auditoria.
+Lacunas comprovadas: não há instituição normalizada, UUID/versão de sync nas entidades financeiras legadas, transferência com duas pontas, fatura, limite, parcela, recorrência, dívida, investimento, importação, deduplicação, moeda por cotação, anexo ou trilha de eventos financeiros. Existe auditoria de integridade do Lar, mas não `AuditEvent` de negócio.
 
 ### 5.2 To-be
 
@@ -212,8 +215,8 @@ Diagrama e campos: [modelo de dados](docs/data-model.md).
 
 | Método | Rota | Acesso | Função |
 |---|---|---|---|
-| GET | `/` | público | landing atual, a remover |
-| GET/POST | `/signup/` | público | cadastro atual, a remover/desativar |
+| GET | `/` | público/autenticado | redireciona para login ou dashboard |
+| — | `/signup/` | indisponível | cadastro público removido |
 | GET/POST | `/login/` | público | login |
 | POST/GET `[INVESTIGAR]` | `/logout/` | autenticado | logout |
 | GET | `/dashboard/` | autenticado | resumo financeiro |
@@ -235,7 +238,7 @@ O contrato exato e verbos serão definidos antes do código em OpenAPI `[INVESTI
 
 ### 6.3 Comandos atuais
 
-`manage.py migrate`, `collectstatic`, `runserver`, `test`, `check`, `makemigrations --check`, `createsuperuser`, `coverage` e `ruff`. Scripts de QA presentes criam contas de teste, mas dois deles contêm credenciais/PII em texto claro e devem ser removidos e rotacionados imediatamente.
+`manage.py migrate`, `collectstatic`, `runserver`, `test`, `check`, `makemigrations --check`, `createsuperuser`, `backup_sqlite`, `audit_household_integrity`, `coverage` e `ruff`. Os scripts de QA foram neutralizados no HEAD; a credencial histórica ainda precisa ser rotacionada pelo proprietário.
 
 ## 7. Integrações backend e externas
 
@@ -265,8 +268,8 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 | Severidade | Evidência | Impacto | Tratamento |
 |---|---|---|---|
-| Crítico | credenciais/PII em scripts versionados | acesso indevido e vazamento | remover do histórico quando aprovado, rotacionar e usar fixtures/env |
-| Crítico | volume Docker monta um volume no caminho de arquivo SQLite | persistência/boot não confiáveis | corrigir de imediato e migrar para PostgreSQL |
+| Crítico | credencial existiu no histórico Git; valores foram removidos do HEAD | acesso indevido caso a credencial continue válida | proprietário deve rotacionar; avaliar reescrita do histórico separadamente |
+| Resolvido | volume SQLite antes apontava para caminho de arquivo | persistência/boot não confiáveis | Sprint 1 passou a montar `/app/data`; validar no EasyPanel real |
 | Alto | settings únicos para dev/prod e headers de segurança não evidenciados | exposição em produção | settings por ambiente e `check --deploy` |
 | Alto | SQLite com múltiplos clientes e sincronização futura | concorrência, lock e backup frágil | PostgreSQL incremental |
 | Alto | nenhuma API versionada | bloqueia Flutter | API v1 + OpenAPI |
@@ -275,8 +278,8 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 | Médio | documentação de arquitetura diz que só `/admin/` existe | onboarding e operação incorretos | documentação atualizada neste PRD |
 | Médio | UI por CDN e assets remotos | indisponibilidade/CSP | bundle local no fallback web |
 | Médio | cálculos no dashboard e propriedade `current_balance` podem causar consultas repetidas | degradação com volume | consultas agregadas/testes de performance |
-| Médio | cobertura percentual não estava configurada como gate | regressões invisíveis | limiar incremental por domínio |
-| Baixo | arquivos de screenshots/QA e referências pesadas na raiz | ruído e repositório grande | política de artefatos e limpeza segura |
+| Resolvido | cobertura percentual não estava configurada como gate | regressões invisíveis | CI exige no mínimo 90%; resultado atual 98% |
+| Resolvido | screenshots/relatórios privados estavam versionados | PII e ruído no repositório | artefatos removidos e padrões adicionados ao `.gitignore` |
 
 ## 9. Riscos de segurança e privacidade
 
@@ -287,30 +290,29 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 - Arquivos importados são criptografados em repouso ou descartados depois de normalizados conforme política escolhida `[INVESTIGAR]`.
 - Backup deve ser criptografado, testado por restauração e mantido fora do mesmo disco do servidor doméstico.
 - Acesso externo exige HTTPS, proxy confiável, rate limit e allowlist administrativa quando possível.
-- Cadastro público e landing serão removidos; criação de usuário será administrativa.
+- Cadastro público e landing foram removidos; criação de usuário é administrativa.
 - Exclusões financeiras usam retenção/auditoria e confirmação; nada relevante some sem trilha.
 
 ## 10. Cobertura de testes atual
 
-Na auditoria, 72 testes Django passaram e `manage.py check` não apontou problemas. Há testes de isolamento por usuário, CRUD, filtros, formulário e cálculo básico de saldo.
+Após a Sprint 1, 151 testes Django passaram, com 98% de cobertura (2.664 statements, 41 não cobertos). Ruff, Django check, migrations check e deploy check estrito também passaram. Há testes de isolamento por Lar, acesso revogado, integridade, migrations fresh/legadas/rollback, backup, CRUD, filtros e dashboard consolidado.
 
 Sem cobertura comprovada:
 
-- login, logout, signup e recuperação de acesso em cenários completos;
+- recuperação de acesso e ciclo mobile de tokens/dispositivos;
 - dashboard e suas agregações;
 - upload de avatar/mídia;
-- settings e deploy de produção;
-- concorrência e persistência Docker;
+- operação real no EasyPanel e restauração de backup externo;
+- concorrência real e persistência após reinício no host;
 - API, importações, deduplicação, cartões, faturas, sincronização, offline e Flutter, pois não existem;
 - testes end-to-end reais no EasyPanel;
-- teste de restauração de backup;
-- cobertura numérica atual reproduzível no relatório versionado `[INVESTIGAR]`.
+- teste de restauração fora do host/volume de produção.
 
 Novos recursos seguirão TDD: teste falha, implementação mínima, refatoração e suíte completa.
 
 ## 11. Observabilidade atual
 
-As-is: logs padrão do Django/Gunicorn e visualização pelo Docker/EasyPanel. Não há configuração comprovada de logs estruturados, correlação, métricas, tracing, health/readiness checks, alertas, rastreamento de erros ou auditoria financeira.
+As-is: logs padrão do Django/Gunicorn, backup SQLite verificado e comando de auditoria de integridade sem PII. Não há configuração comprovada de logs estruturados, correlação, métricas, tracing, health/readiness checks, alertas, rastreamento de erros ou auditoria de eventos financeiros.
 
 To-be mínimo:
 
@@ -399,8 +401,8 @@ Offline-first:
 
 O roteiro completo, dependências, riscos e critérios de aceite estão em [ROADMAP.md](docs/ROADMAP.md). Ordem resumida:
 
-- [ ] Sprint 0: segurança, backup, baseline e decisões arquiteturais.
-- [ ] Sprint 1: household, proprietários, instituições e integridade do modelo.
+- [x] Sprint 1: acesso por Lar, responsáveis, backfill e integridade do ledger legado.
+- [ ] Fundação operacional restante: rotação da credencial, restauração externa e validação do EasyPanel real.
 - [ ] Sprint 2: API v1, autenticação e contrato de sincronização.
 - [ ] Sprint 3: importação OFX/CSV, deduplicação e conciliação.
 - [ ] Sprint 4: cartões, faturas, limites e parcelamentos.
@@ -417,10 +419,12 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
 
 ## 18. Quick wins
 
-- Rotacionar e remover credenciais/PII dos scripts de QA.
-- Corrigir o volume SQLite antes de qualquer novo deploy.
-- Desativar signup e transformar `/` em redirecionamento para login/dashboard.
-- Criar `FinancialOwner` antes de importar novos dados do casal.
+Concluídos: remoção de PII do HEAD, secret scanning, correção do volume SQLite, remoção de signup/landing, criação do Lar e responsáveis, backup consistente e auditoria de integridade.
+
+Pendentes:
+
+- Rotacionar a credencial histórica fora do código.
+- Validar backup/restauração e o runbook no EasyPanel real.
 - Adicionar hash idempotente e `ImportBatch` antes do primeiro importador.
 - Separar “cartão” de “conta” antes de calcular saldos.
 - Exibir “não informado” em vez de `R$ 0,00` para dados ausentes.
@@ -470,9 +474,9 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
 
 ## 22. Evidências de auditoria
 
-- Branch local `main` estava sincronizada com `origin/main` no commit `f029c14e2ba6ac55567bc1a33fb7ce32080be1aa` antes das alterações de documentação.
+- A Sprint 1 foi mesclada em `origin/main` no commit `20a9c42bc6140fa8576f79b0687420fde283d029`.
 - Branches remotas `final-sprints`, `finapy-pwa` e `fix/easytunnel-deploy` têm commits não incorporados; devem ser auditadas por diff, nunca mescladas em bloco.
-- 72 testes Django passaram durante a auditoria.
-- `manage.py check` estava limpo e não havia migration pendente.
-- A interface observada usa login/cadastro públicos, sidebar web e dashboard de contas/categorias/transações.
-- Este documento e os arquivos em `docs/` são alterações locais ainda não enviadas ao GitHub até que sejam revisadas e publicadas.
+- 151 testes Django passaram; a cobertura registrada foi 98%.
+- Ruff, Django check, migrations check, deploy check e GitHub Actions passaram.
+- Cadastro público e landing foram removidos; login e fallback web privado permanecem.
+- O servidor EasyPanel e a base real não foram alterados durante a sprint.

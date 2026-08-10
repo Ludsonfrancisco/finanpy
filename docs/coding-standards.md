@@ -1,70 +1,59 @@
-# Padrões de Código
+# Padrões de código
 
-> Estas regras valem para o backend legado e para toda evolução do Lar Finance. Convenções Flutter específicas serão adicionadas quando o workspace e suas versões forem aprovados.
+Estas regras valem para o backend atual e para a evolução do Lar Finance.
+Convenções Flutter específicas serão fixadas quando o workspace for aprovado.
 
 ## Regras transversais
 
-- Desenvolvimento orientado a testes: escrever o teste que falha antes do código de produção.
-- Dinheiro usa decimal e código de moeda; nunca `float`.
-- Ausência de dado é `null`/estado desconhecido, nunca zero presumido.
-- Toda entidade financeira é isolada por `household` e `owner` conforme o domínio.
-- APIs usam UUID externo, idempotência e erros estruturados.
-- Logs nunca contêm token, arquivo, CPF, email completo, saldo, valor ou descrição de transação.
-- Importadores preservam origem, são idempotentes e não alteram o ledger antes da confirmação.
-- Mudanças de arquitetura exigem ADR em `docs/adr/`.
-- Código, docs e fixtures usam UTF-8.
+- Escrever primeiro o teste que demonstra o comportamento esperado.
+- Dinheiro usa `Decimal` e código de moeda; nunca `float`.
+- Ausência de dado é nulo/desconhecido, nunca zero presumido.
+- Toda entidade financeira é isolada pelo Lar e, quando aplicável, responsável.
+- APIs futuras usam UUID externo, idempotência e erros estruturados.
+- Logs nunca contêm token, arquivo, CPF, email completo, saldo, valor ou descrição.
+- Importadores preservam origem, são idempotentes e só alteram o ledger após
+  confirmação explícita.
+- Mudanças arquiteturais exigem ADR em `docs/adr/`.
+- Código, documentação e fixtures usam UTF-8.
 
-## Python
+## Python e Django
 
-- Aderência à **PEP-8**
-- Aspas **simples** em todo o código Python
-- Código em **inglês** (variáveis, funções, classes, comentários)
-- Interface do usuário em **pt-BR**
+- PEP 8, aspas simples, nomes e código em inglês.
+- Textos da interface em pt-BR.
+- Preferência por Class-Based Views e recursos nativos do Django.
+- Cada domínio permanece em seu app.
+- Mudanças de comportamento exigem teste de regressão.
+- Migrations aplicadas são imutáveis; correções usam uma nova migration.
+- Ruff usa a configuração versionada em `pyproject.toml`.
 
-## Django
+## Segurança por Lar
 
-- Preferência por **Class-Based Views (CBVs)**
-- Usar recursos nativos do Django: ORM, signals, forms, auth
-- Cada domínio em seu próprio app
-- Signals em `signals.py` por app, registrados em `apps.py` via método `ready()`
-- Models sempre com `created_at` e `updated_at`
+`Household` é a fronteira de autorização. Toda view financeira deve usar
+`HouseholdContextMixin` e filtrar por `self.household`. A associação precisa
+estar ativa; ausência ou revogação deve negar acesso sem reativar dados.
 
-### Estrutura padrão de app
+Models financeiros validam:
 
-```
-app/
-├── __init__.py
-├── admin.py
-├── apps.py
-├── forms.py       # ModelForms e Forms customizados
-├── models.py
-├── signals.py     # signals do app (se houver)
-├── tests.py
-├── urls.py        # rotas do app
-└── views.py       # CBVs
-```
+- associação ativa do usuário legado;
+- coerência entre Lar, conta, categoria e responsável financeiro;
+- compartilhamento apenas entre membros do mesmo Lar.
 
-### Segurança de dados por usuário
+Erros de campos internos omitidos de um `ModelForm` devem aparecer como erros
+não associados a campo, nunca como resposta HTTP 500. FKs legadas para usuário
+permanecem protegidas enquanto forem necessárias para auditoria e migração.
 
-Toda view que liste ou altere dados deve filtrar por `user=request.user`. Nunca confiar em IDs vindos da URL sem validar o dono.
+## Migrations e integridade
 
-```python
-def get_queryset(self):
-    return super().get_queryset().filter(user=self.request.user)
-```
+- Toda data migration tem ensaio de banco novo, banco legado e rollback.
+- Preflight falha antes de alterar dados quando encontra inconsistência.
+- Não manipular a tabela `django_migrations` para esconder divergência física.
+- Constraints críticas são verificadas no banco, não apenas no ORM.
+- `audit_household_integrity` permanece somente leitura e sem PII.
 
-## Templates
+## Testes e entrega
 
-- Herdar sempre de um layout base (`base_public.html` ou `base_app.html`)
-- Componentes reutilizáveis em `templates/partials/`
-- Usar `{% block content %}` e `{% block title %}` conforme definido no layout
-
-## Nomenclatura
-
-| Tipo | Convenção | Exemplo |
-|---|---|---|
-| Classes Python | PascalCase | `AccountListView` |
-| Funções/variáveis | snake_case | `get_queryset` |
-| Templates | snake_case | `confirm_delete.html` |
-| URLs (name) | snake_case com prefixo do app | `accounts:list` |
-| Models | PascalCase singular | `Transaction` |
+- Cada correção inclui teste que falha antes da implementação.
+- Rodar testes focados durante a tarefa e a suíte completa antes do commit final.
+- Gates: Ruff, Django check, migrations check, deploy check e cobertura mínima.
+- Cada tarefa concluída recebe commit e push; cada sprint recebe revisão final e
+  relato objetivo do concluído e do próximo passo.

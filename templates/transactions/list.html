@@ -55,7 +55,7 @@
       <select id="id_filter_account" name="account"
               class="block w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
         <option value="">Todas</option>
-        {% for account in request.user.accounts.all %}
+        {% for account in filter_accounts %}
           <option value="{{ account.pk }}" {% if filter_account == account.pk|stringformat:"s" %}selected{% endif %}>
             {{ account.name }}
           </option>
@@ -69,7 +69,7 @@
       <select id="id_filter_category" name="category"
               class="block w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
         <option value="">Todas</option>
-        {% for category in request.user.categories.all %}
+        {% for category in filter_categories %}
           <option value="{{ category.pk }}" {% if filter_category == category.pk|stringformat:"s" %}selected{% endif %}>
             {{ category.name }}
           </option>
