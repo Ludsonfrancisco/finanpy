@@ -6,6 +6,7 @@ from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.recorder import MigrationRecorder
 from django.test import TransactionTestCase
+from django.test.utils import CaptureQueriesContext
 
 BACKFILL_NAMESPACE = uuid.UUID('a2d5460b-0812-49c6-a6cf-e64bd5f7b42f')
 
@@ -301,6 +302,7 @@ class RequiredLedgerLinksMigrationTest(TransactionTestCase):
         ('categories', '0003_require_household'),
         ('transactions', '0003_require_household_owner'),
     ]
+    category_rollback_target = [('categories', '0002_category_household')]
 
     def setUp(self):
         super().setUp()
@@ -362,10 +364,62 @@ class RequiredLedgerLinksMigrationTest(TransactionTestCase):
         executor.migrate(executor.loader.graph.leaf_nodes())
         super().tearDown()
 
-    def test_required_link_migrations_preserve_ledger_data(self):
+    def _migrate(self, targets):
         executor = MigrationExecutor(connection)
-        executor.migrate(self.migrate_to)
-        migrated_apps = executor.loader.project_state(self.migrate_to).apps
+        executor.migrate(targets)
+        return executor.loader.project_state(targets).apps
+
+    def _category_schema(self):
+        with connection.cursor() as cursor:
+            description = connection.introspection.get_table_description(
+                cursor,
+                'categories_category',
+            )
+            constraints = connection.introspection.get_constraints(
+                cursor,
+                'categories_category',
+            )
+        return {
+            'nullability': {
+                column.name: column.null_ok
+                for column in description
+            },
+            'unique_columns': {
+                tuple(details['columns'])
+                for details in constraints.values()
+                if details.get('unique')
+            },
+            'constraint_names': set(constraints),
+        }
+
+    def _column_allows_null(self, table_name, column_name):
+        with connection.cursor() as cursor:
+            description = connection.introspection.get_table_description(
+                cursor,
+                table_name,
+            )
+        return next(
+            column.null_ok
+            for column in description
+            if column.name == column_name
+        )
+
+    def _ledger_counts(self, apps):
+        return {
+            model_name: apps.get_model(app_label, model_name).objects.count()
+            for app_label, model_name in (
+                ('accounts', 'Account'),
+                ('categories', 'Category'),
+                ('transactions', 'Transaction'),
+            )
+        }
+
+    def _category_rows(self, apps):
+        Category = apps.get_model('categories', 'Category')
+        return list(Category.objects.order_by('pk').values())
+
+    def test_required_link_migrations_preserve_ledger_data(self):
+        migrated_apps = self._migrate(self.migrate_to)
 
         Account = migrated_apps.get_model('accounts', 'Account')
         Category = migrated_apps.get_model('categories', 'Category')
@@ -392,3 +446,124 @@ class RequiredLedgerLinksMigrationTest(TransactionTestCase):
         self.assertEqual(transaction.category_id, self.category_id)
         self.assertIsNotNone(transaction.household_id)
         self.assertIsNotNone(transaction.financial_owner_id)
+
+    def test_each_required_link_is_not_null_in_database_schema(self):
+        self._migrate(self.migrate_to)
+
+        self.assertFalse(
+            self._column_allows_null('accounts_account', 'household_id')
+        )
+        self.assertFalse(
+            self._column_allows_null('accounts_account', 'financial_owner_id')
+        )
+        self.assertFalse(
+            self._column_allows_null('categories_category', 'household_id')
+        )
+        self.assertFalse(
+            self._column_allows_null('transactions_transaction', 'household_id')
+        )
+        self.assertFalse(
+            self._column_allows_null(
+                'transactions_transaction',
+                'financial_owner_id',
+            )
+        )
+
+    def test_compatible_category_schema_round_trip_preserves_data_and_constraints(self):
+        before_rows = self._category_rows(
+            MigrationExecutor(connection).loader.project_state(self.migrate_from).apps
+        )
+        before_schema = self._category_schema()
+        self.assertIn(
+            ('user_id', 'name', 'type'),
+            before_schema['unique_columns'],
+        )
+        self.assertNotIn(
+            'unique_category_per_household_name_type',
+            before_schema['constraint_names'],
+        )
+
+        migrated_apps = self._migrate(self.migrate_to)
+        required_schema = self._category_schema()
+        self.assertNotIn(
+            ('user_id', 'name', 'type'),
+            required_schema['unique_columns'],
+        )
+        self.assertIn(
+            ('household_id', 'name', 'type'),
+            required_schema['unique_columns'],
+        )
+        self.assertIn(
+            'unique_category_per_household_name_type',
+            required_schema['constraint_names'],
+        )
+        self.assertEqual(self._category_rows(migrated_apps), before_rows)
+
+        rolled_back_apps = self._migrate(self.migrate_from)
+        rolled_back_schema = self._category_schema()
+        self.assertIn(
+            ('user_id', 'name', 'type'),
+            rolled_back_schema['unique_columns'],
+        )
+        self.assertNotIn(
+            ('household_id', 'name', 'type'),
+            rolled_back_schema['unique_columns'],
+        )
+        self.assertNotIn(
+            'unique_category_per_household_name_type',
+            rolled_back_schema['constraint_names'],
+        )
+        self.assertEqual(self._category_rows(rolled_back_apps), before_rows)
+
+    def test_category_rollback_conflict_aborts_before_schema_changes(self):
+        migrated_apps = self._migrate(self.migrate_to)
+        Household = migrated_apps.get_model('households', 'Household')
+        Category = migrated_apps.get_model('categories', 'Category')
+        other_household = Household.objects.create(name='Lar conflitante')
+        Category.objects.create(
+            user_id=self.user_id,
+            household=other_household,
+            name='Mercado preservado',
+            type='expense',
+            color='#abcdef',
+        )
+        before_counts = self._ledger_counts(migrated_apps)
+        before_rows = self._category_rows(migrated_apps)
+        before_schema = self._category_schema()
+
+        with CaptureQueriesContext(connection) as queries:
+            with self.assertRaisesRegex(
+                RuntimeError,
+                'incompatible_legacy_unique_groups=1',
+            ) as caught:
+                MigrationExecutor(connection).migrate(
+                    self.category_rollback_target
+                )
+
+        message = str(caught.exception)
+        self.assertNotIn('Mercado preservado', message)
+        self.assertNotIn('required-links@example.com', message)
+        schema_statements = [
+            query['sql']
+            for query in queries.captured_queries
+            if any(
+                marker in query['sql'].upper()
+                for marker in (
+                    'ALTER TABLE',
+                    'CREATE TABLE',
+                    'DROP TABLE',
+                    'DROP INDEX',
+                    'CREATE UNIQUE INDEX',
+                )
+            )
+        ]
+        self.assertEqual(schema_statements, [])
+        self.assertEqual(self._ledger_counts(migrated_apps), before_counts)
+        self.assertEqual(self._category_rows(migrated_apps), before_rows)
+        self.assertEqual(self._category_schema(), before_schema)
+        self.assertTrue(
+            MigrationRecorder(connection).migration_qs.filter(
+                app='categories',
+                name='0003_require_household',
+            ).exists()
+        )

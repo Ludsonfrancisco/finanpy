@@ -59,11 +59,29 @@ class HouseholdBoundaryTest(TestCase):
         with self.assertRaises(ValidationError):
             account.full_clean()
 
-    def test_account_requires_household_and_owner(self):
-        account = Account(user=self.user, name='Sem Lar')
+    def test_account_requires_household(self):
+        account = Account(
+            user=self.user,
+            financial_owner=self.owner,
+            name='Sem Lar',
+        )
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as caught:
             account.full_clean()
+
+        self.assertEqual(set(caught.exception.error_dict), {'household'})
+
+    def test_account_requires_financial_owner(self):
+        account = Account(
+            user=self.user,
+            household=self.household,
+            name='Sem responsável',
+        )
+
+        with self.assertRaises(ValidationError) as caught:
+            account.full_clean()
+
+        self.assertEqual(set(caught.exception.error_dict), {'financial_owner'})
 
     def test_category_requires_household(self):
         category = Category(
@@ -72,8 +90,10 @@ class HouseholdBoundaryTest(TestCase):
             type=Category.EXPENSE,
         )
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as caught:
             category.full_clean()
+
+        self.assertEqual(set(caught.exception.error_dict), {'household'})
 
     def test_categories_are_unique_inside_household(self):
         with self.assertRaises(IntegrityError):
@@ -121,8 +141,18 @@ class HouseholdBoundaryTest(TestCase):
         with self.assertRaises(ValidationError):
             self._transaction(financial_owner=self.other_owner).full_clean()
 
-    def test_transaction_requires_household_and_owner(self):
-        transaction = self._transaction(household=None, financial_owner=None)
+    def test_transaction_requires_household(self):
+        transaction = self._transaction(household=None)
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as caught:
             transaction.full_clean()
+
+        self.assertEqual(set(caught.exception.error_dict), {'household'})
+
+    def test_transaction_requires_financial_owner(self):
+        transaction = self._transaction(financial_owner=None)
+
+        with self.assertRaises(ValidationError) as caught:
+            transaction.full_clean()
+
+        self.assertEqual(set(caught.exception.error_dict), {'financial_owner'})

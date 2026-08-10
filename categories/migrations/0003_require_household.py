@@ -5,6 +5,23 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def abort_reverse_if_legacy_uniqueness_conflicts(apps, schema_editor):
+    Category = apps.get_model('categories', 'Category')
+    database_alias = schema_editor.connection.alias
+    conflict_count = (
+        Category.objects.using(database_alias)
+        .values('user_id', 'name', 'type')
+        .annotate(category_count=models.Count('pk'))
+        .filter(category_count__gt=1)
+        .count()
+    )
+    if conflict_count:
+        raise RuntimeError(
+            'category 0003 reverse preflight failed: '
+            f'incompatible_legacy_unique_groups={conflict_count}'
+        )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -26,5 +43,9 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name='category',
             constraint=models.UniqueConstraint(fields=('household', 'name', 'type'), name='unique_category_per_household_name_type'),
+        ),
+        migrations.RunPython(
+            migrations.RunPython.noop,
+            abort_reverse_if_legacy_uniqueness_conflicts,
         ),
     ]
