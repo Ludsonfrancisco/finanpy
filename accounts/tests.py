@@ -6,6 +6,7 @@ from django.test import TestCase
 
 from accounts.models import Account
 from categories.models import Category
+from households.services import ensure_household_for_user, get_financial_owner
 from transactions.models import Transaction
 
 User = get_user_model()
@@ -14,14 +15,19 @@ User = get_user_model()
 class AccountCurrentBalanceTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(email='grace@example.com', password='pass123')
+        self.household = ensure_household_for_user(self.user)
+        self.shared_owner = get_financial_owner(self.household)
         self.account = Account.objects.create(
             user=self.user,
+            household=self.household,
+            financial_owner=self.shared_owner,
             name='Conta Principal',
             type=Account.CHECKING,
             initial_balance=Decimal('1000.00'),
         )
         self.category = Category.objects.create(
             user=self.user,
+            household=self.household,
             name='Outros',
             type=Category.EXPENSE,
         )
@@ -29,6 +35,8 @@ class AccountCurrentBalanceTest(TestCase):
     def _make_transaction(self, amount, tx_type):
         return Transaction.objects.create(
             user=self.user,
+            household=self.household,
+            financial_owner=self.shared_owner,
             account=self.account,
             category=self.category,
             description='Teste',
@@ -58,6 +66,8 @@ class AccountCurrentBalanceTest(TestCase):
     def test_current_balance_zero_initial_balance(self):
         account = Account.objects.create(
             user=self.user,
+            household=self.household,
+            financial_owner=self.shared_owner,
             name='Conta Zerada',
             type=Account.CASH,
             initial_balance=Decimal('0.00'),
@@ -71,21 +81,35 @@ class AccountViewTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(email='alice@example.com', password='pass123')
         self.other_user = User.objects.create_user(email='bob@example.com', password='pass123')
+        self.household = ensure_household_for_user(self.user)
+        self.other_household = ensure_household_for_user(self.other_user)
+        self.shared_owner = get_financial_owner(self.household)
+        self.other_shared_owner = get_financial_owner(self.other_household)
         self.client.login(username='alice@example.com', password='pass123')
 
         self.account = Account.objects.create(
-            user=self.user, name='Minha Conta', type=Account.CHECKING, initial_balance=Decimal('500')
+            user=self.user,
+            household=self.household,
+            financial_owner=self.shared_owner,
+            name='Minha Conta',
+            type=Account.CHECKING,
+            initial_balance=Decimal('500'),
         )
         self.other_account = Account.objects.create(
-            user=self.other_user, name='Conta Alheia', type=Account.SAVINGS, initial_balance=Decimal('100')
+            user=self.user,
+            household=self.other_household,
+            financial_owner=self.other_shared_owner,
+            name='Conta Alheia',
+            type=Account.SAVINGS,
+            initial_balance=Decimal('100'),
         )
 
-    def test_list_shows_only_own_accounts(self):
+    def test_account_list_is_scoped_by_household(self):
         response = self.client.get('/accounts/')
+
         self.assertEqual(response.status_code, 200)
-        accounts = list(response.context['accounts'])
-        self.assertIn(self.account, accounts)
-        self.assertNotIn(self.other_account, accounts)
+        self.assertContains(response, self.account.name)
+        self.assertNotContains(response, self.other_account.name)
 
     def test_create_account(self):
         response = self.client.post('/accounts/new/', {
@@ -95,7 +119,9 @@ class AccountViewTest(TestCase):
             'currency': 'BRL',
         })
         self.assertRedirects(response, '/accounts/')
-        self.assertTrue(Account.objects.filter(user=self.user, name='Nova Conta').exists())
+        account = Account.objects.get(user=self.user, name='Nova Conta')
+        self.assertEqual(account.household, self.household)
+        self.assertEqual(account.financial_owner, self.shared_owner)
 
     def test_update_account(self):
         response = self.client.post(f'/accounts/{self.account.pk}/edit/', {
@@ -113,7 +139,7 @@ class AccountViewTest(TestCase):
         self.assertRedirects(response, '/accounts/')
         self.assertFalse(Account.objects.filter(pk=self.account.pk).exists())
 
-    def test_cannot_update_other_user_account(self):
+    def test_cannot_update_account_from_other_household(self):
         response = self.client.post(f'/accounts/{self.other_account.pk}/edit/', {
             'name': 'Hackeada',
             'type': Account.CHECKING,
@@ -122,6 +148,6 @@ class AccountViewTest(TestCase):
         })
         self.assertEqual(response.status_code, 404)
 
-    def test_cannot_delete_other_user_account(self):
+    def test_cannot_delete_account_from_other_household(self):
         response = self.client.post(f'/accounts/{self.other_account.pk}/delete/')
         self.assertEqual(response.status_code, 404)

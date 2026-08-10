@@ -36,8 +36,11 @@ class TransactionForm(forms.ModelForm):
             'type': forms.Select(attrs={'class': _INPUT_CLASSES}),
         }
 
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, household=None, **kwargs):
         super().__init__(*args, **kwargs)
-        if user:
-            self.fields['account'].queryset = Account.objects.filter(user=user)
-            self.fields['category'].queryset = Category.objects.filter(user=user)
+        if household:
+            self.fields['account'].queryset = Account.objects.filter(household=household)
+            self.fields['category'].queryset = Category.objects.filter(household=household)
+        else:
+            self.fields['account'].queryset = Account.objects.none()
+            self.fields['category'].queryset = Category.objects.none()

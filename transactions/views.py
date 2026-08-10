@@ -3,18 +3,20 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
+from households.mixins import HouseholdContextMixin
+
 from .forms import TransactionForm
 from .models import Transaction
 
 
-class TransactionListView(LoginRequiredMixin, ListView):
+class TransactionListView(LoginRequiredMixin, HouseholdContextMixin, ListView):
     model = Transaction
     template_name = 'transactions/list.html'
     context_object_name = 'transactions'
     paginate_by = 20
 
     def get_queryset(self):
-        qs = super().get_queryset().filter(user=self.request.user)
+        qs = super().get_queryset().filter(household=self.household)
         params = self.request.GET
 
         date_from = params.get('date_from')
@@ -47,7 +49,7 @@ class TransactionListView(LoginRequiredMixin, ListView):
         return context
 
 
-class TransactionCreateView(LoginRequiredMixin, CreateView):
+class TransactionCreateView(LoginRequiredMixin, HouseholdContextMixin, CreateView):
     model = Transaction
     form_class = TransactionForm
     template_name = 'transactions/form.html'
@@ -55,11 +57,14 @@ class TransactionCreateView(LoginRequiredMixin, CreateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['user'] = self.request.user
+        kwargs['household'] = self.household
         return kwargs
 
     def form_valid(self, form):
         form.instance.user = self.request.user
+        form.instance.household = self.household
+        form.instance.financial_owner = form.cleaned_data['account'].financial_owner
+        form.instance.full_clean()
         messages.success(self.request, 'Transação criada com sucesso.')
         return super().form_valid(form)
 
@@ -68,18 +73,18 @@ class TransactionCreateView(LoginRequiredMixin, CreateView):
         return super().form_invalid(form)
 
 
-class TransactionUpdateView(LoginRequiredMixin, UpdateView):
+class TransactionUpdateView(LoginRequiredMixin, HouseholdContextMixin, UpdateView):
     model = Transaction
     form_class = TransactionForm
     template_name = 'transactions/form.html'
     success_url = reverse_lazy('transactions:list')
 
     def get_queryset(self):
-        return super().get_queryset().filter(user=self.request.user)
+        return super().get_queryset().filter(household=self.household)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['user'] = self.request.user
+        kwargs['household'] = self.household
         return kwargs
 
     def form_valid(self, form):
@@ -91,13 +96,13 @@ class TransactionUpdateView(LoginRequiredMixin, UpdateView):
         return super().form_invalid(form)
 
 
-class TransactionDeleteView(LoginRequiredMixin, DeleteView):
+class TransactionDeleteView(LoginRequiredMixin, HouseholdContextMixin, DeleteView):
     model = Transaction
     template_name = 'transactions/confirm_delete.html'
     success_url = reverse_lazy('transactions:list')
 
     def get_queryset(self):
-        return super().get_queryset().filter(user=self.request.user)
+        return super().get_queryset().filter(household=self.household)
 
     def form_valid(self, form):
         messages.success(self.request, 'Transação excluída com sucesso.')
