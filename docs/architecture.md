@@ -15,22 +15,46 @@ a interface principal para iOS, Android e Windows depois da criação da API.
 | Servidor | Gunicorn 23.0.0, um worker no container |
 | Interface | Django Templates e TailwindCSS via CDN |
 | Banco | SQLite em caminho absoluto definido por `SQLITE_PATH` |
-| Autenticação | sessão Django e login por email |
+| Autenticação | sessão Django no web; tokens opacos por dispositivo na API v1 |
 | Qualidade | Django TestCase, Coverage 7.13.5 e Ruff 0.15.11 |
 | Infra | Docker/Compose; EasyPanel doméstico ainda não validado nesta sprint |
 
 ```mermaid
 flowchart LR
-    Browser["Navegador"] --> Views["Django CBVs e Forms"]
-    Views --> Templates["Templates"]
-    Views --> Auth["Sessão Django"]
-    Views --> ORM["Django ORM"]
+    Browser["Navegador"] --> Web["Django CBVs e Forms"]
+    ApiClient["Cliente HTTP"] --> API["Django REST /api/v1"]
+    Web --> Session["Sessão Django"]
+    API --> DeviceAuth["Sessão de dispositivo"]
+    Web --> ORM["Django ORM"]
+    API --> ORM
     ORM --> SQLite[("SQLite")]
-    Gunicorn["Gunicorn"] --> Views
+    Gunicorn["Gunicorn"] --> Web
+    Gunicorn --> API
 ```
 
-Não existe API mobile, fila, cache, importador bancário ou protocolo de
-sincronização no código atual.
+A API v1 e o protocolo de sincronização existem no backend. Não há cliente
+Flutter entregue, fila/worker, cache compartilhado, importador bancário nem
+deploy EasyPanel validado nesta sprint.
+
+## API v1 entregue
+
+O contrato publicado em `docs/openapi-v1.yaml` é a fonte única OpenAPI 3.1 das
+16 rotas atuais:
+
+- saúde: `GET /health/`;
+- autenticação: `POST /auth/login/`, `/auth/refresh/` e `/auth/logout/`;
+- dispositivos: `GET /devices/`, `PATCH /devices/current/` e
+  `POST /devices/{device_uuid}/revoke/`;
+- leitura do Lar: `GET /household/`, `/owners/`, `/accounts/`, `/categories/`,
+  `/transactions/`, `/summary/` e `/bootstrap/`;
+- sincronização: `POST /sync/push/` e `GET /sync/changes/`.
+
+As rotas privadas autenticam uma `DeviceSession` e restringem recursos ao Lar
+da sessão. O push aceita até 100 operações, mantém idempotência por dispositivo
+e `operation_id` e devolve validações/conflitos na posição correspondente do
+lote. O pull devolve até 100 mudanças ordenadas depois de um cursor assinado;
+exclusões são representadas por tombstones. As listas simples de recursos ainda
+não oferecem filtros ou paginação.
 
 ## Domínios atuais
 
@@ -128,26 +152,27 @@ flowchart TB
     Provider["Provedor opcional futuro"] --> Imports
 ```
 
-### Limites propostos
+### Limites atuais e direção
 
 - A API controla autenticação de dispositivos, escopo por Lar e serialização.
 - Serviços de domínio concentram regras reutilizáveis por web, API e imports.
 - Importadores convertem fontes para um contrato interno estável.
 - O ledger armazena fatos confirmados; previsões ficam separadas.
-- O cliente Flutter lê primeiro do banco local e sincroniza pela API.
+- Um futuro cliente Flutter deverá ler primeiro do banco local e sincronizar pela API.
 - O provedor futuro usa o mesmo pipeline de normalização e deduplicação.
 
-## Fluxo de sincronização alvo
+## Contrato de sincronização do backend
 
-1. O cliente registra uma operação local com UUID e versão conhecida.
-2. A operação entra na outbox com chave idempotente.
+1. Um cliente envia uma operação com UUID, `operation_id` e versão conhecida.
+2. Uma futura outbox local poderá repetir a mesma operação com segurança.
 3. A API valida membro ativo, Lar, versão e idempotência.
 4. O servidor confirma a versão ou devolve conflito estruturado.
 5. O cliente busca deltas desde o cursor confirmado.
-6. Conflitos financeiros relevantes exigem resolução explícita.
+6. A resolução de conflito no cliente ainda não foi implementada.
 
-Exclusões serão tombstones por período definido. `updated_at` do dispositivo não
-decide sozinho qual versão vence.
+Exclusões são emitidas como tombstones no delta. A política de retenção desses
+eventos ainda não foi definida. `updated_at` do dispositivo não decide sozinho
+qual versão vence.
 
 ## Evolução segura dos dados
 
@@ -158,10 +183,9 @@ decide sozinho qual versão vence.
 
 ## Limites e pontos para investigar
 
-- contrato exato da API, tokens e revogação de dispositivos;
 - escolha e versão dos pacotes Flutter, API e banco local;
 - proxy, domínio, TLS, volumes e rate limit no EasyPanel real;
-- política de conflito para edição simultânea;
+- experiência de resolução de conflito no cliente;
 - amostras anonimizadas de OFX/CSV das instituições do casal;
 - necessidade de fila/worker após medir importações;
 - função real do app `ai`;

@@ -75,6 +75,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'api.middleware.ApiObservabilityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -186,5 +187,29 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'login': '5/minute',
         'refresh': '30/minute',
+    },
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'api_json': {
+            '()': 'api.logging.JsonFormatter',
+        },
+    },
+    'handlers': {
+        'api_stdout': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'api_json',
+            'stream': 'ext://sys.stdout',
+        },
+    },
+    'loggers': {
+        'lar_finance.api': {
+            'handlers': ['api_stdout'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }

@@ -25,12 +25,25 @@ O Compose agora monta o diretório `/app/data` e usa `SQLITE_PATH=/app/data/db.s
 - signup público desativado;
 - usuário criado administrativamente;
 - senha forte com validadores Django;
-- access token curto e refresh rotativo/revogável `[INVESTIGAR pacote]`;
-- lista de dispositivos e ação “sair de todos”;
-- rate limiting por conta/IP sem bloquear permanentemente o dono;
+- access token opaco com validade de 15 minutos e refresh token opaco rotativo
+  com validade de 30 dias;
+- somente digests HMAC-SHA-256 dos tokens são persistidos; os valores brutos são
+  devolvidos na emissão/rotação e não ficam no banco;
+- lista e revogação individual de dispositivos; logout revoga a sessão atual e
+  reutilização de refresh token já consumido revoga a sessão correspondente;
+- throttle por escopo e cache do Django: login anônimo em `5/minute` e refresh
+  em `30/minute`; não existe ainda rate limit global, compartilhado entre
+  processos ou específico por conta;
 - biometria protege acesso local, não substitui autenticação do servidor;
-- tokens em Keychain, Android Keystore e Windows Credential Locker;
-- nenhum token em SQLite, crash report ou clipboard permanente.
+- um futuro cliente deve usar Keychain, Android Keystore ou Windows Credential
+  Locker e não gravar tokens em SQLite, crash report ou clipboard permanente.
+
+O esquema OpenAPI chama a credencial de `opaqueBearer` e não afirma que ela é
+JWT. Falhas usam envelope estável com `error.code`, `error.message`,
+`error.fields` e `request_id`. Entre os códigos atuais estão
+`invalid_credentials`, `invalid_refresh_token`, `invalid_token`,
+`expired_token`, `revoked_device`, `not_authenticated`, `invalid_cursor`,
+`min_1_operation`, `max_100_operations` e `throttled`.
 
 ## Segurança HTTP e produção
 
@@ -79,7 +92,16 @@ Backup só é considerado válido após restauração testada.
 
 ### Logs
 
-JSON com timestamp, nível, serviço, ambiente, request/job ID, rota normalizada, status, duração e código de erro. Proibido: email completo, CPF, saldo, valor, descrição, token, arquivo e payload de provedor.
+Cada requisição sob `/api/v1/` gera uma linha JSON em stdout com exatamente:
+`timestamp`, `level`, `service`, `request_id`, `method`, `route`, `status`,
+`duration_ms`, `authenticated`, `device_uuid` e `error_code`. `device_uuid` só
+recebe valor para uma sessão autenticada. O header `X-Request-ID` recebido é
+repassado apenas quando parseia como UUID; ausente ou inválido, é substituído por
+UUID v4. O mesmo ID volta no header da resposta e no envelope de erro.
+
+O evento não inclui query string, corpo ou headers e não inclui email, CPF,
+token, saldo, valor, descrição, arquivo ou payload de provedor. Retenção,
+coleta centralizada, métricas e alertas ainda não foram implantados.
 
 ### Métricas
 

@@ -74,17 +74,24 @@ Objetivo: expor o domínio com segurança para Flutter.
 
 Decisão aprovada: um login familiar compartilhado, sessões independentes e revogáveis por dispositivo, responsável padrão `Eu`/`Esposa` por instalação e sincronização automática com outbox offline. Especificação: [login único e sincronização por dispositivo](superpowers/specs/2026-08-10-single-login-device-sync-design.md).
 
-- [ ] OpenAPI para login, refresh, logout e dispositivos;
-- [ ] testes de autorização por household em todo endpoint;
+- [x] OpenAPI para login, refresh, logout, dispositivos, recursos e sincronização;
+- [x] testes de autorização por household nos endpoints privados entregues;
 - [ ] endpoints de owners, instituições, contas, categorias e transações;
 - [ ] paginação por cursor e filtros;
-- [ ] idempotency key nas mutações;
-- [ ] versionamento otimista e resposta de conflito;
-- [ ] endpoint delta/tombstones;
-- [ ] revogação de dispositivo e refresh token;
-- [ ] rate limiting e logs com request ID;
-- [ ] teste de contrato e compatibilidade v1;
-- [ ] documentação de erros.
+- [x] idempotency key nas mutações de sincronização;
+- [x] versionamento otimista e resposta de conflito por operação;
+- [x] endpoint delta/tombstones;
+- [x] revogação de dispositivo e refresh token;
+- [x] rate limiting de login/refresh e logs JSON com request ID;
+- [x] teste de contrato e compatibilidade v1 para as 16 rotas atuais;
+- [x] documentação de erros no contrato OpenAPI.
+
+Entregue no backend: API privada `/api/v1`, sessões revogáveis por dispositivo,
+tokens opacos rotativos, bootstrap, leitura dos recursos do Lar, push idempotente,
+pull por cursor, envelope de erro estável, request IDs e contrato
+`docs/openapi-v1.yaml`. Instituições, filtros/paginação das listas de recursos e o
+cliente Flutter permanecem pendentes; nenhum deploy EasyPanel foi comprovado por
+esta entrega.
 
 Aceite: cliente de teste cria/edita/sincroniza dados sem acessar outro household e sem duplicar requisição repetida.
 

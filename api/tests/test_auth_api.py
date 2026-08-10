@@ -1,4 +1,5 @@
 from datetime import timedelta
+from uuid import UUID
 
 from django.core.cache import cache
 from django.test import TestCase
@@ -139,7 +140,13 @@ class DeviceAuthenticationApiTest(TestCase):
 
         self.assertEqual(wrong_password_response.status_code, 401)
         self.assertEqual(self.error_code(wrong_password_response), 'invalid_credentials')
-        self.assertEqual(wrong_password_response.json(), unknown_response.json())
+        self.assertEqual(
+            wrong_password_response.json()['error'],
+            unknown_response.json()['error'],
+        )
+        for response in (wrong_password_response, unknown_response):
+            request_id = response.json()['request_id']
+            self.assertEqual(str(UUID(request_id)), request_id)
 
     def test_sixth_login_attempt(self):
         responses = [
