@@ -108,16 +108,39 @@ class HouseholdResourceTest(TestCase):
             description='Lancamento estrangeiro em conta local',
             amount=Decimal('777.00'),
         )
+        self.invalid_local_account = self.create_account(
+            user=self.user,
+            household=self.household,
+            owner=self.foreign_owner,
+            name='Conta local com responsavel estrangeiro',
+            initial_balance=Decimal('888.00'),
+        )
+        self.invalid_local_transaction = self.create_transaction(
+            user=self.user,
+            household=self.household,
+            owner=self.foreign_owner,
+            account=self.foreign_account,
+            category=self.foreign_category,
+            description='Transacao local com relacoes estrangeiras',
+            amount=Decimal('555.00'),
+        )
 
     @staticmethod
-    def create_account(*, user, household, owner, name):
+    def create_account(
+        *,
+        user,
+        household,
+        owner,
+        name,
+        initial_balance=Decimal('100.00'),
+    ):
         return Account.objects.create(
             user=user,
             household=household,
             financial_owner=owner,
             name=name,
             type=Account.CHECKING,
-            initial_balance=Decimal('100.00'),
+            initial_balance=initial_balance,
             currency='BRL',
         )
 
@@ -169,6 +192,10 @@ class HouseholdResourceTest(TestCase):
             self.foreign_transaction.description,
             self.cross_household_transaction.uuid,
             self.cross_household_transaction.description,
+            self.invalid_local_account.uuid,
+            self.invalid_local_account.name,
+            self.invalid_local_transaction.uuid,
+            self.invalid_local_transaction.description,
         ):
             self.assertNotIn(str(value), serialized)
 
@@ -187,6 +214,12 @@ class HouseholdResourceTest(TestCase):
         self.assertEqual(body['accounts'][0]['uuid'], str(self.account.uuid))
         self.assertEqual(body['categories'][0]['uuid'], str(self.category.uuid))
         self.assertEqual(body['transactions'][0]['uuid'], str(self.transaction.uuid))
+        self.assertEqual(len(body['accounts']), 1)
+        self.assertEqual(len(body['transactions']), 1)
+        self.assertEqual(body['summary']['total_balance'], '80.00')
+        self.assertEqual(body['summary']['monthly_expenses'], '20.00')
+        self.assertNotIn('888.00', repr(body))
+        self.assertNotIn('555.00', repr(body))
         expected_change_id = SyncChange.objects.filter(
             household=self.household
         ).aggregate(max_id=Max('id'))['max_id']
@@ -201,6 +234,7 @@ class HouseholdResourceTest(TestCase):
         self.assertEqual([row['uuid'] for row in body], [str(self.account.uuid)])
         self.assertNotIn('id', body[0])
         self.assertEqual(body[0]['initial_balance'], '100.00')
+        self.assertNotIn('888.00', repr(body))
 
     def test_categories(self):
         body = self.get_json(RESOURCE_EXPECTATIONS[2][1])
@@ -217,6 +251,7 @@ class HouseholdResourceTest(TestCase):
         self.assertEqual(body[0]['date'], self.transaction.date.isoformat())
         self.assertEqual(body[0]['account_uuid'], str(self.account.uuid))
         self.assertNotIn('account_id', body[0])
+        self.assertNotIn('555.00', repr(body))
 
     def test_owners(self):
         body = self.get_json(RESOURCE_EXPECTATIONS[4][1])
@@ -237,6 +272,8 @@ class HouseholdResourceTest(TestCase):
         self.assertEqual(summary['total_balance'], '80.00')
         self.assertEqual(summary['monthly_income'], '0.00')
         self.assertEqual(summary['monthly_expenses'], '20.00')
+        self.assertNotIn('555.00', repr(summary))
+        self.assertNotIn('888.00', repr(summary))
 
     def test_resources_require_device_authentication(self):
         for _, path, _ in RESOURCE_EXPECTATIONS:

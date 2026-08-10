@@ -29,9 +29,10 @@ def _owners(household):
 
 
 def _accounts(household):
-    return Account.objects.filter(household=household).select_related(
-        'household', 'financial_owner'
-    )
+    return Account.objects.filter(
+        household=household,
+        financial_owner__household=household,
+    ).select_related('household', 'financial_owner')
 
 
 def _categories(household):
@@ -39,19 +40,20 @@ def _categories(household):
 
 
 def _transactions(household):
-    return Transaction.objects.filter(household=household).select_related(
-        'household', 'financial_owner', 'account', 'category'
-    )
+    return Transaction.objects.filter(
+        household=household,
+        financial_owner__household=household,
+        account__household=household,
+        category__household=household,
+    ).select_related('household', 'financial_owner', 'account', 'category')
 
 
 def _summary(household):
     initial_balance = (
-        Account.objects.filter(household=household).aggregate(
-            total=Sum('initial_balance')
-        )['total']
+        _accounts(household).aggregate(total=Sum('initial_balance'))['total']
         or Decimal('0.00')
     )
-    household_transactions = Transaction.objects.filter(household=household)
+    household_transactions = _transactions(household)
     total_income = (
         household_transactions.filter(type=Transaction.INCOME).aggregate(
             total=Sum('amount')
