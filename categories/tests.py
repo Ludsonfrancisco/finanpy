@@ -46,7 +46,7 @@ class CategoryModelTest(TestCase):
             type=Category.INCOME
         )
         # Should NOT raise IntegrityError
-        category = Category.objects.create(
+        Category.objects.create(
             user=self.user,
             name='Salário',
             type=Category.EXPENSE
