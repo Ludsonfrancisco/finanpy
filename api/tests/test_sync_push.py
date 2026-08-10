@@ -228,6 +228,8 @@ class SyncPushApiTest(TestCase):
             result = response.json()['results'][0]
 
         self.assertEqual(response.status_code, http_status)
+        if http_status == 200:
+            self.assertEqual(set(response.json()), {'results'})
         if expected == 'per_operation_results':
             self.assertEqual(result['status'], expected)
         elif expected in {'idempotency_conflict', 'resource_in_use', 'max_100_operations'}:

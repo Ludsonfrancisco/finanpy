@@ -93,21 +93,30 @@ Pré-requisitos: limite de tamanho, MIME real, antivírus/validação, nome alea
 
 O mesmo login familiar pode manter sessões independentes no Windows, iPhone e Android. Cada dispositivo é revogável e guarda seu próprio responsável padrão. Uma importação poderá ser iniciada em qualquer plataforma; depois da revisão e confirmação no servidor, o resultado será sincronizado automaticamente para as demais.
 
+O diagrama abaixo representa o fluxo futuro, depois da implementação do cliente
+Flutter e da importação. O servidor atual usa SQLite, uma réplica e um worker. O
+banco central poderá migrar para PostgreSQL no futuro `[INVESTIGAR]`.
+
 ```mermaid
 sequenceDiagram
     participant App as Flutter
     participant Local as SQLite/outbox
     participant API as Django API
-    participant DB as PostgreSQL
+    participant DB as Banco central
     App->>Local: grava alteração + operação
     App->>API: envia operação idempotente
     API->>DB: valida versão e aplica
-    DB-->>API: nova versão/cursor
-    API-->>App: confirmação ou conflito
-    App->>API: busca delta após cursor
-    API-->>App: mudanças e tombstones
-    App->>Local: transação local atômica
+    DB-->>API: estado confirmado e nova versão
+    API-->>App: resultados ou conflitos (sem cursor)
+    App->>API: busca delta desde o cursor anterior
+    API-->>App: mudanças, tombstones e próximo cursor
+    App->>Local: aplica página em transação atômica
+    App->>Local: avança cursor só após commit
 ```
+
+O cliente nunca avança o cursor a partir da resposta do push. Ele mantém o
+cursor anterior, executa o pull e só persiste o cursor devolvido por esse pull
+depois da aplicação atômica de toda a página.
 
 Gatilhos: login, abertura do app, pull-to-refresh, retorno da rede, depois de alteração e background quando o sistema operacional permitir. A interface sempre mostra “Atualizado há...” e oferece sincronização manual.
 

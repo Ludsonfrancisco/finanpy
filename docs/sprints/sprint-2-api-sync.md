@@ -6,7 +6,7 @@ Branch: `codex/sprint-2-api-sync`
 
 Base da Sprint 2: `1df25805e86ac71fbd123cb24aac818b787b9fce`
 
-Estado: candidato à conclusão, aguardando revisão independente final.
+Estado: concluída; revisão independente final sem achados.
 
 Este documento registra somente comportamento verificado no repositório. Nenhum
 deploy, comando no EasyPanel ou acesso ao banco de produção foi executado.
@@ -28,6 +28,12 @@ deploy, comando no EasyPanel ou acesso ao banco de produção foi executado.
 
 O cliente Flutter e a interface/pipeline de importação não fazem parte desta
 entrega e não existem no repositório.
+
+O push retorna somente `results`, com outcome, estado confirmado e nova versão;
+ele não retorna nem confirma cursor. Um cliente futuro deve preservar o cursor
+anterior, executar o pull e só persistir o cursor devolvido por esse pull depois
+de aplicar atomicamente toda a página. O servidor atual continua em SQLite, com
+uma réplica e um worker; PostgreSQL permanece uma direção futura `[INVESTIGAR]`.
 
 ## Versões exatas
 
@@ -118,10 +124,10 @@ temporário e o banco SQLite temporário do test runner.
 
 ## Matriz de qualidade
 
-- `python -Wd -W error::DeprecationWarning manage.py test`: 276 testes, 0
-  falhas, 124,488 s;
-- coverage: 276 testes, 5.463 statements, 96 não cobertos, 98%; gate mínimo
-  de 90% aprovado;
+- `python -Wd -W error::DeprecationWarning manage.py test`: 277 testes, 0
+  falhas, 111,535 s;
+- medição de coverage imediatamente anterior: 276 testes, 5.463 statements,
+  96 não cobertos, 98%; gate mínimo de 90% aprovado;
 - Ruff: 0 erros;
 - `manage.py check`: 0 issues;
 - `manage.py check --deploy --fail-level WARNING`: 0 issues;
@@ -161,4 +167,4 @@ das seis linhas legadas. Ele não autoriza rollback direto em produção.
   do host não foram validados.
 - Não há UI cliente para resolução de conflitos; retenção de tombstones ainda não
   foi definida.
-- A conclusão da Sprint 2 e seu checkbox dependem do verdict independente final.
+- A Sprint 2 foi concluída após revisão independente final sem achados.

@@ -60,7 +60,8 @@ nulo e o mesmo request ID, sem expor o texto da exceção.
 
 ## Dados em repouso
 
-- PostgreSQL protegido por rede interna e credencial exclusiva;
+- o servidor atual usa SQLite com uma réplica e um worker; PostgreSQL protegido
+  por rede interna e credencial exclusiva é a direção futura `[INVESTIGAR]`;
 - volumes do servidor com permissão mínima;
 - backups criptografados antes de sair do host;
 - SQLite local depende da criptografia do dispositivo e, se necessário, camada adicional `[INVESTIGAR risco/pacote]`;
@@ -80,7 +81,8 @@ nulo e o mesmo request ID, sem expor o texto da exceção.
 
 ## Backup 3-2-1 proporcional
 
-- cópia primária no PostgreSQL;
+- cópia primária no volume SQLite atual; adaptar a rotina quando a migração
+  futura para PostgreSQL for autorizada `[INVESTIGAR]`;
 - backup automatizado local separado do volume;
 - cópia criptografada fora do servidor/casa `[INVESTIGAR destino]`;
 - retenção diária/semanal/mensal a definir;
@@ -156,7 +158,7 @@ Checklist a documentar sem segredos:
 - container image/tag;
 - variáveis e secret store;
 - volumes e owners;
-- PostgreSQL e rede privada;
+- volume SQLite atual; PostgreSQL e rede privada somente após a migração futura;
 - healthcheck e restart;
 - comando de migration;
 - rollback da imagem;

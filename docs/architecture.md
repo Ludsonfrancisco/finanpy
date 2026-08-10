@@ -167,9 +167,12 @@ flowchart TB
 1. Um cliente envia uma operação com UUID, `operation_id` e versão conhecida.
 2. Uma futura outbox local poderá repetir a mesma operação com segurança.
 3. A API valida membro ativo, Lar, versão e idempotência.
-4. O servidor confirma a versão ou devolve conflito estruturado.
-5. O cliente busca deltas desde o cursor confirmado.
-6. A resolução de conflito no cliente ainda não foi implementada.
+4. O servidor confirma o resultado e a versão, ou devolve conflito estruturado;
+   a resposta do push não contém cursor.
+5. O cliente preserva o cursor anterior e busca os deltas desde ele.
+6. Só depois de aplicar a página inteira atomicamente o cliente pode persistir o
+   cursor devolvido pelo pull como próximo cursor local.
+7. A resolução de conflito no cliente ainda não foi implementada.
 
 Exclusões são emitidas como tombstones no delta. A política de retenção desses
 eventos ainda não foi definida. `updated_at` do dispositivo não decide sozinho

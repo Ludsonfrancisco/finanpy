@@ -133,6 +133,22 @@ class OpenApiContractTest(SimpleTestCase):
         self.assertTrue(REQUIRED_SCHEMAS.issubset(schemas))
         self.assertIn('ErrorEnvelope', schemas)
 
+    def test_cursor_is_issued_only_by_bootstrap_and_delta_responses(self):
+        push_schema = self.contract['paths']['/sync/push/']['post']['responses'][
+            '200'
+        ]['content']['application/json']['schema']
+        schemas = self.contract['components']['schemas']
+
+        self.assertEqual(push_schema['required'], ['results'])
+        self.assertEqual(set(push_schema['properties']), {'results'})
+        self.assertNotIn('cursor', json.dumps(push_schema))
+        cursor_response_schemas = {
+            name
+            for name, schema in schemas.items()
+            if 'cursor' in schema.get('properties', {})
+        }
+        self.assertEqual(cursor_response_schemas, {'Bootstrap', 'DeltaPage'})
+
     def test_all_api_routes_are_represented(self):
         routes = runtime_api_operations()
 

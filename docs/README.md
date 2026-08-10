@@ -10,7 +10,7 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
 - [Sprint 1 — Household Ledger](sprints/sprint-1-household-ledger.md): entrega
   concluída e suas evidências.
 - [Sprint 2 — API privada e sincronização](sprints/sprint-2-api-sync.md):
-  candidato de handoff e evidências; conclusão depende da revisão final.
+  entrega concluída, evidências e bloqueios operacionais restantes.
 
 ## Produto e engenharia
 

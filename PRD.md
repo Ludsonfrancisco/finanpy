@@ -1,6 +1,6 @@
 # Lar Finance — PRD do estado atual e evolução do produto
 
-> Fonte única de verdade do produto. Atualizado em 10/08/2026 a partir do candidato `codex/sprint-2-api-sync`, migrations, 276 testes, configuração Docker e documentação operacional.
+> Fonte única de verdade do produto. Atualizado em 10/08/2026 a partir do candidato `codex/sprint-2-api-sync`, migrations, 277 testes, configuração Docker e documentação operacional.
 
 ## Status e convenções
 
@@ -237,7 +237,7 @@ Diagrama e campos: [modelo de dados](docs/data-model.md).
 
 O prefixo entregue é `/api/v1/`, com 16 rotas para health, login/refresh/logout, dispositivos, household/owners, contas, categorias, transações, resumo, bootstrap e sincronização push/pull. O contrato normativo OpenAPI 3.1.0 versão 1.0.0 está em [`docs/openapi-v1.yaml`](docs/openapi-v1.yaml).
 
-Access tokens duram 15 minutos e refresh tokens 30 dias; ambos são opacos, rotacionados e persistidos somente como digest. Login usa throttle de 5/minuto e refresh 30/minuto. Push aceita de 1 a 100 operações idempotentes com versão otimista; pull retorna até 100 mudanças e tombstones após cursor assinado vinculado ao Lar.
+Access tokens duram 15 minutos e refresh tokens 30 dias; ambos são opacos, rotacionados e persistidos somente como digest. Login usa throttle de 5/minuto e refresh 30/minuto. Push aceita de 1 a 100 operações idempotentes com versão otimista e retorna resultados/estado/versão sem cursor. O cliente preserva o cursor anterior e só o avança com o cursor de um pull bem-sucedido, após aplicar atomicamente a página; cada pull retorna até 100 mudanças e tombstones após cursor assinado vinculado ao Lar.
 
 Instituições, cartões/faturas, transferências, tags, recorrências, orçamentos/metas, empréstimos, investimentos/patrimônio e importações/conciliação continuam fora da API atual. O app Flutter não existe e não consome estas rotas ainda.
 
@@ -300,7 +300,7 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-No candidato final da Sprint 2, 276 testes Django passaram, com 98% de cobertura (5.463 statements, 96 não cobertos). Ruff, warnings/deprecations, Django check, migrations check e deploy check estrito também passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI, observabilidade e migrations fresh/legadas/rollback/replay.
+Na conclusão da Sprint 2, 277 testes Django passaram com 98% de cobertura (5.473 statements, 96 não cobertos). Ruff, warnings/deprecations, Django check, migrations check e deploy check estrito também passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI, observabilidade e migrations fresh/legadas/rollback/replay.
 
 Sem cobertura comprovada:
 
@@ -406,7 +406,7 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
 
 - [x] Sprint 1: acesso por Lar, responsáveis, backfill e integridade do ledger legado.
 - [ ] Fundação operacional restante: rotação da credencial, restauração externa e validação do EasyPanel real.
-- [ ] Sprint 2: API v1, autenticação e contrato de sincronização — implementação candidata; checkbox depende da revisão independente final.
+- [x] Sprint 2: API v1, autenticação e contrato de sincronização — concluída após revisão independente final sem achados.
 - [ ] Sprint 3: importação OFX/CSV, deduplicação e conciliação.
 - [ ] Sprint 4: cartões, faturas, limites e parcelamentos.
 - [ ] Sprint 5: shell Flutter, login, storage seguro e offline.
@@ -479,7 +479,7 @@ Pendentes:
 
 - A Sprint 1 foi mesclada em `origin/main` no commit `20a9c42bc6140fa8576f79b0687420fde283d029`.
 - Branches remotas `final-sprints`, `finapy-pwa` e `fix/easytunnel-deploy` têm commits não incorporados; devem ser auditadas por diff, nunca mescladas em bloco.
-- A Sprint 1 registrou 151 testes; o candidato da Sprint 2 registra 276 testes e 98% de cobertura.
+- A Sprint 1 registrou 151 testes; a Sprint 2 foi concluída com 277 testes e 98% de cobertura.
 - Ruff, warnings, Django check, migrations check e deploy check passaram localmente; a CI mantém esses gates e secret scan.
 - Cadastro público e landing foram removidos; login e fallback web privado permanecem.
 - O servidor EasyPanel e a base real não foram alterados durante as Sprints 1 e 2.

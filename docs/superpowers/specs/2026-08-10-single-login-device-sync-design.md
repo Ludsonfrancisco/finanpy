@@ -89,10 +89,13 @@ API são UUIDs; IDs internos do banco não compõem o contrato público.
 
 ### 3.4 Sincronização
 
-O cliente mantém banco local, cursor confirmado e outbox. Mutações carregam UUID
-da operação, UUID da entidade, versão conhecida e chave idempotente. O servidor
-responde com estado confirmado, nova versão e cursor. O pull retorna mudanças e
-tombstones posteriores ao cursor, ordenados de forma estável.
+O cliente mantém banco local, último cursor aplicado com sucesso e outbox.
+Mutações carregam UUID da operação, UUID da entidade, versão conhecida e chave
+idempotente. O push responde somente com o resultado de cada operação, o estado
+confirmado e a nova versão; ele não confirma nem avança cursor. Depois do push, o
+cliente preserva seu cursor anterior e faz pull. Somente o `cursor` devolvido
+por um pull bem-sucedido pode substituir o cursor local, e apenas depois de todas
+as mudanças e tombstones da página serem aplicados atomicamente.
 
 ### 3.5 Importação futura
 
@@ -126,7 +129,8 @@ flowchart TD
     D -->|"sim"| F["Enviar com idempotência e versão"]
     E --> F
     F --> G{"Servidor aceitou?"}
-    G -->|"sim"| H["Confirmar versão e cursor"]
+    G -->|"sim"| H["Confirmar versão e preservar cursor anterior"]
+    H --> K["Executar pull e aplicar página atomicamente"]
     G -->|"conflito"| I["Preservar versões e pedir revisão"]
     G -->|"erro temporário"| J["Manter na fila e tentar depois"]
 ```

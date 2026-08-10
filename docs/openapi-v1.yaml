@@ -373,7 +373,7 @@
         },
         "responses": {
           "200": {
-            "description": "Ordered per-operation results; validation and optimistic conflicts remain inside this successful batch response",
+            "description": "Ordered per-operation outcomes with confirmed state and version; this response never advances or returns a delta cursor",
             "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}},
             "content": {
               "application/json": {
