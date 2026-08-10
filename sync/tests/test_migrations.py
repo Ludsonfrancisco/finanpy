@@ -1,9 +1,17 @@
+from io import StringIO
+
 from django.core.exceptions import FieldDoesNotExist
+from django.core.management import call_command
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TransactionTestCase
 
-SYNC_TABLES = {'sync_idempotentoperation', 'sync_syncchange'}
+SPRINT_2_TABLES = {
+    'api_devicesession',
+    'api_usedrefreshtoken',
+    'sync_idempotentoperation',
+    'sync_syncchange',
+}
 
 
 class SyncMetadataMigrationTest(TransactionTestCase):
@@ -51,6 +59,16 @@ class SyncMetadataMigrationTest(TransactionTestCase):
             household=household,
             type='self',
             name='Legacy Owner',
+        )
+        FinancialOwner.objects.create(
+            household=household,
+            type='spouse',
+            name='Legacy Spouse',
+        )
+        FinancialOwner.objects.create(
+            household=household,
+            type='shared',
+            name='Legacy Shared',
         )
         accounts = [
             Account.objects.create(
@@ -154,15 +172,13 @@ class SyncMetadataMigrationTest(TransactionTestCase):
         executor.migrate(targets)
         return executor.loader.project_state(state_targets or targets).apps
 
-    def test_forward_backfills_unique_uuids_and_version_one_then_reverses(self):
-        new_apps = self._migrate(self.migrate_to)
-
+    def _assert_forward_state(self, apps):
         for app_label, model_name, key in (
             ('accounts', 'Account', 'accounts'),
             ('categories', 'Category', 'categories'),
             ('transactions', 'Transaction', 'transactions'),
         ):
-            Model = new_apps.get_model(app_label, model_name)
+            Model = apps.get_model(app_label, model_name)
             rows = list(
                 Model.objects.filter(pk__in=self.legacy_ids[key])
                 .order_by('pk')
@@ -173,7 +189,20 @@ class SyncMetadataMigrationTest(TransactionTestCase):
             self.assertEqual(len({row_uuid for row_uuid, _ in rows}), 2)
             self.assertEqual([version for _, version in rows], [1, 1])
 
-        reverse_targets = [*self.migrate_from, ('sync', None)]
+        DeviceSession = apps.get_model('api', 'DeviceSession')
+        UsedRefreshToken = apps.get_model('api', 'UsedRefreshToken')
+        IdempotentOperation = apps.get_model('sync', 'IdempotentOperation')
+        SyncChange = apps.get_model('sync', 'SyncChange')
+        self.assertEqual(DeviceSession.objects.count(), 0)
+        self.assertEqual(UsedRefreshToken.objects.count(), 0)
+        self.assertEqual(IdempotentOperation.objects.count(), 0)
+        self.assertEqual(SyncChange.objects.count(), 0)
+
+    def test_legacy_forward_rollback_forward_and_audit(self):
+        new_apps = self._migrate(self.migrate_to)
+        self._assert_forward_state(new_apps)
+
+        reverse_targets = [*self.migrate_from, ('sync', None), ('api', None)]
         reversed_apps = self._migrate(reverse_targets, self.migrate_from)
         reversed_snapshot = self._legacy_snapshot(reversed_apps)
         for app_label, model_name, key in (
@@ -191,4 +220,18 @@ class SyncMetadataMigrationTest(TransactionTestCase):
             with self.assertRaises(FieldDoesNotExist):
                 Model._meta.get_field('sync_version')
 
-        self.assertTrue(SYNC_TABLES.isdisjoint(connection.introspection.table_names()))
+        self.assertTrue(
+            SPRINT_2_TABLES.isdisjoint(connection.introspection.table_names())
+        )
+
+        replayed_apps = self._migrate(self.migrate_to)
+        self._assert_forward_state(replayed_apps)
+
+        audit_output = StringIO()
+        call_command('audit_household_integrity', stdout=audit_output)
+        audit_lines = audit_output.getvalue().splitlines()
+        self.assertEqual(
+            len([line for line in audit_lines if line.endswith('=0')]),
+            12,
+        )
+        self.assertEqual(audit_lines[-1], 'integrity_status=ok')

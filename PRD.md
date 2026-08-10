@@ -1,12 +1,12 @@
 # Lar Finance — PRD do estado atual e evolução do produto
 
-> Fonte única de verdade do produto. Atualizado em 10/08/2026 a partir do código da branch `main`, migrations, 151 testes, configuração Docker e documentação operacional.
+> Fonte única de verdade do produto. Atualizado em 10/08/2026 a partir do candidato `codex/sprint-2-api-sync`, migrations, 276 testes, configuração Docker e documentação operacional.
 
 ## Status e convenções
 
 - **Nome oficial:** Lar Finance.
 - **Nome técnico legado:** Finanpy, mantido temporariamente no repositório, módulos Django e implantação até uma migração segura.
-- **Estado atual:** aplicação web Django privada, com Lar compartilhado, membros, responsáveis financeiros, contas, categorias, transações e dashboard consolidado.
+- **Estado atual:** aplicação web Django privada, com Lar compartilhado, membros, responsáveis financeiros, contas, categorias, transações, dashboard consolidado e API privada v1 com sincronização incremental.
 - **Produto alvo:** aplicativo Flutter para iOS, Android e Windows, sincronizado com o backend Django no servidor Linux/EasyPanel.
 - **Estratégia de dados aprovada:** importação de arquivos primeiro; integração paga automática somente após o produto estar maduro e em uso.
 - **Usuários do produto:** uma família no mesmo Lar, com um único login compartilhado nesta fase. Cada dispositivo terá sessão própria e revogável. O domínio mantém credenciais de acesso separadas dos responsáveis financeiros `Eu`, `Esposa` e `Conjunto`, permitindo dois logins no futuro sem migrar o ledger.
@@ -92,6 +92,7 @@ flowchart LR
 |---|---|---|
 | Linguagem | Python 3.12, imagem `python:3.12-slim` | `Dockerfile` |
 | Framework | Django 5.2.13 | `requirements.txt` |
+| API | Django REST Framework 3.17.1; OpenAPI 3.1.0, contrato 1.0.0 | `requirements.txt`, `docs/openapi-v1.yaml` |
 | WSGI | Gunicorn 23.0.0, 1 worker | requirements, Docker e Compose |
 | Imagens | Pillow 12.2.0 | `requirements.txt` |
 | Ambiente | python-dotenv 1.2.2 | `requirements.txt` |
@@ -103,18 +104,18 @@ flowchart LR
 | Container | Docker multi-stage + Docker Compose | arquivos raiz |
 | Produção informada | Linux em EasyPanel, servidor doméstico | informação do proprietário; configuração externa não versionada `[INVESTIGAR]` |
 
-Nenhuma dependência Flutter, API REST, PostgreSQL, parser OFX/CSV, fila ou provedor financeiro está presente na `main`.
+Nenhuma dependência Flutter, PostgreSQL, parser OFX/CSV, fila ou provedor financeiro está presente. A API REST privada usa Django REST Framework.
 
 ### 3.2 Stack alvo, ainda não instalada
 
 | Camada | Direção | Estado |
 |---|---|---|
 | Cliente | Flutter, um código-base para iOS, Android e Windows | aprovado; versão exata será fixada no Sprint 0 `[INVESTIGAR]` |
-| Backend | Django preservado e transformado em API versionada | aprovado |
-| API | Django REST Framework ou alternativa compatível | escolha e versão `[INVESTIGAR]` por ADR |
+| Backend | Django preservado e transformado em API versionada | API v1 entregue na Sprint 2 |
+| API | Django REST Framework 3.17.1 | entregue na Sprint 2 |
 | Banco servidor | PostgreSQL | aprovado como direção; versão/imagem EasyPanel `[INVESTIGAR]` |
 | Banco local | SQLite com camada reativa e fila de sincronização | aprovado; pacote `[INVESTIGAR]` |
-| Autenticação | login familiar único; token curto e renovação rotativa por dispositivo em armazenamento seguro | desenho aprovado; pacote e tempos exatos `[INVESTIGAR]` por ADR |
+| Autenticação | login familiar único; token opaco e renovação rotativa por dispositivo | backend entregue: access 15 minutos, refresh 30 dias; storage seguro no cliente ainda não existe |
 | Importação | OFX e CSV primeiro; PDF/XLSX por adaptadores | aprovado |
 | Automação futura | adaptador de provedor, inicialmente candidato Pierre | contratação e suporte a dois CPFs `[INVESTIGAR]` |
 
@@ -124,7 +125,7 @@ Não há versões exatas para componentes ainda não adicionados ao repositório
 
 ### 4.1 As-is
 
-Monólito Django MVC/MTV server-rendered, separado por apps de domínio simples. Regras e acesso a dados estão concentrados em models, forms e class-based views. Não há camada de API nem serviço de sincronização.
+Monólito Django que preserva a interface server-rendered e adiciona API privada DRF. A API autentica sessões por dispositivo, aplica a fronteira do Lar e compartilha os models de domínio com o serviço de sincronização append-only.
 
 ```mermaid
 flowchart TB
@@ -136,7 +137,7 @@ flowchart TB
     Gunicorn["Gunicorn no container"] --> Views
 ```
 
-Apps: `core`, `users`, `profiles`, `accounts`, `categories`, `transactions` e `ai`. O app `ai` está instalado, porém sua função produtiva precisa ser validada `[INVESTIGAR]`.
+Apps: `core`, `users`, `profiles`, `households`, `accounts`, `categories`, `transactions`, `api`, `sync` e `ai`. O app `ai` está instalado, porém sua função produtiva precisa ser validada `[INVESTIGAR]`.
 
 ### 4.2 To-be incremental
 
@@ -185,11 +186,13 @@ Detalhes: [arquitetura](docs/architecture.md) e [segurança/operação](docs/sec
 | `households.Household` | nome, UUID, status e timestamps | fronteira de autorização e consolidação |
 | `households.HouseholdMembership` | papel, status e timestamps | liga User ao Lar; um Lar ativo por usuário |
 | `households.FinancialOwner` | nome, código `self/spouse/shared`, UUID e status | responsável financeiro dentro do Lar |
-| `accounts.Account` | nome, tipo, saldo inicial, moeda, timestamps | N:1 Household, User legado e FinancialOwner |
-| `categories.Category` | nome, tipo receita/despesa, cor, ícone | N:1 Household e User legado; único no escopo definido |
-| `transactions.Transaction` | descrição, valor, data, tipo, timestamps | N:1 Household, User legado, FinancialOwner, Account e Category |
+| `accounts.Account` | UUID, `sync_version`, nome, tipo, saldo inicial, moeda, timestamps | N:1 Household, User legado e FinancialOwner |
+| `categories.Category` | UUID, `sync_version`, nome, tipo receita/despesa, cor, ícone | N:1 Household e User legado; único no escopo definido |
+| `transactions.Transaction` | UUID, `sync_version`, descrição, valor, data, tipo, timestamps | N:1 Household, User legado, FinancialOwner, Account e Category |
+| `api.DeviceSession` / `UsedRefreshToken` | UUID da sessão, plataforma, digests, expiração, revogação e refresh consumido | escopo imutável por User, Household e owner padrão |
+| `sync.SyncChange` / `IdempotentOperation` | cursor, entidade/UUID/versão, operação, payload e resposta idempotente | ledger append-only por Household e operação por dispositivo |
 
-Lacunas comprovadas: não há instituição normalizada, UUID/versão de sync nas entidades financeiras legadas, transferência com duas pontas, fatura, limite, parcela, recorrência, dívida, investimento, importação, deduplicação, moeda por cotação, anexo ou trilha de eventos financeiros. Existe auditoria de integridade do Lar, mas não `AuditEvent` de negócio.
+Lacunas comprovadas: não há instituição normalizada, transferência com duas pontas, fatura, limite, parcela, recorrência, dívida, investimento, importação, deduplicação, moeda por cotação, anexo ou `AuditEvent` de negócio. O ledger de sync registra mudanças técnicas, não substitui auditoria financeira de negócio.
 
 ### 5.2 To-be
 
@@ -230,11 +233,13 @@ Diagrama e campos: [modelo de dados](docs/data-model.md).
 | vários | `/admin/` | staff | Django Admin |
 | GET | `/media/*` | conforme settings | mídia servida pelo Django na configuração atual |
 
-### 6.2 API alvo
+### 6.2 API privada atual
 
-Prefixo `/api/v1/`. Recursos previstos: autenticação, sessão/dispositivos, household/owners, instituições, contas, cartões/faturas, transações/transferências, categorias/tags, recorrências, orçamentos/metas, empréstimos, investimentos/patrimônio, importações/conciliação, dashboard/relatórios e sincronização incremental.
+O prefixo entregue é `/api/v1/`, com 16 rotas para health, login/refresh/logout, dispositivos, household/owners, contas, categorias, transações, resumo, bootstrap e sincronização push/pull. O contrato normativo OpenAPI 3.1.0 versão 1.0.0 está em [`docs/openapi-v1.yaml`](docs/openapi-v1.yaml).
 
-O contrato exato e verbos serão definidos antes do código em OpenAPI `[INVESTIGAR]`. O app Flutter não consumirá páginas HTML.
+Access tokens duram 15 minutos e refresh tokens 30 dias; ambos são opacos, rotacionados e persistidos somente como digest. Login usa throttle de 5/minuto e refresh 30/minuto. Push aceita de 1 a 100 operações idempotentes com versão otimista; pull retorna até 100 mudanças e tombstones após cursor assinado vinculado ao Lar.
+
+Instituições, cartões/faturas, transferências, tags, recorrências, orçamentos/metas, empréstimos, investimentos/patrimônio e importações/conciliação continuam fora da API atual. O app Flutter não existe e não consome estas rotas ainda.
 
 ### 6.3 Comandos atuais
 
@@ -270,9 +275,9 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 |---|---|---|---|
 | Crítico | credencial existiu no histórico Git; valores foram removidos do HEAD | acesso indevido caso a credencial continue válida | proprietário deve rotacionar; avaliar reescrita do histórico separadamente |
 | Resolvido | volume SQLite antes apontava para caminho de arquivo | persistência/boot não confiáveis | Sprint 1 passou a montar `/app/data`; validar no EasyPanel real |
-| Alto | settings únicos para dev/prod e headers de segurança não evidenciados | exposição em produção | settings por ambiente e `check --deploy` |
+| Resolvido no código | flags e headers de segurança de produção | exposição em produção | settings por ambiente e `check --deploy --fail-level WARNING`; validação real do proxy continua bloqueada |
 | Alto | SQLite com múltiplos clientes e sincronização futura | concorrência, lock e backup frágil | PostgreSQL incremental |
-| Alto | nenhuma API versionada | bloqueia Flutter | API v1 + OpenAPI |
+| Resolvido no backend | API privada v1 e OpenAPI 1.0.0 entregues | Flutter ainda inexistente | manter testes de contrato e compatibilidade |
 | Alto | modelo mistura cartão e conta | saldos/faturas incorretos | separar agregados antes da importação completa |
 | Alto | ausência de importação/deduplicação/auditoria | trabalho manual e dados duplicados | pipeline idempotente |
 | Médio | documentação de arquitetura diz que só `/admin/` existe | onboarding e operação incorretos | documentação atualizada neste PRD |
@@ -295,16 +300,14 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-Após a Sprint 1, 151 testes Django passaram, com 98% de cobertura (2.664 statements, 41 não cobertos). Ruff, Django check, migrations check e deploy check estrito também passaram. Há testes de isolamento por Lar, acesso revogado, integridade, migrations fresh/legadas/rollback, backup, CRUD, filtros e dashboard consolidado.
+No candidato final da Sprint 2, 276 testes Django passaram, com 98% de cobertura (5.462 statements, 96 não cobertos). Ruff, warnings/deprecations, Django check, migrations check e deploy check estrito também passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI, observabilidade e migrations fresh/legadas/rollback/replay.
 
 Sem cobertura comprovada:
 
-- recuperação de acesso e ciclo mobile de tokens/dispositivos;
-- dashboard e suas agregações;
-- upload de avatar/mídia;
 - operação real no EasyPanel e restauração de backup externo;
 - concorrência real e persistência após reinício no host;
-- API, importações, deduplicação, cartões, faturas, sincronização, offline e Flutter, pois não existem;
+- importações, deduplicação, cartões, faturas, offline e Flutter, pois não existem;
+- armazenamento seguro e ciclo de tokens em um cliente mobile/desktop real;
 - testes end-to-end reais no EasyPanel;
 - teste de restauração fora do host/volume de produção.
 
@@ -312,7 +315,7 @@ Novos recursos seguirão TDD: teste falha, implementação mínima, refatoraçã
 
 ## 11. Observabilidade atual
 
-As-is: logs padrão do Django/Gunicorn, backup SQLite verificado e comando de auditoria de integridade sem PII. Não há configuração comprovada de logs estruturados, correlação, métricas, tracing, health/readiness checks, alertas, rastreamento de erros ou auditoria de eventos financeiros.
+As-is: a API emite um log JSON seguro por request, propaga/gera `X-Request-ID` UUID e expõe `/api/v1/health/`. Backup SQLite e auditoria de integridade continuam disponíveis sem PII. Não há métricas, tracing, readiness externo, alertas, rastreamento de erros ou auditoria de eventos financeiros.
 
 To-be mínimo:
 
@@ -403,7 +406,7 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
 
 - [x] Sprint 1: acesso por Lar, responsáveis, backfill e integridade do ledger legado.
 - [ ] Fundação operacional restante: rotação da credencial, restauração externa e validação do EasyPanel real.
-- [ ] Sprint 2: API v1, autenticação e contrato de sincronização.
+- [ ] Sprint 2: API v1, autenticação e contrato de sincronização — implementação candidata; checkbox depende da revisão independente final.
 - [ ] Sprint 3: importação OFX/CSV, deduplicação e conciliação.
 - [ ] Sprint 4: cartões, faturas, limites e parcelamentos.
 - [ ] Sprint 5: shell Flutter, login, storage seguro e offline.
@@ -466,8 +469,8 @@ Pendentes:
 - Titularidade exata das sete conexões e nomes dos cartões adicionais.
 - Política de retenção dos arquivos originais.
 - Forma de acesso externo ao EasyPanel, domínio, TLS e disponibilidade do servidor.
-- Versões/pacotes do Flutter, API, SQLite local e PostgreSQL.
-- Estratégia exata de conflitos e exclusões por entidade.
+- Versões/pacotes do Flutter, SQLite local e PostgreSQL.
+- Estratégia de resolução de conflitos no cliente e retenção de tombstones.
 - Método/custo de distribuição privada no iPhone.
 - Cobertura, preço e regra familiar de Pierre no momento do piloto.
 - Necessidade real de PDF/OCR após medir OFX/CSV.
@@ -476,7 +479,7 @@ Pendentes:
 
 - A Sprint 1 foi mesclada em `origin/main` no commit `20a9c42bc6140fa8576f79b0687420fde283d029`.
 - Branches remotas `final-sprints`, `finapy-pwa` e `fix/easytunnel-deploy` têm commits não incorporados; devem ser auditadas por diff, nunca mescladas em bloco.
-- 151 testes Django passaram; a cobertura registrada foi 98%.
-- Ruff, Django check, migrations check, deploy check e GitHub Actions passaram.
+- A Sprint 1 registrou 151 testes; o candidato da Sprint 2 registra 276 testes e 98% de cobertura.
+- Ruff, warnings, Django check, migrations check e deploy check passaram localmente; a CI mantém esses gates e secret scan.
 - Cadastro público e landing foram removidos; login e fallback web privado permanecem.
-- O servidor EasyPanel e a base real não foram alterados durante a sprint.
+- O servidor EasyPanel e a base real não foram alterados durante as Sprints 1 e 2.

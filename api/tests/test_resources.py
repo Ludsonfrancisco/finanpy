@@ -279,3 +279,9 @@ class HouseholdResourceTest(TestCase):
         for _, path, _ in RESOURCE_EXPECTATIONS:
             response = self.client.get(path)
             self.assertEqual(response.status_code, 401)
+
+    def test_household_and_summary_require_device_authentication(self):
+        for path in ('/api/v1/household/', '/api/v1/summary/'):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 401)

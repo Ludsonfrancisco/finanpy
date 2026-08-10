@@ -47,10 +47,22 @@ jobs:
       - name: Check migrations
         run: python manage.py makemigrations --check
 
-      - name: Tests with coverage
+      - name: Tests and deprecation warning gate
         env:
           SECURE_SSL_REDIRECT: "False"
         run: |
+          set -o pipefail
+          python -Wd manage.py test 2>&1 | tee django-test.log
+          if grep -q "DeprecationWarning" django-test.log; then
+            echo "DeprecationWarning detected; failing the warning gate."
+            exit 1
+          fi
+
+      - name: Coverage gate
+        env:
+          SECURE_SSL_REDIRECT: "False"
+        run: |
+          coverage erase
           coverage run manage.py test
           coverage report --fail-under=90
 

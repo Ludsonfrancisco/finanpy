@@ -10,10 +10,12 @@ modernização incremental.
 - contas, categorias, movimentações e dashboard web;
 - um Lar compartilhado, com membros autorizados e responsáveis financeiros
   `Eu`, `Esposa` e `Conjunto`;
+- API privada `/api/v1/` com sessões por dispositivo, sincronização idempotente,
+  contrato OpenAPI e isolamento por Lar;
 - SQLite persistido em `/app/data/db.sqlite3` no container;
-- 151 testes e cobertura mínima de 90% validados na Sprint 1;
+- 276 testes e 98% de cobertura; gate mínimo de 90%;
 - cadastro público removido;
-- API mobile, importação bancária e aplicativo Flutter ainda não implementados.
+- importação bancária e aplicativo Flutter ainda não implementados.
 
 O backend será preservado e evoluído por sprints. Não há proposta de rewrite
 total.
@@ -29,6 +31,7 @@ total.
 - [Segurança e operação](docs/security-and-operations.md)
 - [Runbook do EasyPanel](docs/deploy-easypanel.md)
 - [Sprint 1 — Household Ledger](docs/sprints/sprint-1-household-ledger.md)
+- [Sprint 2 — API privada e sincronização](docs/sprints/sprint-2-api-sync.md)
 
 ## Acesso privado e criação do Lar
 
@@ -68,6 +71,17 @@ docker compose logs -f web
 O projeto usa uma réplica e um worker enquanto estiver em SQLite. Para produção
 no servidor caseiro, siga o [runbook do EasyPanel](docs/deploy-easypanel.md).
 
+## API privada v1
+
+O contrato OpenAPI está em [`docs/openapi-v1.yaml`](docs/openapi-v1.yaml). A API
+entrega 16 rotas sob `/api/v1/`: health, login/refresh/logout, dispositivos,
+household/owners, contas, categorias, transações, resumo, bootstrap e push/pull
+de sincronização. Access tokens duram 15 minutos e refresh tokens 30 dias; os
+tokens são opacos, rotacionados e persistidos somente como digest. Login aceita
+5 tentativas/minuto e refresh 30/minuto.
+
+Não existe cliente Flutter nem interface/pipeline de importação nesta Sprint.
+
 ## Desenvolvimento local
 
 ```bash
@@ -99,6 +113,7 @@ ruff check . --config pyproject.toml
 python manage.py check
 python manage.py check --deploy --fail-level WARNING
 python manage.py makemigrations --check
+python -Wd -W error::DeprecationWarning manage.py test
 coverage run manage.py test
 coverage report --fail-under=90
 ```
@@ -108,4 +123,5 @@ coverage report --fail-under=90
 O código e o runbook não autorizam implantação automática. A produção continua
 bloqueada até a rotação da credencial histórica, a validação do runbook no
 EasyPanel real e a existência de backup externo restaurável. Nenhuma alteração
-foi executada no servidor ou na base real durante a Sprint 1.
+foi executada no servidor ou na base real durante as Sprints 1 e 2. Enquanto o
+banco for SQLite, a operação permanece limitada a uma réplica e um worker.

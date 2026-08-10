@@ -131,6 +131,39 @@ class SyncCaptureTest(TestCase):
             {'uuid': str(transaction_uuid), 'deleted': True},
         )
 
+    def test_account_cascade_delete_emits_account_and_transaction_tombstones(self):
+        account = self.create_account()
+        category = self.create_category()
+        transaction = self.create_transaction(account=account, category=category)
+        expected_versions = {
+            ('account', account.uuid): 2,
+            ('transaction', transaction.uuid): 2,
+        }
+        last_change_id = SyncChange.objects.latest('id').id
+
+        account.delete()
+
+        changes = SyncChange.objects.filter(
+            id__gt=last_change_id,
+            operation=SyncChange.DELETE,
+        )
+        self.assertEqual(changes.count(), 2)
+        self.assertEqual(
+            {
+                (change.entity_type, change.entity_uuid): change.entity_version
+                for change in changes
+            },
+            expected_versions,
+        )
+        for change in changes:
+            self.assertEqual(
+                change.payload,
+                {'uuid': str(change.entity_uuid), 'deleted': True},
+            )
+        self.assertFalse(Account.objects.filter(pk=account.pk).exists())
+        self.assertFalse(Transaction.objects.filter(pk=transaction.pk).exists())
+        self.assertTrue(Category.objects.filter(pk=category.pk).exists())
+
     def test_transaction_relations(self):
         account = self.create_account()
         category = self.create_category()
