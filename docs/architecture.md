@@ -3,8 +3,9 @@
 ## Objetivo
 
 Evoluir incrementalmente o monólito Django para uma plataforma financeira
-privada e multiplataforma. O backend continua no Linux/EasyPanel; Flutter será
-a interface principal para iOS, Android e Windows depois da criação da API.
+privada e multiplataforma. Linux/EasyPanel é o ambiente alvo do backend, mas a
+execução nesse ambiente ainda não foi comprovada. Flutter permanece como
+interface futura para iOS, Android e Windows.
 
 ## Estado atual comprovado
 

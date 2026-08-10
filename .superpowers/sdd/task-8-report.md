@@ -15,6 +15,15 @@ Implemented on `codex/sprint-2-api-sync` from base `850e13c`.
   descriptions, and financial values. `device_uuid` receives a value only for an
   authenticated device session.
 - Middleware is directly after Django `SecurityMiddleware`.
+- An outer correlation middleware guarantees the same UUID response header even
+  when `SecurityMiddleware` returns an HTTPS redirect before access logging.
+- Device authentication fields are derived only from a real `DeviceSession` in
+  `request.auth`; Django web sessions cannot populate them.
+- Django framework loggers use a separate safe JSON formatter that preserves
+  severity, logger, status, and correlation evidence without rendering request
+  targets, messages, arguments, headers, or exception text.
+- Unhandled DRF exceptions return a private HTTP 500 `ErrorEnvelope` with stable
+  code `internal_error` and are represented by one safe API access event.
 - `docs/openapi-v1.yaml` is JSON syntax valid as YAML 1.2 and is loaded directly
   with `json.load` in contract tests. It documents all 16 current API routes,
   the required schemas, opaque bearer authentication without a JWT claim,
@@ -31,12 +40,19 @@ OpenAPI file. After the middleware and contract were implemented, the focused
 privacy/contract suite passed. Auto-review added a failing contract test for the
 undocumented `X-Request-ID` response header; after the contract update it passed.
 
+The hardening review was also performed test-first. The initial focused run
+reproduced a missing request ID on HTTPS redirects, cookie-based false device
+authentication, an HTML 500 response, unsafe default Django formatting, and
+implicit rather than operation-level OpenAPI security. Each focused test was
+observed failing before the corresponding minimal change.
+
 ## Verification evidence
 
-- Focused privacy and contract tests: PASS.
-- Full Django suite in the final working tree: 258 tests PASS in 125.177 seconds.
-- Coverage: 98% overall (`5077` statements, `90` missed); `api/logging.py` 100%,
-  `api/middleware.py` 98%, and both new test modules 100% at measurement time.
+- Focused observability, error, and OpenAPI tests: 21 PASS.
+- Full Django suite in the hardened working tree: 267 tests PASS in 113.522 seconds.
+- Coverage: 98% overall (`5225` statements, `88` missed). The changed runtime
+  modules `api/exceptions.py`, `api/logging.py`, and `api/middleware.py`, plus all
+  three focused test modules, each report 100% coverage.
 - `manage.py check --deploy --fail-level WARNING` with production-like secure
   environment variables: PASS, zero issues.
 - Ruff full repository: PASS.

@@ -100,6 +100,7 @@
     "/auth/logout/": {
       "post": {
         "operationId": "logout",
+        "security": [{"opaqueBearer": []}],
         "responses": {
           "204": {
             "description": "Current device session revoked",
@@ -114,6 +115,7 @@
     "/devices/": {
       "get": {
         "operationId": "listDevices",
+        "security": [{"opaqueBearer": []}],
         "responses": {
           "200": {
             "description": "Device sessions belonging to the authenticated user and household",
@@ -136,6 +138,7 @@
     "/devices/current/": {
       "patch": {
         "operationId": "updateCurrentDevice",
+        "security": [{"opaqueBearer": []}],
         "requestBody": {
           "required": true,
           "content": {
@@ -179,6 +182,7 @@
       ],
       "post": {
         "operationId": "revokeDevice",
+        "security": [{"opaqueBearer": []}],
         "responses": {
           "204": {
             "description": "Owned device session revoked",
@@ -194,6 +198,7 @@
     "/household/": {
       "get": {
         "operationId": "getHousehold",
+        "security": [{"opaqueBearer": []}],
         "responses": {
           "200": {
             "description": "Authenticated household",
@@ -213,6 +218,7 @@
     "/owners/": {
       "get": {
         "operationId": "listFinancialOwners",
+        "security": [{"opaqueBearer": []}],
         "responses": {
           "200": {
             "description": "Financial owners in the authenticated household",
@@ -235,6 +241,7 @@
     "/accounts/": {
       "get": {
         "operationId": "listAccounts",
+        "security": [{"opaqueBearer": []}],
         "responses": {
           "200": {
             "description": "Accounts in the authenticated household",
@@ -257,6 +264,7 @@
     "/categories/": {
       "get": {
         "operationId": "listCategories",
+        "security": [{"opaqueBearer": []}],
         "responses": {
           "200": {
             "description": "Categories in the authenticated household",
@@ -279,6 +287,7 @@
     "/transactions/": {
       "get": {
         "operationId": "listTransactions",
+        "security": [{"opaqueBearer": []}],
         "responses": {
           "200": {
             "description": "Transactions in the authenticated household",
@@ -301,6 +310,7 @@
     "/summary/": {
       "get": {
         "operationId": "getSummary",
+        "security": [{"opaqueBearer": []}],
         "responses": {
           "200": {
             "description": "Household balance summary",
@@ -320,6 +330,7 @@
     "/bootstrap/": {
       "get": {
         "operationId": "bootstrap",
+        "security": [{"opaqueBearer": []}],
         "responses": {
           "200": {
             "description": "Complete household snapshot and initial delta cursor",
@@ -339,6 +350,7 @@
     "/sync/push/": {
       "post": {
         "operationId": "pushChanges",
+        "security": [{"opaqueBearer": []}],
         "requestBody": {
           "required": true,
           "content": {
@@ -388,6 +400,7 @@
     "/sync/changes/": {
       "get": {
         "operationId": "pullChanges",
+        "security": [{"opaqueBearer": []}],
         "parameters": [
           {
             "name": "cursor",

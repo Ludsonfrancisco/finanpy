@@ -74,6 +74,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'api.middleware.RequestIdMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'api.middleware.ApiObservabilityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -193,9 +194,17 @@ REST_FRAMEWORK = {
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'skip_api_request_logs': {
+            '()': 'api.logging.SkipApiRequestLogFilter',
+        },
+    },
     'formatters': {
         'api_json': {
             '()': 'api.logging.JsonFormatter',
+        },
+        'safe_django_json': {
+            '()': 'api.logging.SafeDjangoFormatter',
         },
     },
     'handlers': {
@@ -204,11 +213,47 @@ LOGGING = {
             'formatter': 'api_json',
             'stream': 'ext://sys.stdout',
         },
+        'safe_django_stdout': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'safe_django_json',
+            'stream': 'ext://sys.stdout',
+        },
+        'safe_django_request_stdout': {
+            'class': 'logging.StreamHandler',
+            'filters': ['skip_api_request_logs'],
+            'formatter': 'safe_django_json',
+            'stream': 'ext://sys.stdout',
+        },
     },
     'loggers': {
         'lar_finance.api': {
             'handlers': ['api_stdout'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['safe_django_stdout'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['safe_django_request_stdout'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.server': {
+            'handlers': ['safe_django_request_stdout'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['safe_django_stdout'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.security.DisallowedHost': {
+            'handlers': ['safe_django_stdout'],
+            'level': 'WARNING',
             'propagate': False,
         },
     },

@@ -28,6 +28,25 @@ REQUIRED_SCHEMAS = {
     'DeltaPage',
 }
 
+EXPECTED_PATH_METHODS = {
+    '/health/': {'get'},
+    '/auth/login/': {'post'},
+    '/auth/refresh/': {'post'},
+    '/auth/logout/': {'post'},
+    '/devices/': {'get'},
+    '/devices/current/': {'patch'},
+    '/devices/{device_uuid}/revoke/': {'post'},
+    '/household/': {'get'},
+    '/owners/': {'get'},
+    '/accounts/': {'get'},
+    '/categories/': {'get'},
+    '/transactions/': {'get'},
+    '/summary/': {'get'},
+    '/bootstrap/': {'get'},
+    '/sync/push/': {'post'},
+    '/sync/changes/': {'get'},
+}
+
 
 def api_routes(patterns=None, prefix=''):
     patterns = patterns or get_resolver().url_patterns
@@ -78,6 +97,31 @@ class OpenApiContractTest(SimpleTestCase):
 
         self.assertEqual(len(routes), 16)
         self.assertEqual(set(self.contract['paths']), routes)
+
+    def test_path_http_methods_are_exact(self):
+        actual = {
+            path: set(path_item).difference({'parameters'})
+            for path, path_item in self.contract['paths'].items()
+        }
+
+        self.assertEqual(actual, EXPECTED_PATH_METHODS)
+
+    def test_operation_security_is_explicit_and_exact(self):
+        public_operations = {
+            ('/health/', 'get'),
+            ('/auth/login/', 'post'),
+            ('/auth/refresh/', 'post'),
+        }
+        for path, methods in EXPECTED_PATH_METHODS.items():
+            for method in methods:
+                with self.subTest(path=path, method=method):
+                    expected = [] if (path, method) in public_operations else [
+                        {'opaqueBearer': []}
+                    ]
+                    self.assertEqual(
+                        self.contract['paths'][path][method].get('security'),
+                        expected,
+                    )
 
     def test_every_response_documents_request_id_header(self):
         components = self.contract['components']['responses']

@@ -5,11 +5,15 @@ import uuid
 from django.utils import timezone
 
 from .logging import serialize_access_event
+from .models import DeviceSession
 
 logger = logging.getLogger('lar_finance.api')
 
 
 def _request_id(request):
+    existing = getattr(request, 'request_id', None)
+    if existing is not None:
+        return existing
     supplied = request.headers.get('X-Request-ID')
     if supplied:
         try:
@@ -19,6 +23,17 @@ def _request_id(request):
         else:
             return supplied
     return str(uuid.uuid4())
+
+
+class RequestIdMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        request.request_id = _request_id(request)
+        response = self.get_response(request)
+        response['X-Request-ID'] = request.request_id
+        return response
 
 
 def _route_name(request):
@@ -51,9 +66,8 @@ class ApiObservabilityMiddleware:
         response['X-Request-ID'] = request.request_id
 
         if request.path.startswith('/api/v1/'):
-            user = getattr(request, 'user', None)
-            authenticated = bool(user and user.is_authenticated)
-            device = getattr(request, 'auth', None) if authenticated else None
+            device = getattr(request, 'auth', None)
+            authenticated = isinstance(device, DeviceSession)
             event = {
                 'timestamp': timezone.now().isoformat(),
                 'level': 'INFO',
@@ -64,7 +78,7 @@ class ApiObservabilityMiddleware:
                 'status': response.status_code,
                 'duration_ms': duration_ms,
                 'authenticated': authenticated,
-                'device_uuid': str(device.uuid) if device is not None else None,
+                'device_uuid': str(device.uuid) if authenticated else None,
                 'error_code': _error_code(response),
             }
             logger.info(serialize_access_event(event))

@@ -43,7 +43,9 @@ JWT. Falhas usam envelope estável com `error.code`, `error.message`,
 `error.fields` e `request_id`. Entre os códigos atuais estão
 `invalid_credentials`, `invalid_refresh_token`, `invalid_token`,
 `expired_token`, `revoked_device`, `not_authenticated`, `invalid_cursor`,
-`min_1_operation`, `max_100_operations` e `throttled`.
+`min_1_operation`, `max_100_operations`, `throttled` e `internal_error`. Uma
+exceção não tratada pela API retorna HTTP 500 com mensagem genérica, `fields`
+nulo e o mesmo request ID, sem expor o texto da exceção.
 
 ## Segurança HTTP e produção
 
@@ -99,9 +101,23 @@ recebe valor para uma sessão autenticada. O header `X-Request-ID` recebido é
 repassado apenas quando parseia como UUID; ausente ou inválido, é substituído por
 UUID v4. O mesmo ID volta no header da resposta e no envelope de erro.
 
+Uma camada externa de correlação cria e devolve o ID inclusive quando
+`SecurityMiddleware` encerra cedo com redirect HTTPS. O middleware de access log
+permanece imediatamente depois de `SecurityMiddleware`, reutiliza o ID existente
+e deriva `authenticated`/`device_uuid` somente de uma `DeviceSession` em
+`request.auth`; uma sessão web por cookie não é identidade de dispositivo.
+
 O evento não inclui query string, corpo ou headers e não inclui email, CPF,
 token, saldo, valor, descrição, arquivo ou payload de provedor. Retenção,
 coleta centralizada, métricas e alertas ainda não foram implantados.
+
+Os loggers `django`, `django.request`, `django.server` e `django.security` usam
+stdout JSON seguro com timestamp, nível, nome do logger, status e request ID.
+Esse formatter não serializa mensagem, argumentos, traceback, target da
+requisição ou headers. Registros genéricos de `django.request` e `django.server`
+para `/api/v1/` são filtrados porque o access log `lar_finance.api` já preserva
+status, correlação e código de erro; assim cada acesso da API produz uma única
+evidência, enquanto eventos de segurança e requisições web continuam registrados.
 
 ### Métricas
 
