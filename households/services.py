@@ -1,4 +1,5 @@
 import threading
+from contextlib import contextmanager
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connection, transaction
@@ -17,13 +18,31 @@ _SQLITE_USER_LOCKS_GUARD = threading.Lock()
 
 def _get_sqlite_user_lock(user_pk):
     with _SQLITE_USER_LOCKS_GUARD:
-        return _SQLITE_USER_LOCKS.setdefault(user_pk, threading.Lock())
+        lock, references = _SQLITE_USER_LOCKS.get(user_pk, (threading.Lock(), 0))
+        _SQLITE_USER_LOCKS[user_pk] = (lock, references + 1)
+        return lock
+
+
+@contextmanager
+def _sqlite_user_lock(user_pk):
+    lock = _get_sqlite_user_lock(user_pk)
+    lock.acquire()
+    try:
+        yield
+    finally:
+        lock.release()
+        with _SQLITE_USER_LOCKS_GUARD:
+            registered_lock, references = _SQLITE_USER_LOCKS[user_pk]
+            if references == 1:
+                del _SQLITE_USER_LOCKS[user_pk]
+            else:
+                _SQLITE_USER_LOCKS[user_pk] = (registered_lock, references - 1)
 
 
 def ensure_household_for_user(user):
     if connection.vendor == 'sqlite':
         # SQLite ignores SELECT ... FOR UPDATE, so serialize local threads by user.
-        with _get_sqlite_user_lock(user.pk):
+        with _sqlite_user_lock(user.pk):
             return _ensure_household_for_user(user)
     return _ensure_household_for_user(user)
 

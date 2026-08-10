@@ -6,6 +6,8 @@ from django.test import TestCase, TransactionTestCase
 
 from households.models import FinancialOwner, Household, HouseholdMembership
 from households.services import (
+    _SQLITE_USER_LOCKS,
+    _SQLITE_USER_LOCKS_GUARD,
     ensure_household_for_user,
     get_financial_owner,
     get_household_for_user,
@@ -100,6 +102,8 @@ class HouseholdModelTest(TestCase):
 
 class HouseholdConcurrencyTest(TransactionTestCase):
     def setUp(self):
+        with _SQLITE_USER_LOCKS_GUARD:
+            _SQLITE_USER_LOCKS.clear()
         self.user = User.objects.create_user(
             email='concurrent-household-owner@example.com',
             password='test-password-123',
@@ -136,3 +140,4 @@ class HouseholdConcurrencyTest(TransactionTestCase):
         self.assertEqual(len(set(result_household_ids)), 1)
         self.assertEqual(HouseholdMembership.objects.filter(user=self.user).count(), 1)
         self.assertEqual(FinancialOwner.objects.count(), 3)
+        self.assertEqual(_SQLITE_USER_LOCKS, {})
