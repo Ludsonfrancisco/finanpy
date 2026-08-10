@@ -73,10 +73,10 @@ def _ensure_household_for_user(user):
         )
 
     for owner_type, name in OWNER_NAMES.items():
-        FinancialOwner.objects.get_or_create(
+        FinancialOwner.objects.update_or_create(
             household=household,
             type=owner_type,
-            defaults={'name': name},
+            defaults={'name': name, 'is_active': True},
         )
     return household
 

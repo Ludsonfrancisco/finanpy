@@ -101,6 +101,7 @@ class PrivateEntryPointTest(TestCase):
             email='private-entry@example.com',
             password='test-password-123',
         )
+        self.household = ensure_household_for_user(self.user)
 
     def test_public_signup_is_not_exposed(self):
         response = self.client.get('/signup/')

@@ -3,6 +3,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
+from accounts.models import Account
+from categories.models import Category
 from households.mixins import HouseholdContextMixin
 
 from .forms import TransactionForm
@@ -46,6 +48,8 @@ class TransactionListView(LoginRequiredMixin, HouseholdContextMixin, ListView):
         context['filter_account'] = params.get('account', '')
         context['filter_category'] = params.get('category', '')
         context['filter_type'] = params.get('type', '')
+        context['filter_accounts'] = Account.objects.filter(household=self.household)
+        context['filter_categories'] = Category.objects.filter(household=self.household)
         return context
 
 

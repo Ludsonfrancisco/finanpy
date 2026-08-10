@@ -56,8 +56,21 @@ class HouseholdBoundaryTest(TestCase):
             initial_balance=Decimal('0.00'),
         )
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as caught:
             account.full_clean()
+
+        self.assertEqual(set(caught.exception.error_dict), {'financial_owner'})
+
+    def test_account_accepts_owner_from_same_household(self):
+        account = Account(
+            user=self.user,
+            household=self.household,
+            financial_owner=self.owner,
+            name='Conta válida',
+            initial_balance=Decimal('0.00'),
+        )
+
+        account.full_clean()
 
     def test_account_requires_household(self):
         account = Account(
@@ -130,16 +143,25 @@ class HouseholdBoundaryTest(TestCase):
         return Transaction(**values)
 
     def test_transaction_rejects_account_from_another_household(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as caught:
             self._transaction(account=self.other_account).full_clean()
 
+        self.assertEqual(set(caught.exception.error_dict), {'account'})
+
     def test_transaction_rejects_category_from_another_household(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as caught:
             self._transaction(category=self.other_category).full_clean()
 
+        self.assertEqual(set(caught.exception.error_dict), {'category'})
+
     def test_transaction_rejects_owner_from_another_household(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as caught:
             self._transaction(financial_owner=self.other_owner).full_clean()
+
+        self.assertEqual(set(caught.exception.error_dict), {'financial_owner'})
+
+    def test_transaction_accepts_relationships_from_same_household(self):
+        self._transaction().full_clean()
 
     def test_transaction_requires_household(self):
         transaction = self._transaction(household=None)

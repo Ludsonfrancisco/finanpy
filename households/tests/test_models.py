@@ -86,6 +86,34 @@ class HouseholdModelTest(TestCase):
         self.assertEqual(HouseholdMembership.objects.filter(user=self.user).count(), 1)
         self.assertEqual(FinancialOwner.objects.filter(household=household).count(), 3)
 
+    def test_bootstrap_restores_missing_and_inactive_owners_with_canonical_names(self):
+        household = ensure_household_for_user(self.user)
+        owners = {owner.type: owner for owner in household.financial_owners.all()}
+        FinancialOwner.objects.filter(pk=owners[FinancialOwner.SELF].pk).update(
+            name='Nome alterado',
+            is_active=False,
+        )
+        FinancialOwner.objects.filter(pk=owners[FinancialOwner.SPOUSE].pk).update(
+            name='Outro nome',
+            is_active=False,
+        )
+        owners[FinancialOwner.SHARED].delete()
+
+        restored_household = ensure_household_for_user(self.user)
+
+        self.assertEqual(restored_household, household)
+        self.assertEqual(
+            {
+                owner.type: (owner.name, owner.is_active)
+                for owner in restored_household.financial_owners.all()
+            },
+            {
+                FinancialOwner.SELF: ('Eu', True),
+                FinancialOwner.SPOUSE: ('Esposa', True),
+                FinancialOwner.SHARED: ('Conjunto', True),
+            },
+        )
+
     def test_get_household_for_user_returns_active_household(self):
         household = ensure_household_for_user(self.user)
 

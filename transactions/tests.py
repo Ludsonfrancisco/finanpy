@@ -6,6 +6,7 @@ from django.test import TestCase
 
 from accounts.models import Account
 from categories.models import Category
+from households.models import HouseholdMembership
 from households.services import ensure_household_for_user, get_financial_owner
 from transactions.forms import TransactionForm
 from transactions.models import Transaction
@@ -345,3 +346,106 @@ class TransactionFilterViewTest(TestCase):
         self.assertIn(self.tx_jan_income, txs)
         self.assertIn(self.tx_jan_expense, txs)
         self.assertIn(self.tx_feb_income, txs)
+
+    def test_filter_options_include_same_household_member_and_exclude_other_household(self):
+        member = User.objects.create_user(email='member@example.com', password='pass123')
+        HouseholdMembership.objects.create(household=self.household, user=member)
+        member_account = Account.objects.create(
+            user=member,
+            household=self.household,
+            financial_owner=self.shared_owner,
+            name='Conta do membro',
+            type=Account.CHECKING,
+            initial_balance=Decimal('0'),
+        )
+        member_category = Category.objects.create(
+            user=member,
+            household=self.household,
+            name='Categoria do membro',
+            type=Category.EXPENSE,
+        )
+        other_user = User.objects.create_user(email='outsider@example.com', password='pass123')
+        other_household = ensure_household_for_user(other_user)
+        other_owner = get_financial_owner(other_household)
+        other_account = Account.objects.create(
+            user=other_user,
+            household=other_household,
+            financial_owner=other_owner,
+            name='Conta externa',
+            type=Account.CHECKING,
+            initial_balance=Decimal('0'),
+        )
+        other_category = Category.objects.create(
+            user=other_user,
+            household=other_household,
+            name='Categoria externa',
+            type=Category.EXPENSE,
+        )
+
+        response = self.client.get('/transacoes/')
+
+        self.assertContains(response, member_account.name)
+        self.assertContains(response, member_category.name)
+        self.assertNotContains(response, other_account.name)
+        self.assertNotContains(response, other_category.name)
+        self.assertIn(member_account, response.context['filter_accounts'])
+        self.assertIn(member_category, response.context['filter_categories'])
+        self.assertNotIn(other_account, response.context['filter_accounts'])
+        self.assertNotIn(other_category, response.context['filter_categories'])
+
+    def _create_foreign_filter_objects(self):
+        other_user = User.objects.create_user(email='foreign@example.com', password='pass123')
+        other_household = ensure_household_for_user(other_user)
+        other_owner = get_financial_owner(other_household)
+        other_account = Account.objects.create(
+            user=other_user,
+            household=other_household,
+            financial_owner=other_owner,
+            name='Conta estrangeira',
+            type=Account.CHECKING,
+            initial_balance=Decimal('0'),
+        )
+        other_category = Category.objects.create(
+            user=other_user,
+            household=other_household,
+            name='Categoria estrangeira',
+            type=Category.EXPENSE,
+        )
+        foreign_transaction = Transaction.objects.create(
+            user=other_user,
+            household=other_household,
+            financial_owner=other_owner,
+            account=other_account,
+            category=other_category,
+            description='Transação estrangeira',
+            amount=Decimal('500'),
+            date=datetime.date(2026, 1, 15),
+            type=Transaction.EXPENSE,
+        )
+        return other_account, other_category, foreign_transaction
+
+    def test_foreign_account_filter_returns_no_transactions_or_filter_option(self):
+        other_account, _, foreign_transaction = self._create_foreign_filter_objects()
+
+        response = self.client.get(
+            '/transacoes/',
+            {'account': other_account.pk},
+        )
+
+        self.assertEqual(list(response.context['transactions']), [])
+        self.assertNotContains(response, other_account.name)
+        self.assertNotContains(response, foreign_transaction.description)
+        self.assertNotIn(other_account, response.context['filter_accounts'])
+
+    def test_foreign_category_filter_returns_no_transactions_or_filter_option(self):
+        _, other_category, foreign_transaction = self._create_foreign_filter_objects()
+
+        response = self.client.get(
+            '/transacoes/',
+            {'category': other_category.pk},
+        )
+
+        self.assertEqual(list(response.context['transactions']), [])
+        self.assertNotContains(response, other_category.name)
+        self.assertNotContains(response, foreign_transaction.description)
+        self.assertNotIn(other_category, response.context['filter_categories'])
