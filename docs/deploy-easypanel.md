@@ -11,10 +11,13 @@ seja concluído e registrado sem segredos:
 
 - [x] Credencial histórica rotacionada no EasyPanel em 2026-08-12 e sessões Django
   anteriores revogadas. Nenhum valor foi registrado no repositório.
-- [ ] Executar este runbook na instalação real do EasyPanel, validar persistência,
-  backup, restauração, proxy e smoke checks, e guardar data, responsável, versão da
-  imagem e resultado. Uma validação local ou com Docker Compose não substitui essa
-  etapa.
+- [x] Backup do SQLite real copiado para bucket R2 privado e restaurado em ambiente
+  descartável em 2026-08-12, com SHA-256, migrations, auditoria e integridade
+  aprovados. Consulte
+  `docs/audits/2026-08-12-production-backup-restore.md`.
+- [ ] Concluir o restante deste runbook na instalação real: implantar a imagem
+  atual, aplicar migrations controladas, validar persistência após restart, proxy,
+  rate limit e smoke checks, e guardar versão da imagem e resultado.
 
 Interrompa o deploy se qualquer pré-requisito, backup, auditoria ou ensaio falhar.
 
@@ -32,9 +35,10 @@ O `docker-compose.yml` demonstra esses mounts localmente, mas os volumes do Comp
 não são criados automaticamente quando o EasyPanel publica diretamente pelo
 `Dockerfile`. Configure-os manualmente na aplicação.
 
-`[INVESTIGAR]` Confirmar, na versão instalada do EasyPanel, os nomes das telas para
-criar o volume, definir o mount path, limitar réplicas e executar um comando one-off
-ou deploy hook. Registrar os nomes encontrados junto à evidência da validação real.
+Na versão instalada `v2.32.2`, os mounts e jobs ficam em `Storage`, os scripts em
+`Scripts`, o console no botão `Console` do serviço e os provedores externos em
+`Settings > Storage Providers`. `[INVESTIGAR]` Ainda é necessário confirmar o fluxo
+de deploy hook, migrations one-off e limite de réplicas durante o deploy real.
 
 Não habilite autoscaling, rolling deploy com duas réplicas simultâneas ou mais de um
 worker enquanto o banco for SQLite. Se esse requisito deixar de ser aceitável, a
@@ -154,9 +158,16 @@ Transfira a cópia de forma criptografada para armazenamento fora do servidor do
 EasyPanel. Restrinja acesso, defina retenção e compare o SHA-256 no destino. Não
 apague o backup local até concluir o ensaio e a validação off-host.
 
-`[INVESTIGAR]` Escolher e documentar o mecanismo de exportação/off-host disponível
-na instalação real, incluindo criptografia em trânsito e em repouso, retenção,
-responsável e teste periódico de restauração.
+O destino off-host escolhido é um bucket privado Cloudflare R2. A prova real de
+2026-08-12 confirmou upload/download por TLS, hash idêntico e restauração. O R2
+criptografa objetos e metadados em repouso automaticamente. Mantenha o token do
+EasyPanel limitado ao bucket `lar-finance-backups` e nunca registre suas chaves.
+
+Na instalação `v2.32.2`, o job nativo de `Volume Backups` não lê o volume Docker
+legado `financeiro_sqlite_data`: ele procura um diretório do layout novo sob
+`/etc/easypanel/projects/.../volumes/sqlite_data`. Não recrie esse job até migrar
+o volume ou implementar um runner que execute `backup_sqlite` antes do upload.
+`[INVESTIGAR]` Definir retenção e automatização em tarefa própria.
 
 ## Ensaio obrigatório em restauração descartável
 

@@ -37,7 +37,8 @@ Objetivo: tornar o projeto seguro e reproduzível antes de adicionar dados reais
 - [x] documentar operação EasyPanel sem segredos;
 - [x] criar backup SQLite consistente e verificar integridade;
 - [x] provar restauração isolada com banco sintético e schema atual;
-- [ ] provar restauração off-host do backup real do EasyPanel;
+- [x] provar restauração off-host do backup real do EasyPanel;
+- [ ] automatizar backup consistente para o R2 e definir retenção;
 - [x] auditar diffs das três branches remotas sem merge automático;
 - [ ] ADR-001 API/autenticação;
 - [ ] ADR-002 PostgreSQL;

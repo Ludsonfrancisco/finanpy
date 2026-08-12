@@ -25,7 +25,13 @@ Não reproduzir os valores em tickets, docs ou logs.
 
 ### Resolvido no código: volume SQLite
 
-O Compose agora monta o diretório `/app/data` e usa `SQLITE_PATH=/app/data/db.sqlite3`, com uma réplica e um worker. Um ensaio isolado com banco sintético comprovou o mecanismo local de backup/restauração em 2026-08-12, mas a configuração e um backup real ainda precisam ser ensaiados off-host com o EasyPanel. PostgreSQL permanece a direção futura, não uma mudança autorizada nesta sprint.
+O Compose monta `/app/data` e usa `SQLITE_PATH=/app/data/db.sqlite3`, com uma
+réplica e um worker. O mecanismo passou por ensaio sintético e, em 2026-08-12,
+um backup real foi enviado a um bucket R2 privado e restaurado com hash, migrations,
+auditoria e integridade aprovados. O agendamento ainda não está automatizado porque
+o volume real usa o layout Docker legado incompatível com o job nativo do
+EasyPanel `v2.32.2`. PostgreSQL permanece a direção futura, não uma mudança
+autorizada nesta sprint.
 
 ## Controles de autenticação
 
@@ -90,8 +96,9 @@ nulo e o mesmo request ID, sem expor o texto da exceção.
 
 - cópia primária no volume SQLite atual; adaptar a rotina quando a migração
   futura para PostgreSQL for autorizada `[INVESTIGAR]`;
-- backup automatizado local separado do volume;
-- cópia criptografada fora do servidor/casa `[INVESTIGAR destino]`;
+- backup automatizado local separado do volume `[INVESTIGAR implementação]`;
+- cópia real fora do servidor/casa em bucket R2 privado, com criptografia gerenciada
+  pelo provedor e restauração provada em 2026-08-12;
 - retenção diária/semanal/mensal a definir;
 - teste automatizado de integridade;
 - restauração ensaiada periodicamente em ambiente isolado;
