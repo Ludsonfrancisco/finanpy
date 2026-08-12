@@ -82,8 +82,9 @@ As FKs legadas `user` permanecem para rastreabilidade e usam `PROTECT`.
 - TLS termina no proxy; configure os flags seguros documentados no runbook.
 - Uma réplica, um worker e migrations controladas.
 - Rate limit de `POST /login/` no proxy/EasyPanel.
-- Implantação bloqueada até rotação da credencial histórica e validação real do
-  runbook.
+- Credencial histórica rotacionada no EasyPanel em 2026-08-12; não reproduzir ou
+  reutilizar o valor antigo ainda presente no histórico Git.
+- Implantação bloqueada até validação real do runbook e backup externo restaurável.
 
 Consulte `docs/architecture.md`, `docs/setup.md` e
 `docs/deploy-easypanel.md`.

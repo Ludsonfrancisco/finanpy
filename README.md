@@ -120,8 +120,8 @@ coverage report --fail-under=90
 
 ## Situação de produção
 
-O código e o runbook não autorizam implantação automática. A produção continua
-bloqueada até a rotação da credencial histórica, a validação do runbook no
-EasyPanel real e a existência de backup externo restaurável. Nenhuma alteração
-foi executada no servidor ou na base real durante as Sprints 1 e 2. Enquanto o
-banco for SQLite, a operação permanece limitada a uma réplica e um worker.
+O código e o runbook não autorizam implantação automática. A credencial histórica
+foi rotacionada no EasyPanel real em 2026-08-12 e as sessões Django anteriores
+foram revogadas. A produção continua bloqueada até a validação completa do runbook
+no EasyPanel e a existência de backup externo restaurável. Enquanto o banco for
+SQLite, a operação permanece limitada a uma réplica e um worker.

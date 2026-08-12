@@ -31,6 +31,8 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
   read-only, riscos e decisão de não mesclar as três linhas legadas.
 - [Ensaio de backup/restauração](audits/2026-08-12-backup-restore-rehearsal.md):
   prova sintética isolada, limites e gate off-host ainda pendente.
+- [Rotação da credencial histórica](audits/2026-08-12-credential-rotation.md):
+  evidências sanitizadas da troca no EasyPanel e da revogação de sessões.
 
 ## Planos por fase
 

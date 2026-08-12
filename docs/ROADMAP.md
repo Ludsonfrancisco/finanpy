@@ -29,7 +29,7 @@
 
 Objetivo: tornar o projeto seguro e reproduzível antes de adicionar dados reais.
 
-- [ ] rotacionar credenciais expostas e substituir scripts de QA por fixtures;
+- [x] rotacionar credenciais expostas e substituir scripts de QA por fixtures;
 - [x] adicionar secret scanning no CI;
 - [x] corrigir o caminho/volume SQLite no Compose e cobrir configuração;
 - [x] desativar signup público e redirecionar `/` para login/dashboard;

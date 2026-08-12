@@ -160,7 +160,8 @@ das seis linhas legadas. Ele não autoriza rollback direto em produção.
 - **Não existe deploy automático no EasyPanel e nenhum deploy foi executado.**
 - **Migration de produção está bloqueada até uma restauração de backup externo
   ser comprovada.**
-- **A rotação da credencial histórica continua sendo ação do proprietário.**
+- **A credencial histórica foi rotacionada pelo proprietário no EasyPanel em
+  2026-08-12; o valor antigo continua proibido e presente apenas no histórico Git.**
 - **Flutter e a UI/pipeline de importação não existem.**
 - **Enquanto o banco for SQLite, operar somente uma réplica e um worker.**
 - EasyPanel real, persistência após reinício, concorrência real e restauração fora

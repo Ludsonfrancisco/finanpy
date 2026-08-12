@@ -6,12 +6,11 @@ SQLite persistente. Ele foi escrito a partir da configuração atual do projeto,
 
 ## Estado e bloqueios de produção
 
-O deploy de produção permanece bloqueado até que os dois itens abaixo tenham sido
-concluídos e registrados fora deste repositório:
+O deploy de produção permanece bloqueado até que o item operacional pendente abaixo
+seja concluído e registrado sem segredos:
 
-- [ ] Rotacionar a credencial histórica mencionada na auditoria, revogar o valor
-  anterior no provedor correspondente e confirmar que apenas o novo valor está em
-  uso. Não registrar nenhum dos valores em commits, tickets ou logs.
+- [x] Credencial histórica rotacionada no EasyPanel em 2026-08-12 e sessões Django
+  anteriores revogadas. Nenhum valor foi registrado no repositório.
 - [ ] Executar este runbook na instalação real do EasyPanel, validar persistência,
   backup, restauração, proxy e smoke checks, e guardar data, responsável, versão da
   imagem e resultado. Uma validação local ou com Docker Compose não substitui essa

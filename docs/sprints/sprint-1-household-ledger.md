@@ -101,13 +101,14 @@ mesma cópia de banco. Consulte `docs/deploy-easypanel.md`.
 
 Mesmo com a branch aprovada, o deploy permanece bloqueado até:
 
-- o proprietário rotacionar a credencial histórica;
+- ~~o proprietário rotacionar a credencial histórica;~~ concluído em 2026-08-12;
 - o runbook ser validado no EasyPanel real;
 - um backup externo ser restaurado com sucesso em ensaio;
 - volume `/app/data`, uma réplica/worker, TLS e rate limit de login serem
   confirmados.
 
-Nenhum dado real ou servidor EasyPanel foi alterado nesta sprint.
+Nenhum dado real ou servidor EasyPanel foi alterado durante a Sprint 1. A rotação
+posterior está registrada na auditoria operacional de 2026-08-12.
 
 ## Próximo passo
 

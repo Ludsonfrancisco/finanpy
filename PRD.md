@@ -243,7 +243,7 @@ Instituições, cartões/faturas, transferências, tags, recorrências, orçamen
 
 ### 6.3 Comandos atuais
 
-`manage.py migrate`, `collectstatic`, `runserver`, `test`, `check`, `makemigrations --check`, `createsuperuser`, `backup_sqlite`, `audit_household_integrity`, `coverage` e `ruff`. Os scripts de QA foram neutralizados no HEAD; a credencial histórica ainda precisa ser rotacionada pelo proprietário.
+`manage.py migrate`, `collectstatic`, `runserver`, `test`, `check`, `makemigrations --check`, `createsuperuser`, `backup_sqlite`, `audit_household_integrity`, `coverage` e `ruff`. Os scripts de QA foram neutralizados no HEAD; a credencial histórica foi rotacionada pelo proprietário no EasyPanel em 2026-08-12.
 
 ## 7. Integrações backend e externas
 
@@ -273,7 +273,7 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 | Severidade | Evidência | Impacto | Tratamento |
 |---|---|---|---|
-| Crítico | credencial existiu no histórico Git; valores foram removidos do HEAD | acesso indevido caso a credencial continue válida | proprietário deve rotacionar; avaliar reescrita do histórico separadamente |
+| Mitigado externamente | credencial existiu no histórico Git; valores foram removidos do HEAD e a senha foi rotacionada no EasyPanel em 2026-08-12 | reutilização futura do valor antigo ainda seria insegura | não reutilizar; avaliar reescrita destrutiva do histórico separadamente |
 | Resolvido | volume SQLite antes apontava para caminho de arquivo | persistência/boot não confiáveis | Sprint 1 passou a montar `/app/data`; validar no EasyPanel real |
 | Resolvido no código | flags e headers de segurança de produção | exposição em produção | settings por ambiente e `check --deploy --fail-level WARNING`; validação real do proxy continua bloqueada |
 | Alto | SQLite com múltiplos clientes e sincronização futura | concorrência, lock e backup frágil | PostgreSQL incremental |
@@ -405,7 +405,7 @@ Offline-first:
 O roteiro completo, dependências, riscos e critérios de aceite estão em [ROADMAP.md](docs/ROADMAP.md). Ordem resumida:
 
 - [x] Sprint 1: acesso por Lar, responsáveis, backfill e integridade do ledger legado.
-- [ ] Fundação operacional restante: rotação da credencial, restauração externa e validação do EasyPanel real.
+- [ ] Fundação operacional restante: restauração externa e validação completa do EasyPanel real; rotação da credencial concluída.
 - [x] Sprint 2: API v1, autenticação e contrato de sincronização — concluída após revisão independente final sem achados.
 - [ ] Sprint 3: importação OFX/CSV, deduplicação e conciliação.
 - [ ] Sprint 4: cartões, faturas, limites e parcelamentos.
@@ -422,11 +422,10 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
 
 ## 18. Quick wins
 
-Concluídos: remoção de PII do HEAD, secret scanning, correção do volume SQLite, remoção de signup/landing, criação do Lar e responsáveis, backup consistente e auditoria de integridade.
+Concluídos: remoção de PII do HEAD, secret scanning, correção do volume SQLite, remoção de signup/landing, criação do Lar e responsáveis, backup consistente, auditoria de integridade e rotação externa da credencial histórica.
 
 Pendentes:
 
-- Rotacionar a credencial histórica fora do código.
 - Ensaio sintético isolado de backup/restauração concluído; validar backup real off-host e o runbook no EasyPanel.
 - Adicionar hash idempotente e `ImportBatch` antes do primeiro importador.
 - Separar “cartão” de “conta” antes de calcular saldos.

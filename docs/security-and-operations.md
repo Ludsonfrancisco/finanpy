@@ -6,12 +6,19 @@ Ativos: credencial do Lar Finance, tokens, dados financeiros, arquivos importado
 
 ## Estado dos achados da Sprint 1
 
-### Crítico pendente: rotação da credencial histórica
+### Mitigado externamente: credencial histórica
 
-Os valores foram removidos dos scripts no HEAD e o CI ganhou secret scanning. Como a credencial existiu no histórico Git, ainda são necessárias estas ações externas:
+Os valores foram removidos dos scripts no HEAD e o CI ganhou secret scanning. Em
+2026-08-12, o proprietário rotacionou a senha diretamente no console do EasyPanel,
+sem registrar o novo valor. O Django confirmou senha utilizável com
+`pbkdf2_sha256`; todas as sessões Django existentes foram removidas. A imagem em
+produção ainda não contém o pacote da API móvel, portanto não havia sessões de
+dispositivo dessa API para revogar.
 
-- rotacionar a credencial;
-- confirmar que scripts/fixtures usam somente variáveis e dados sintéticos;
+Permanecem estas ações:
+
+- manter scripts/fixtures somente com variáveis e dados sintéticos;
+- nunca reutilizar a credencial antiga em outro serviço;
 - avaliar remoção do histórico Git após backup e coordenação, pois reescrever histórico é destrutivo `[INVESTIGAR autorização]`.
 
 Não reproduzir os valores em tickets, docs ou logs.
