@@ -27,6 +27,8 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
 - [Padrões de código](coding-standards.md): convenções de implementação.
 - [Roteamento de modelos](ai-model-routing.md): escolha proporcional de modelo e
   intensidade, templates de routing e auditoria entre tarefas e sprints.
+- [Auditoria das branches remotas](audits/2026-08-12-remote-branches.md): análise
+  read-only, riscos e decisão de não mesclar as três linhas legadas.
 
 ## Planos por fase
 

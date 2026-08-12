@@ -37,7 +37,7 @@ Objetivo: tornar o projeto seguro e reproduzível antes de adicionar dados reais
 - [x] documentar operação EasyPanel sem segredos;
 - [x] criar backup SQLite consistente e verificar integridade;
 - [ ] provar restauração em cópia externa/ambiente isolado;
-- [ ] auditar diffs das três branches remotas sem merge automático;
+- [x] auditar diffs das três branches remotas sem merge automático;
 - [ ] ADR-001 API/autenticação;
 - [ ] ADR-002 PostgreSQL;
 - [ ] ADR-003 Flutter local DB/state;
@@ -57,7 +57,7 @@ Objetivo: representar corretamente “Eu”, “Esposa” e “Lar”.
 - [x] migrations e backfill para owner padrão;
 - [x] criar responsáveis “Eu”, “Esposa” e “Conjunto” de forma idempotente;
 - [x] ligar account/category/transaction ao household/owner;
-- [ ] adicionar UUID, versão e timestamps de sync;
+- [x] adicionar UUID, versão e timestamps de sync;
 - [x] constraints e validações entre household/owner/entidades;
 - [ ] introduzir `Institution` e aliases iniciais;
 - [ ] modelar transferências com duas pontas;
@@ -79,8 +79,9 @@ Decisão aprovada: um login familiar compartilhado, sessões independentes e rev
 
 - [x] OpenAPI para login, refresh, logout, dispositivos, recursos e sincronização;
 - [x] testes de autorização por household nos endpoints privados entregues;
-- [ ] endpoints de owners, instituições, contas, categorias e transações;
-- [ ] paginação por cursor e filtros;
+- [x] endpoints de leitura de owners, contas, categorias e transações;
+- [ ] endpoint de instituições depois da introdução do model `Institution`;
+- [ ] paginação por cursor e filtros nas listagens de recursos;
 - [x] idempotency key nas mutações de sincronização;
 - [x] versionamento otimista e resposta de conflito por operação;
 - [x] endpoint delta/tombstones;
