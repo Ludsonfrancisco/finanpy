@@ -84,7 +84,10 @@ As FKs legadas `user` permanecem para rastreabilidade e usam `PROTECT`.
 - Rate limit de `POST /login/` no proxy/EasyPanel.
 - Credencial histórica rotacionada no EasyPanel em 2026-08-12; não reproduzir ou
   reutilizar o valor antigo ainda presente no histórico Git.
-- Implantação bloqueada até validação real do runbook e backup externo restaurável.
+- Backup real off-host restaurado com sucesso em 2026-08-12; evidência sanitizada
+  em `docs/audits/2026-08-12-production-backup-restore.md`.
+- Implantação ainda bloqueada até validar imagem/migrations, persistência após
+  restart, proxy, rate limit e smoke checks no EasyPanel real.
 
 Consulte `docs/architecture.md`, `docs/setup.md` e
 `docs/deploy-easypanel.md`.

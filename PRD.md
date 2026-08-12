@@ -276,6 +276,8 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 | Mitigado externamente | credencial existiu no histórico Git; valores foram removidos do HEAD e a senha foi rotacionada no EasyPanel em 2026-08-12 | reutilização futura do valor antigo ainda seria insegura | não reutilizar; avaliar reescrita destrutiva do histórico separadamente |
 | Resolvido | volume SQLite antes apontava para caminho de arquivo | persistência/boot não confiáveis | Sprint 1 passou a montar `/app/data`; validar no EasyPanel real |
 | Resolvido no código | flags e headers de segurança de produção | exposição em produção | settings por ambiente e `check --deploy --fail-level WARNING`; validação real do proxy continua bloqueada |
+| Resolvido operacionalmente | ausência de backup real fora do servidor | perda do único disco/host impediria recuperação | SQLite real enviado a bucket R2 privado e restaurado com hash, migrations, auditoria e integridade em 2026-08-12 |
+| Alto | job nativo do EasyPanel incompatível com o volume Docker legado | backup R2 ainda não é automático | automatizar `backup_sqlite` + upload S3 ou migrar volume/banco em tarefa própria |
 | Alto | SQLite com múltiplos clientes e sincronização futura | concorrência, lock e backup frágil | PostgreSQL incremental |
 | Resolvido no backend | API privada v1 e OpenAPI 1.0.0 entregues | Flutter ainda inexistente | manter testes de contrato e compatibilidade |
 | Alto | modelo mistura cartão e conta | saldos/faturas incorretos | separar agregados antes da importação completa |
@@ -304,12 +306,11 @@ Na conclusão da Sprint 2, 277 testes Django passaram com 98% de cobertura (5.47
 
 Sem cobertura comprovada:
 
-- operação real no EasyPanel e restauração de backup externo;
+- deploy da imagem atual, migrations e smoke tests no EasyPanel real;
 - concorrência real e persistência após reinício no host;
 - importações, deduplicação, cartões, faturas, offline e Flutter, pois não existem;
 - armazenamento seguro e ciclo de tokens em um cliente mobile/desktop real;
-- testes end-to-end reais no EasyPanel;
-- teste de restauração fora do host/volume de produção.
+- testes end-to-end reais no EasyPanel.
 
 Novos recursos seguirão TDD: teste falha, implementação mínima, refatoração e suíte completa.
 
@@ -405,7 +406,7 @@ Offline-first:
 O roteiro completo, dependências, riscos e critérios de aceite estão em [ROADMAP.md](docs/ROADMAP.md). Ordem resumida:
 
 - [x] Sprint 1: acesso por Lar, responsáveis, backfill e integridade do ledger legado.
-- [ ] Fundação operacional restante: restauração externa e validação completa do EasyPanel real; rotação da credencial concluída.
+- [ ] Fundação operacional restante: backup real externo e rotação concluídos; ainda faltam deploy, restart, proxy, rate limit e smoke checks no EasyPanel real.
 - [x] Sprint 2: API v1, autenticação e contrato de sincronização — concluída após revisão independente final sem achados.
 - [ ] Sprint 3: importação OFX/CSV, deduplicação e conciliação.
 - [ ] Sprint 4: cartões, faturas, limites e parcelamentos.
@@ -422,11 +423,11 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
 
 ## 18. Quick wins
 
-Concluídos: remoção de PII do HEAD, secret scanning, correção do volume SQLite, remoção de signup/landing, criação do Lar e responsáveis, backup consistente, auditoria de integridade e rotação externa da credencial histórica.
+Concluídos: remoção de PII do HEAD, secret scanning, correção do volume SQLite, remoção de signup/landing, criação do Lar e responsáveis, backup consistente, auditoria de integridade, rotação externa da credencial histórica e restauração real off-host em R2.
 
 Pendentes:
 
-- Ensaio sintético isolado de backup/restauração concluído; validar backup real off-host e o runbook no EasyPanel.
+- Automatizar o backup consistente no R2 e definir retenção; o job nativo não suporta o volume Docker legado atual.
 - Adicionar hash idempotente e `ImportBatch` antes do primeiro importador.
 - Separar “cartão” de “conta” antes de calcular saldos.
 - Exibir “não informado” em vez de `R$ 0,00` para dados ausentes.
@@ -478,7 +479,7 @@ Pendentes:
 
 - A Sprint 1 foi mesclada em `origin/main` no commit `20a9c42bc6140fa8576f79b0687420fde283d029`.
 - Branches remotas `final-sprints`, `finapy-pwa` e `fix/easytunnel-deploy` foram auditadas por diff em 2026-08-12. Nenhuma deve ser mesclada ou receber cherry-pick no estado atual; evidências e ideias preserváveis estão em `docs/audits/2026-08-12-remote-branches.md`.
-- O mecanismo SQLite passou por restauração sintética isolada em 2026-08-12; isso não substitui o ensaio off-host do backup real do EasyPanel.
+- O SQLite real do EasyPanel foi enviado a bucket R2 privado e restaurado em cópia descartável em 2026-08-12; hash, migrations, auditoria e integridade passaram. Evidência: `docs/audits/2026-08-12-production-backup-restore.md`.
 - A Sprint 1 registrou 151 testes; a Sprint 2 foi concluída com 277 testes e 98% de cobertura.
 - Ruff, warnings, Django check, migrations check e deploy check passaram localmente; a CI mantém esses gates e secret scan.
 - Cadastro público e landing foram removidos; login e fallback web privado permanecem.

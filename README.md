@@ -122,6 +122,8 @@ coverage report --fail-under=90
 
 O código e o runbook não autorizam implantação automática. A credencial histórica
 foi rotacionada no EasyPanel real em 2026-08-12 e as sessões Django anteriores
-foram revogadas. A produção continua bloqueada até a validação completa do runbook
-no EasyPanel e a existência de backup externo restaurável. Enquanto o banco for
+foram revogadas. Um backup real foi armazenado em bucket R2 privado e restaurado
+com sucesso em ambiente descartável em 2026-08-12. A produção continua bloqueada
+até a validação restante do runbook no EasyPanel: imagem atual, migrations,
+persistência após restart, proxy, rate limit e smoke checks. Enquanto o banco for
 SQLite, a operação permanece limitada a uma réplica e um worker.

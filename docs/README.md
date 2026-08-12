@@ -30,7 +30,9 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
 - [Auditoria das branches remotas](audits/2026-08-12-remote-branches.md): análise
   read-only, riscos e decisão de não mesclar as três linhas legadas.
 - [Ensaio de backup/restauração](audits/2026-08-12-backup-restore-rehearsal.md):
-  prova sintética isolada, limites e gate off-host ainda pendente.
+  prova sintética isolada e seus limites antes do ensaio real.
+- [Backup real off-host e restauração](audits/2026-08-12-production-backup-restore.md):
+  evidência sanitizada do SQLite real no R2 e do ensaio descartável aprovado.
 - [Rotação da credencial histórica](audits/2026-08-12-credential-rotation.md):
   evidências sanitizadas da troca no EasyPanel e da revogação de sessões.
 
