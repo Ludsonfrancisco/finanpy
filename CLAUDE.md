@@ -69,6 +69,11 @@ As FKs legadas `user` permanecem para rastreabilidade e usam `PROTECT`.
   como erros gerais, nunca provocar HTTP 500.
 - Novas mudanças precisam de testes, Ruff, Django check, migrations check e
   revisão antes de commit/push.
+- A composição de cada sprint e tarefa segue
+  `docs/ai-model-routing.md`: inventário confirmado, routing curto antes da
+  execução, escalonamento por evidência e auditoria ao concluir.
+- Nunca inventar disponibilidade, preço ou tokens de modelos. Revalidar opções
+  no ambiente ativo antes de montar o plano da sprint.
 
 ## Produção
 

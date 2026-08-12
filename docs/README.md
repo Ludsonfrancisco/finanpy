@@ -25,6 +25,8 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
 - [Runbook EasyPanel](deploy-easypanel.md): implantação, backup e rollback.
 - [Setup atual](setup.md): execução do backend Django.
 - [Padrões de código](coding-standards.md): convenções de implementação.
+- [Roteamento de modelos](ai-model-routing.md): escolha proporcional de modelo e
+  intensidade, templates de routing e auditoria entre tarefas e sprints.
 
 ## Planos por fase
 

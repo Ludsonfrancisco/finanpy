@@ -8,6 +8,8 @@
 - `[INVESTIGAR]` precisa virar decisão registrada antes da implementação dependente.
 - Não misturar grandes migrations de dados, troca de banco e nova UI na mesma entrega.
 - Não remover fallback web até Flutter ter paridade validada.
+- Ao compor uma sprint, registrar plano por tarefa, routing e auditoria conforme
+  `docs/ai-model-routing.md`; revalidar modelos e intensidades no ambiente ativo.
 
 ## Definition of Done global
 
@@ -21,6 +23,7 @@
 - [ ] performance medida quando afetada;
 - [ ] backup/rollback validado para mudança de dados/infra;
 - [ ] revisão de segurança concluída.
+- [ ] auditoria de modelos concluída, sem inventar tokens ou disponibilidade.
 
 ## Sprint 0 — Contenção, baseline e decisões
 
