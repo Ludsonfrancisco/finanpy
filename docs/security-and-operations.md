@@ -18,7 +18,7 @@ Não reproduzir os valores em tickets, docs ou logs.
 
 ### Resolvido no código: volume SQLite
 
-O Compose agora monta o diretório `/app/data` e usa `SQLITE_PATH=/app/data/db.sqlite3`, com uma réplica e um worker. A configuração ainda precisa ser ensaiada no EasyPanel real com backup restaurável. PostgreSQL permanece a direção futura, não uma mudança autorizada nesta sprint.
+O Compose agora monta o diretório `/app/data` e usa `SQLITE_PATH=/app/data/db.sqlite3`, com uma réplica e um worker. Um ensaio isolado com banco sintético comprovou o mecanismo local de backup/restauração em 2026-08-12, mas a configuração e um backup real ainda precisam ser ensaiados off-host com o EasyPanel. PostgreSQL permanece a direção futura, não uma mudança autorizada nesta sprint.
 
 ## Controles de autenticação
 

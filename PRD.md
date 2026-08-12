@@ -427,7 +427,7 @@ Concluídos: remoção de PII do HEAD, secret scanning, correção do volume SQL
 Pendentes:
 
 - Rotacionar a credencial histórica fora do código.
-- Validar backup/restauração e o runbook no EasyPanel real.
+- Ensaio sintético isolado de backup/restauração concluído; validar backup real off-host e o runbook no EasyPanel.
 - Adicionar hash idempotente e `ImportBatch` antes do primeiro importador.
 - Separar “cartão” de “conta” antes de calcular saldos.
 - Exibir “não informado” em vez de `R$ 0,00` para dados ausentes.
@@ -479,6 +479,7 @@ Pendentes:
 
 - A Sprint 1 foi mesclada em `origin/main` no commit `20a9c42bc6140fa8576f79b0687420fde283d029`.
 - Branches remotas `final-sprints`, `finapy-pwa` e `fix/easytunnel-deploy` foram auditadas por diff em 2026-08-12. Nenhuma deve ser mesclada ou receber cherry-pick no estado atual; evidências e ideias preserváveis estão em `docs/audits/2026-08-12-remote-branches.md`.
+- O mecanismo SQLite passou por restauração sintética isolada em 2026-08-12; isso não substitui o ensaio off-host do backup real do EasyPanel.
 - A Sprint 1 registrou 151 testes; a Sprint 2 foi concluída com 277 testes e 98% de cobertura.
 - Ruff, warnings, Django check, migrations check e deploy check passaram localmente; a CI mantém esses gates e secret scan.
 - Cadastro público e landing foram removidos; login e fallback web privado permanecem.

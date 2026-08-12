@@ -29,6 +29,8 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
   intensidade, templates de routing e auditoria entre tarefas e sprints.
 - [Auditoria das branches remotas](audits/2026-08-12-remote-branches.md): análise
   read-only, riscos e decisão de não mesclar as três linhas legadas.
+- [Ensaio de backup/restauração](audits/2026-08-12-backup-restore-rehearsal.md):
+  prova sintética isolada, limites e gate off-host ainda pendente.
 
 ## Planos por fase
 
