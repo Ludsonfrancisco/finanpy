@@ -120,6 +120,91 @@ class BackupSchedulerDecisionTest(SimpleTestCase):
         self.assertTrue(scheduled.tzinfo is not None)
         self.assertEqual(scheduled, datetime(2026, 3, 8, 3, tzinfo=new_york))
 
+    def test_failure_retry_uses_elapsed_seconds_during_fall_fold(self):
+        new_york = ZoneInfo('America/New_York')
+        last_attempt = LastAttempt(
+            at=datetime(2026, 11, 1, 1, 30, tzinfo=new_york, fold=0),
+            succeeded=False,
+        )
+        now = datetime(2026, 11, 1, 1, 45, tzinfo=new_york, fold=0)
+
+        decision = decide_next_action(
+            now,
+            self.schedule_time,
+            new_york,
+            self.retry_seconds,
+            last_attempt,
+        )
+
+        self.assertFalse(decision.run_now)
+        self.assertEqual(decision.sleep_seconds, 2700)
+
+    def test_success_during_fall_fold_sleeps_until_tomorrow_without_busy_loop(self):
+        new_york = ZoneInfo('America/New_York')
+        last_attempt = LastAttempt(
+            at=datetime(2026, 11, 1, 1, 30, tzinfo=new_york, fold=0),
+            succeeded=True,
+        )
+        now = datetime(2026, 11, 1, 1, 45, tzinfo=new_york, fold=1)
+
+        decision = decide_next_action(
+            now,
+            time(1, 30),
+            new_york,
+            self.retry_seconds,
+            last_attempt,
+        )
+
+        self.assertFalse(decision.run_now)
+        self.assertGreater(decision.sleep_seconds, 0)
+        wake_at = datetime.fromtimestamp(
+            now.timestamp() + decision.sleep_seconds,
+            new_york,
+        )
+        self.assertEqual(wake_at, datetime(2026, 11, 2, 1, 30, tzinfo=new_york))
+        self.assertEqual(wake_at.fold, 0)
+
+    def test_ambiguous_schedule_uses_first_occurrence(self):
+        new_york = ZoneInfo('America/New_York')
+        now = datetime(2026, 11, 1, 0, 30, tzinfo=new_york)
+
+        decision = decide_next_action(
+            now,
+            time(1, 30),
+            new_york,
+            self.retry_seconds,
+            None,
+        )
+
+        self.assertFalse(decision.run_now)
+        self.assertEqual(decision.sleep_seconds, 3600)
+        wake_at = datetime.fromtimestamp(
+            now.timestamp() + decision.sleep_seconds,
+            new_york,
+        )
+        self.assertEqual(wake_at, datetime(2026, 11, 1, 1, 30, tzinfo=new_york))
+        self.assertEqual(wake_at.fold, 0)
+
+    def test_nonexistent_schedule_normalizes_forward_through_spring_gap(self):
+        new_york = ZoneInfo('America/New_York')
+        now = datetime(2026, 3, 8, 1, tzinfo=new_york)
+
+        decision = decide_next_action(
+            now,
+            time(2, 30),
+            new_york,
+            self.retry_seconds,
+            None,
+        )
+
+        self.assertFalse(decision.run_now)
+        self.assertEqual(decision.sleep_seconds, 5400)
+        wake_at = datetime.fromtimestamp(
+            now.timestamp() + decision.sleep_seconds,
+            new_york,
+        )
+        self.assertEqual(wake_at, datetime(2026, 3, 8, 3, 30, tzinfo=new_york))
+
 
 class StopScheduler(Exception):
     pass
@@ -132,13 +217,25 @@ def stop_after_sleep(seconds):
 class BackupSchedulerCommandTest(SimpleTestCase):
     def setUp(self):
         self.config = R2BackupConfig(
-            endpoint_url='https://account.invalid',
+            endpoint_url='https://private-endpoint.invalid',
             access_key_id='private-access-id-sentinel',
             secret_access_key='private-secret-sentinel',
-            bucket='backup-bucket',
-            prefix='production',
+            bucket='private-bucket-sentinel',
+            prefix='private-prefix-sentinel',
             schedule_time=time(3),
             time_zone=SAO_PAULO,
+        )
+        self.sensitive_values = (
+            self.config.access_key_id,
+            self.config.secret_access_key,
+            self.config.endpoint_url,
+            self.config.bucket,
+            self.config.prefix,
+            'private sqlite content',
+            'private financial description',
+            'private financial amount',
+            'private financial balance',
+            'private email',
         )
 
     @patch('core.management.commands.run_backup_scheduler.call_command')
@@ -166,6 +263,43 @@ class BackupSchedulerCommandTest(SimpleTestCase):
     @patch('core.management.commands.run_backup_scheduler.time.sleep')
     @patch('core.management.commands.run_backup_scheduler.datetime')
     @patch('core.management.commands.run_backup_scheduler.R2BackupConfig.from_env')
+    def test_success_schedules_tomorrow_from_completion_time(
+        self,
+        config_from_env,
+        clock,
+        sleeper,
+        backup_command,
+    ):
+        config_from_env.return_value = self.config
+        timeline = []
+        timestamps = iter((
+            datetime(2026, 8, 12, 3, tzinfo=SAO_PAULO),
+            datetime(2026, 8, 13, 4, tzinfo=SAO_PAULO),
+            datetime(2026, 8, 13, 4, tzinfo=SAO_PAULO),
+        ))
+
+        def now_after_backup(*args):
+            timeline.append('clock')
+            return next(timestamps)
+
+        def successful_backup(*args):
+            timeline.append('backup')
+
+        clock.now.side_effect = now_after_backup
+        sleeper.side_effect = stop_after_sleep
+        backup_command.side_effect = successful_backup
+
+        with self.assertRaises(StopScheduler) as stopped:
+            call_command('run_backup_scheduler')
+
+        backup_command.assert_called_once_with('backup_to_r2')
+        self.assertEqual(stopped.exception.args, (23 * 3600.0,))
+        self.assertEqual(timeline, ['clock', 'backup', 'clock', 'clock'])
+
+    @patch('core.management.commands.run_backup_scheduler.call_command')
+    @patch('core.management.commands.run_backup_scheduler.time.sleep')
+    @patch('core.management.commands.run_backup_scheduler.datetime')
+    @patch('core.management.commands.run_backup_scheduler.R2BackupConfig.from_env')
     def test_command_error_records_failure_and_retries_without_exception_text(
         self,
         config_from_env,
@@ -176,7 +310,7 @@ class BackupSchedulerCommandTest(SimpleTestCase):
         config_from_env.return_value = self.config
         clock.now.return_value = datetime(2026, 8, 12, 20, tzinfo=SAO_PAULO)
         sleeper.side_effect = stop_after_sleep
-        backup_command.side_effect = CommandError('private backup failure')
+        backup_command.side_effect = CommandError(' '.join(self.sensitive_values))
 
         with (
             self.assertRaises(StopScheduler) as stopped,
@@ -188,7 +322,46 @@ class BackupSchedulerCommandTest(SimpleTestCase):
         self.assertEqual(stopped.exception.args, (3600.0,))
         output = '\n'.join(captured.output)
         self.assertIn('backup_scheduler_failed', output)
-        self.assertNotIn('private backup failure', output)
+        for sensitive_value in self.sensitive_values:
+            self.assertNotIn(sensitive_value, output)
+
+    @patch('core.management.commands.run_backup_scheduler.call_command')
+    @patch('core.management.commands.run_backup_scheduler.time.sleep')
+    @patch('core.management.commands.run_backup_scheduler.datetime')
+    @patch('core.management.commands.run_backup_scheduler.R2BackupConfig.from_env')
+    def test_command_error_retries_from_failure_completion_time(
+        self,
+        config_from_env,
+        clock,
+        sleeper,
+        backup_command,
+    ):
+        config_from_env.return_value = self.config
+        timeline = []
+        timestamps = iter((
+            datetime(2026, 8, 12, 3, tzinfo=SAO_PAULO),
+            datetime(2026, 8, 12, 4, tzinfo=SAO_PAULO),
+            datetime(2026, 8, 12, 4, tzinfo=SAO_PAULO),
+        ))
+
+        def now_after_backup(*args):
+            timeline.append('clock')
+            return next(timestamps)
+
+        def failed_backup(*args):
+            timeline.append('backup')
+            raise CommandError('private backup failure')
+
+        clock.now.side_effect = now_after_backup
+        sleeper.side_effect = stop_after_sleep
+        backup_command.side_effect = failed_backup
+
+        with self.assertRaises(StopScheduler) as stopped:
+            call_command('run_backup_scheduler')
+
+        backup_command.assert_called_once_with('backup_to_r2')
+        self.assertEqual(stopped.exception.args, (3600.0,))
+        self.assertEqual(timeline, ['clock', 'backup', 'clock', 'clock'])
 
     @patch('core.management.commands.run_backup_scheduler.call_command')
     @patch('core.management.commands.run_backup_scheduler.time.sleep')
@@ -208,3 +381,27 @@ class BackupSchedulerCommandTest(SimpleTestCase):
         call_command('run_backup_scheduler')
 
         backup_command.assert_not_called()
+
+    @patch('core.management.commands.run_backup_scheduler.call_command')
+    @patch('core.management.commands.run_backup_scheduler.time.sleep')
+    @patch('core.management.commands.run_backup_scheduler.datetime')
+    @patch('core.management.commands.run_backup_scheduler.R2BackupConfig.from_env')
+    def test_keyboard_interrupt_from_backup_stops_without_failure_log(
+        self,
+        config_from_env,
+        clock,
+        sleeper,
+        backup_command,
+    ):
+        config_from_env.return_value = self.config
+        clock.now.return_value = datetime(2026, 8, 12, 3, tzinfo=SAO_PAULO)
+        backup_command.side_effect = KeyboardInterrupt
+
+        with self.assertLogs('lar_finance.backup', level='INFO') as captured:
+            call_command('run_backup_scheduler')
+
+        backup_command.assert_called_once_with('backup_to_r2')
+        sleeper.assert_not_called()
+        output = '\n'.join(captured.output)
+        self.assertIn('backup_scheduler_stopped', output)
+        self.assertNotIn('backup_scheduler_failed', output)

@@ -33,10 +33,16 @@ class Command(BaseCommand):
                     try:
                         call_command('backup_to_r2')
                     except CommandError:
-                        last_attempt = LastAttempt(at=now, succeeded=False)
+                        last_attempt = LastAttempt(
+                            at=datetime.now(config.time_zone),
+                            succeeded=False,
+                        )
                         logger.error('backup_scheduler_failed')
                     else:
-                        last_attempt = LastAttempt(at=now, succeeded=True)
+                        last_attempt = LastAttempt(
+                            at=datetime.now(config.time_zone),
+                            succeeded=True,
+                        )
                         logger.info('backup_scheduler_succeeded')
                     continue
 

@@ -25,6 +25,7 @@ def decide_next_action(
     _require_aware(now)
     local_now = now.astimezone(time_zone)
     scheduled_today = _scheduled_at(local_now.date(), schedule_time, time_zone)
+    now_instant = local_now.astimezone(UTC)
 
     if last_attempt is not None:
         _require_aware(last_attempt.at)
@@ -40,17 +41,21 @@ def decide_next_action(
 
             retry_at = (
                 last_attempt.at.astimezone(UTC) + timedelta(seconds=retry_seconds)
-            ).astimezone(time_zone)
-            if local_now < retry_at:
-                return _sleep_until(local_now, retry_at)
+            )
+            if now_instant < retry_at:
+                return _sleep_until(local_now, retry_at.astimezone(time_zone))
 
-    if local_now < scheduled_today:
+    if now_instant < scheduled_today.astimezone(UTC):
         return _sleep_until(local_now, scheduled_today)
     return SchedulerDecision(run_now=True, sleep_seconds=0)
 
 
 def _scheduled_at(schedule_date, schedule_time: time, time_zone: ZoneInfo) -> datetime:
-    return datetime.combine(schedule_date, schedule_time, tzinfo=time_zone)
+    scheduled = datetime.combine(schedule_date, schedule_time, tzinfo=time_zone)
+    normalized = scheduled.astimezone(UTC).astimezone(time_zone)
+    if normalized.date() != schedule_date or normalized.time() != schedule_time:
+        return normalized
+    return scheduled
 
 
 def _sleep_until(now: datetime, wake_at: datetime) -> SchedulerDecision:
