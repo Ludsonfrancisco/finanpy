@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
@@ -13,6 +14,7 @@ from api.models import DeviceSession
 from categories.models import Category
 from households.models import FinancialOwner
 from households.services import ensure_household_for_user, get_financial_owner
+from imports import services
 from imports.models import ImportAccountLink, ImportBatch, ImportRecord, SourceReference
 from imports.services import (
     ExpiredPreviewError,
@@ -166,6 +168,41 @@ class ImportPreviewServiceTest(TestCase):
         self.assertEqual(Transaction.objects.count(), before)
         with self.assertRaises(ImportStateError):
             bind_preview_account(batch=cancelled, account=self.account)
+
+    def test_stale_preview_reference_cannot_overwrite_cancel_or_completion(self):
+        for status in (ImportBatch.CANCELLED, ImportBatch.COMPLETED):
+            with self.subTest(status=status):
+                batch = create_preview(
+                    household=self.household,
+                    device_session=self.device,
+                    content=self.content,
+                )
+                ImportBatch.objects.filter(pk=batch.pk).update(status=status)
+
+                with self.assertRaises(ImportStateError):
+                    bind_preview_account(batch=batch, account=self.account)
+
+                self.assertEqual(
+                    ImportBatch.objects.get(pk=batch.pk).status,
+                    status,
+                )
+
+    def test_account_link_unique_race_returns_domain_error_not_integrity_error(self):
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+        original_save = services._save
+
+        def race_save(instance):
+            if isinstance(instance, ImportAccountLink):
+                raise IntegrityError('simulated unique collision')
+            return original_save(instance)
+
+        with patch('imports.services._save', side_effect=race_save):
+            with self.assertRaises(ImportStateError):
+                bind_preview_account(batch=batch, account=self.account)
 
     def test_fitid_duplicate_is_limited_to_the_linked_account(self):
         ImportAccountLink.objects.create(
@@ -335,9 +372,7 @@ class ImportPreviewServiceTest(TestCase):
 
     def _fingerprint(self, account):
         value = f'{account.uuid}|2026-01-02|-42.5|expense|Synthetic market purchase'
-        return self._sha256(
-            value.encode()
-        )
+        return self._sha256(value.encode())
 
     def _sha256(self, content):
         import hashlib

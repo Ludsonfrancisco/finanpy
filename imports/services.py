@@ -4,7 +4,7 @@ import hashlib
 from datetime import timedelta
 from decimal import Decimal
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from accounts.models import Account
@@ -91,14 +91,19 @@ def create_preview(*, household, device_session, content: bytes) -> ImportBatch:
 
 def bind_preview_account(*, batch: ImportBatch, account: Account) -> ImportBatch:
     """Bind a still-actionable preview to a local account and classify its records."""
-    if account.household_id != batch.household_id:
-        raise ImportAccessError('Account is not available for this household.')
-    _require_actionable(batch)
-    if batch.product_type == 'credit_card' and account.type != Account.CREDIT:
-        raise ImportStateError(
-            'The selected account is incompatible with this preview.'
-        )
     with transaction.atomic():
+        batch = (
+            ImportBatch.objects.select_for_update()
+            .select_related('household')
+            .get(pk=batch.pk)
+        )
+        if account.household_id != batch.household_id:
+            raise ImportAccessError('Account is not available for this household.')
+        _require_actionable(batch)
+        if batch.product_type == 'credit_card' and account.type != Account.CREDIT:
+            raise ImportStateError(
+                'The selected account is incompatible with this preview.'
+            )
         link = ImportAccountLink.objects.filter(
             household=batch.household,
             provider=batch.provider,
@@ -106,15 +111,26 @@ def bind_preview_account(*, batch: ImportBatch, account: Account) -> ImportBatch
             external_account_id=batch.external_account_id,
         ).first()
         if link is None:
-            link = ImportAccountLink(
-                household=batch.household,
-                account=account,
-                provider=batch.provider,
-                product_type=batch.product_type,
-                external_account_id=batch.external_account_id,
-            )
-            _save(link)
-        elif link.account_id != account.id:
+            try:
+                with transaction.atomic():
+                    link = ImportAccountLink(
+                        household=batch.household,
+                        account=account,
+                        provider=batch.provider,
+                        product_type=batch.product_type,
+                        external_account_id=batch.external_account_id,
+                    )
+                    _save(link)
+            except IntegrityError:
+                link = ImportAccountLink.objects.filter(
+                    household=batch.household,
+                    provider=batch.provider,
+                    product_type=batch.product_type,
+                    external_account_id=batch.external_account_id,
+                ).first()
+                if link is None:
+                    raise ImportStateError('Account link could not be created safely.')
+        if link.account_id != account.id:
             raise ImportStateError('This preview is already linked to another account.')
         batch.account = account
         batch.financial_owner = account.financial_owner
