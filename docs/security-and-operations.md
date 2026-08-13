@@ -77,7 +77,8 @@ nulo e o mesmo request ID, sem expor o texto da exceção.
 - o servidor atual usa SQLite com uma réplica e um worker; PostgreSQL protegido
   por rede interna e credencial exclusiva é a direção futura `[INVESTIGAR]`;
 - volumes do servidor com permissão mínima;
-- backups criptografados antes de sair do host;
+- backups enviados ao R2 por TLS e protegidos pela criptografia gerenciada do R2
+  em repouso; criptografia client-side antes do upload não foi implementada;
 - SQLite local depende da criptografia do dispositivo e, se necessário, camada adicional `[INVESTIGAR risco/pacote]`;
 - descrições e valores não aparecem em logs;
 - arquivo bruto segue política de retenção a decidir.
@@ -98,12 +99,13 @@ nulo e o mesmo request ID, sem expor o texto da exceção.
 - cópia primária no volume SQLite atual; adaptar a rotina quando a migração
   futura para PostgreSQL for autorizada `[INVESTIGAR]`;
 - cópia temporária consistente criada sob `/app/data/backups` e normalmente
-  removida em limpeza best-effort; se o `unlink` falhar durante outro erro, um
-  resíduo pode permanecer e exige o
-  [procedimento seguro do runbook](sprints/automatic-r2-backup.md#resíduo-temporário-depois-de-falha);
+  removida; se o `unlink` falhar durante outro erro, um resíduo pode permanecer.
+  A tentativa seguinte faz uma limpeza automática restrita; se ela também falhar,
+  siga o [procedimento seguro do runbook](sprints/automatic-r2-backup.md#resíduo-temporário-depois-de-falha);
   ela é apenas etapa do upload e não conta como segunda cópia persistente;
-- cópia real fora do servidor/casa em bucket R2 privado, com criptografia gerenciada
-  pelo provedor e restauração provada em 2026-08-12;
+- cópia real fora do servidor/casa em bucket R2 privado, transferida por TLS, com
+  criptografia gerenciada pelo provedor em repouso e restauração provada em
+  2026-08-12;
 - automação R2 codificada com 14 backups diários, 8 domingos semanais e 12
   primeiros dias mensais; objetos desconhecidos e o último backup válido são
   preservados;

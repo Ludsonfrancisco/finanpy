@@ -30,17 +30,20 @@ class Command(BaseCommand):
                     last_attempt,
                 )
                 if decision.run_now:
+                    backup_date = now.astimezone(config.time_zone).date()
                     try:
                         call_command('backup_to_r2')
                     except CommandError:
                         last_attempt = LastAttempt(
-                            at=datetime.now(config.time_zone),
+                            backup_date=backup_date,
+                            completed_at=datetime.now(config.time_zone),
                             succeeded=False,
                         )
                         logger.error('backup_scheduler_failed')
                     else:
                         last_attempt = LastAttempt(
-                            at=datetime.now(config.time_zone),
+                            backup_date=backup_date,
+                            completed_at=datetime.now(config.time_zone),
                             succeeded=True,
                         )
                         logger.info('backup_scheduler_succeeded')

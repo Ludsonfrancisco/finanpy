@@ -55,6 +55,7 @@ class RemoteBackupPreflightTest(RemoteBackupTestMixin, SimpleTestCase):
         )
         storage = Mock()
         storage.head_managed.return_value = existing
+        storage.list_managed.return_value = [existing]
 
         outcome = execute_remote_backup(self.config, storage, self.db, self.now)
 
@@ -65,7 +66,53 @@ class RemoteBackupPreflightTest(RemoteBackupTestMixin, SimpleTestCase):
         self.assertEqual(outcome.deleted_keys, ())
         backup_mock.assert_not_called()
         storage.upload_and_verify.assert_not_called()
-        storage.list_managed.assert_not_called()
+        storage.list_managed.assert_called_once_with()
+
+    @patch('core.remote_backup.backup_sqlite')
+    def test_retention_failure_retries_existing_object_without_reupload(
+        self,
+        backup_mock,
+    ):
+        existing = RemoteObject(
+            key=self.key,
+            backup_date=date(2026, 8, 12),
+            size=180224,
+            sha256='a' * 64,
+            retention=frozenset({'daily'}),
+        )
+        expired = RemoteObject(
+            key='production/backups/2026/08/lar-finance-2026-08-11.sqlite3',
+            backup_date=date(2026, 8, 11),
+            size=170000,
+            sha256='b' * 64,
+            retention=frozenset({'daily'}),
+        )
+        config = replace(
+            self.config,
+            daily_retention=0,
+            weekly_retention=0,
+            monthly_retention=0,
+        )
+        storage = Mock()
+        storage.head_managed.side_effect = [None, existing]
+        storage.upload_and_verify.return_value = existing
+        storage.list_managed.return_value = [expired, existing]
+        storage.delete.side_effect = [OSError('private retention failure'), None]
+        backup_mock.side_effect = lambda source, destination: destination.write_bytes(
+            b'verified sqlite backup bytes'
+        )
+
+        with self.assertRaises(BackupRetentionError):
+            execute_remote_backup(config, storage, self.db, self.now)
+
+        outcome = execute_remote_backup(config, storage, self.db, self.now)
+
+        self.assertEqual(outcome.status, 'already_exists')
+        self.assertEqual(outcome.deleted_keys, (expired.key,))
+        self.assertEqual(storage.list_managed.call_count, 2)
+        self.assertEqual(storage.delete.call_count, 2)
+        backup_mock.assert_called_once()
+        storage.upload_and_verify.assert_called_once()
 
     @patch('core.remote_backup.backup_sqlite')
     def test_invalid_existing_day_aborts_before_copy_or_remote_changes(
@@ -404,18 +451,94 @@ class RemoteBackupExecutionTest(RemoteBackupTestMixin, SimpleTestCase):
         self.assertNotIn('private cleanup path', str(raised.exception))
 
     @patch('core.remote_backup.backup_sqlite')
-    def test_cleanup_failure_does_not_mask_primary_copy_failure(self, backup_mock):
-        backup_mock.side_effect = OSError('private primary copy')
+    def test_cleanup_failure_exposes_state_and_recovers_on_retry(self, backup_mock):
+        captured = {}
+
+        def fail_copy(source, destination):
+            captured['residue'] = destination
+            destination.write_bytes(b'partial private backup')
+            raise OSError('private primary copy')
+
+        backup_mock.side_effect = fail_copy
         storage, _ = self.storage_for_created_backup()
 
         with self._backup_unlink_patch(None, OSError('private cleanup path')):
             with self.assertRaises(BackupVerificationError) as raised:
                 execute_remote_backup(self.config, storage, self.db, self.now)
 
-        self.assertEqual(raised.exception.error_code, 'copy_failed')
-        self.assertEqual(raised.exception.stage, 'copy')
+        self.assertEqual(raised.exception.error_code, 'cleanup_failed')
+        self.assertEqual(raised.exception.stage, 'cleanup')
+        self.assertIsInstance(raised.exception.__cause__, BackupVerificationError)
+        self.assertEqual(raised.exception.__cause__.error_code, 'copy_failed')
         self.assertNotIn('private primary copy', str(raised.exception))
         self.assertNotIn('private cleanup path', str(raised.exception))
+        self.assertTrue(captured['residue'].exists())
+
+        backup_mock.side_effect = lambda source, destination: destination.write_bytes(
+            self.backup_content
+        )
+        outcome = execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(outcome.status, 'created')
+        self.assertFalse(captured['residue'].exists())
+
+    @patch('core.remote_backup.backup_sqlite')
+    def test_stale_cleanup_removes_only_valid_owned_regular_files(self, backup_mock):
+        backup_directory = self.db.parent / 'backups'
+        backup_directory.mkdir()
+        owned = backup_directory / '.lar-finance-r2-owned.sqlite3'
+        unknown = backup_directory / 'manual-backup.sqlite3'
+        apparent_symlink = backup_directory / '.lar-finance-r2-link.sqlite3'
+        owned.write_bytes(b'owned residue')
+        unknown.write_bytes(b'unknown backup')
+        apparent_symlink.write_bytes(b'symlink sentinel')
+        existing = self.remote(date(2026, 8, 12))
+        storage = Mock()
+        storage.head_managed.return_value = existing
+        storage.list_managed.return_value = [existing]
+        original_is_symlink = Path.is_symlink
+
+        def is_symlink(path):
+            if path == apparent_symlink:
+                return True
+            return original_is_symlink(path)
+
+        with patch(
+            'core.remote_backup.Path.is_symlink',
+            autospec=True,
+            side_effect=is_symlink,
+        ):
+            outcome = execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(outcome.status, 'already_exists')
+        self.assertFalse(owned.exists())
+        self.assertTrue(unknown.exists())
+        self.assertTrue(apparent_symlink.exists())
+        self.assertEqual(self.db.read_bytes(), b'sqlite sentinel')
+        backup_mock.assert_not_called()
+
+    def test_stale_cleanup_failure_aborts_before_remote_operations(self):
+        backup_directory = self.db.parent / 'backups'
+        backup_directory.mkdir()
+        residue = backup_directory / '.lar-finance-r2-owned.sqlite3'
+        residue.write_bytes(b'partial private backup')
+        storage = Mock()
+
+        with patch.object(
+            Path,
+            'unlink',
+            autospec=True,
+            side_effect=OSError('private cleanup path'),
+        ):
+            with self.assertRaises(BackupVerificationError) as raised:
+                execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'cleanup_failed')
+        self.assertEqual(raised.exception.stage, 'cleanup')
+        self.assertNotIn('private cleanup path', str(raised.exception))
+        storage.head_managed.assert_not_called()
+        storage.upload_and_verify.assert_not_called()
+        storage.list_managed.assert_not_called()
 
     @patch('core.remote_backup.backup_sqlite')
     def test_process_control_exceptions_are_preserved(self, backup_mock):

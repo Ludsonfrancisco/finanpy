@@ -6,7 +6,10 @@ A automação está codificada e testada no branch
 `codex/task-automatic-r2-backup`. A imagem inicia um Gunicorn e um scheduler pelo
 Supervisor. O scheduler tenta um backup por dia, às `03:00` em
 `America/Sao_Paulo`; depois de falha, tenta novamente em uma hora. Um restart
-depois do horário agenda a tentativa do dia imediatamente.
+depois do horário agenda a tentativa do dia imediatamente. A cobertura diária usa
+a data local calculada no início da tentativa, enquanto o retry conta uma hora a
+partir da conclusão. Assim, uma tentativa iniciada antes da meia-noite não marca o
+dia seguinte como concluído.
 
 **Ainda não houve ativação no EasyPanel, execução desta automação contra o R2
 real, restart operacional nem restauração de um objeto produzido por ela.** O
@@ -17,16 +20,23 @@ autorização explícita.
 ## Fluxo e invariantes
 
 1. Adquire uma trava não bloqueante ao lado do banco.
-2. Calcula a chave do dia no timezone configurado e verifica se ela já existe.
-3. Cria uma cópia temporária pela API de backup do SQLite e executa
+2. Ainda sob a trava, procura resíduos próprios com nome exato no diretório
+   temporário. Remove somente arquivos regulares, não simbólicos e validados; se
+   a limpeza falhar, retorna `cleanup_failed` antes de acessar o R2.
+3. Calcula a chave do dia no timezone configurado e verifica se ela já existe.
+4. Se o objeto válido já existir, pula cópia/upload, mas repete a retenção antes
+   de concluir `already_exists`.
+5. Quando o objeto não existe, cria uma cópia temporária pela API de backup do
+   SQLite e executa
    `PRAGMA integrity_check`.
-4. Calcula tamanho e SHA-256, envia com `If-None-Match: *` e confirma o objeto por
+6. Calcula tamanho e SHA-256, envia com `If-None-Match: *` e confirma o objeto por
    `HeadObject`.
-5. Lista e valida todo o catálogo gerenciado antes de calcular retenção.
-6. Exclui somente objetos gerenciados expirados, do mais antigo para o mais novo.
-7. Tenta remover a cópia temporária e libera a trava ao sair. Se já houver uma
-   falha primária e o `unlink` também falhar, o erro de limpeza é suprimido para
-   preservar a causa original e um `.lar-finance-r2-*.sqlite3` pode permanecer.
+7. Lista e valida todo o catálogo gerenciado antes de calcular retenção.
+8. Exclui somente objetos gerenciados expirados, do mais antigo para o mais novo.
+9. Tenta remover a cópia temporária e libera a trava ao sair. Se uma falha
+   primária e o `unlink` falharem juntos, expõe `cleanup_failed` e preserva a falha
+   primária como causa sanitizada; a próxima tentativa tenta recuperar o resíduo
+   antes de qualquer operação remota.
 
 O processo nunca sobrescreve um objeto confirmado, nunca restaura automaticamente
 o banco de produção e não inicia retenção antes de confirmar o upload.
@@ -73,17 +83,23 @@ em stdout registra `timestamp`, `service`, `event`, `status`, `stage`, `key`,
 | Resultado | Interpretação e ação |
 |---|---|
 | `created` | Cópia local íntegra, upload e `HeadObject` confirmados; a retenção terminou. Registre a evidência sanitizada. |
-| `already_exists` | A chave gerenciada do dia já existe e seus metadados são válidos. Nenhum upload, sobrescrita ou retenção ocorre nessa tentativa. |
+| `already_exists` | A chave gerenciada do dia já existe e seus metadados são válidos. Nenhuma cópia, upload ou sobrescrita ocorre; a retenção é repetida e precisa terminar antes do sucesso. |
 | `lock_busy` | Outra execução detém a trava. Não force nem remova a trava com processo ativo; confirme a execução concorrente e aguarde o retry. |
 | `remote_invalid` | O preflight não conseguiu provar que o objeto do dia está ausente ou válido, por metadados, autorização, rede ou erro remoto. Não houve upload nem retenção; corrija a causa antes de repetir. |
-| `upload_failed` | O upload, a condição de não sobrescrita ou a confirmação remota falhou. A limpeza temporária é tentada e a retenção não inicia; se o `unlink` também falhar, o arquivo pode permanecer. Verifique R2 e o diretório temporário antes de repetir. |
-| `retention_failed` | O novo objeto já foi confirmado, mas listagem ou exclusão falhou. Ele permanece no R2; exclusões anteriores à primeira falha podem ter sido concluídas. Preserve evidência, corrija o acesso/R2 e repita. |
+| `upload_failed` | O upload, a condição de não sobrescrita ou a confirmação remota falhou. A limpeza temporária é tentada e a retenção não inicia. Se essa limpeza também falhar, o resultado exposto será `cleanup_failed`, com `upload_failed` preservado como causa sanitizada; a tentativa seguinte tentará recuperar o resíduo antes de acessar o R2. |
+| `retention_failed` | O objeto do dia já está confirmado, novo ou preexistente, mas listagem ou exclusão falhou. Ele permanece no R2; exclusões anteriores à primeira falha podem ter sido concluídas. Preserve evidência, corrija o acesso/R2 e repita: a retenção será tentada sem reupload. |
 
 Erros `configuration_invalid`, `copy_failed` e `cleanup_failed` indicam,
 respectivamente, configuração inválida, falha na cópia íntegra e falha ao limpar
-o temporário. Nenhum deles autoriza apagar objetos ou editar o banco manualmente.
+o temporário. `cleanup_failed` bloqueia operações remotas quando detectado no
+início; durante outra falha, preserva a causa técnica sanitizada. Nenhum deles
+autoriza apagar objetos ou editar o banco manualmente.
 
 ### Resíduo temporário depois de falha
+
+Uma nova tentativa limpa automaticamente um resíduo próprio validado, sob a mesma
+trava, antes de acessar o R2. Use o procedimento manual abaixo somente se
+`cleanup_failed` persistir.
 
 Inspecione ou remova um resíduo somente depois de colocar o serviço em manutenção
 e pará-lo pelo mecanismo suportado do EasyPanel. Confirme na UI, no status e nos
@@ -248,12 +264,12 @@ enviados permanecem independentes.
 
 | Gate | Evidência em 2026-08-13 | Estado/limite |
 |---|---|---|
-| Testes focados com `-Wd` | 98 testes, sem falha nem `DeprecationWarning` | Aprovado localmente |
-| Suíte completa com `-Wd` | 370 testes | Aprovado localmente |
-| Cobertura completa | 370 testes; 6.929 statements; 108 misses; 98% | Aprovado, mínimo 90% |
+| Testes focados com `-Wd` | 104 testes, sem falha nem `DeprecationWarning` | Aprovado localmente |
+| Suíte completa com `-Wd` | 376 testes | Aprovado localmente após os fixes desta wave |
+| Cobertura completa | 376 testes; 7.062 statements; 111 misses; 98% | Aprovado, mínimo 90% |
 | Ruff oficial | `ruff check . --config pyproject.toml` | Aprovado |
 | Django/check/deploy/migrations | checks sem issues; nenhuma migration nova | Aprovado |
-| Docker e Supervisor | CI run `31661559845`, build real e smoke com Supervisor 4.3.0 | Aprovado no CI; não prova EasyPanel |
+| Docker e Supervisor | CI run `31663696379` no head `5d4e461`, build real e smoke com Supervisor 4.3.0 | Aprovado nesse head; CI pós-fix ainda pendente e não prova EasyPanel |
 | Secret scan direcionado | nenhum valor atribuído a access key ou secret em arquivo versionado | Aprovado na matriz final e no conteúdo commitado |
 | R2/EasyPanel reais | não executados nesta entrega | Aberto; exige autorização separada |
 

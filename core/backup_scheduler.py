@@ -1,12 +1,17 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 
 @dataclass(frozen=True)
 class LastAttempt:
-    at: datetime
+    backup_date: date
+    completed_at: datetime
     succeeded: bool
+
+    @property
+    def at(self) -> datetime:
+        return self.completed_at
 
 
 @dataclass(frozen=True)
@@ -28,22 +33,23 @@ def decide_next_action(
     now_instant = local_now.astimezone(UTC)
 
     if last_attempt is not None:
-        _require_aware(last_attempt.at)
-        local_attempt = last_attempt.at.astimezone(time_zone)
-        if local_attempt.date() == local_now.date():
-            if last_attempt.succeeded:
-                next_schedule = _scheduled_at(
-                    local_now.date() + timedelta(days=1),
-                    schedule_time,
-                    time_zone,
-                )
-                return _sleep_until(local_now, next_schedule)
-
+        _require_aware(last_attempt.completed_at)
+        if not last_attempt.succeeded:
             retry_at = (
-                last_attempt.at.astimezone(UTC) + timedelta(seconds=retry_seconds)
+                last_attempt.completed_at.astimezone(UTC)
+                + timedelta(seconds=retry_seconds)
             )
             if now_instant < retry_at:
                 return _sleep_until(local_now, retry_at.astimezone(time_zone))
+            return SchedulerDecision(run_now=True, sleep_seconds=0)
+
+        if last_attempt.backup_date == local_now.date():
+            next_schedule = _scheduled_at(
+                local_now.date() + timedelta(days=1),
+                schedule_time,
+                time_zone,
+            )
+            return _sleep_until(local_now, next_schedule)
 
     if now_instant < scheduled_today.astimezone(UTC):
         return _sleep_until(local_now, scheduled_today)

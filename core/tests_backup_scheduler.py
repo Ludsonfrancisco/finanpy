@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import date, datetime, time
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
@@ -46,7 +46,8 @@ class BackupSchedulerDecisionTest(SimpleTestCase):
     def test_success_today_sleeps_until_tomorrow_schedule(self):
         now = datetime(2026, 8, 12, 20, tzinfo=SAO_PAULO)
         last_attempt = LastAttempt(
-            at=datetime(2026, 8, 12, 3, tzinfo=SAO_PAULO),
+            backup_date=date(2026, 8, 12),
+            completed_at=datetime(2026, 8, 12, 3, tzinfo=SAO_PAULO),
             succeeded=True,
         )
 
@@ -58,7 +59,8 @@ class BackupSchedulerDecisionTest(SimpleTestCase):
     def test_recent_failure_sleeps_only_until_retry(self):
         now = datetime(2026, 8, 12, 20, 30, tzinfo=SAO_PAULO)
         last_attempt = LastAttempt(
-            at=datetime(2026, 8, 12, 20, tzinfo=SAO_PAULO),
+            backup_date=date(2026, 8, 12),
+            completed_at=datetime(2026, 8, 12, 20, tzinfo=SAO_PAULO),
             succeeded=False,
         )
 
@@ -70,7 +72,8 @@ class BackupSchedulerDecisionTest(SimpleTestCase):
     def test_failure_retries_when_retry_instant_arrives(self):
         now = datetime(2026, 8, 12, 21, tzinfo=SAO_PAULO)
         last_attempt = LastAttempt(
-            at=datetime(2026, 8, 12, 20, tzinfo=SAO_PAULO),
+            backup_date=date(2026, 8, 12),
+            completed_at=datetime(2026, 8, 12, 20, tzinfo=SAO_PAULO),
             succeeded=False,
         )
 
@@ -87,7 +90,8 @@ class BackupSchedulerDecisionTest(SimpleTestCase):
 
     def test_previous_day_attempt_does_not_block_current_day(self):
         last_attempt = LastAttempt(
-            at=datetime(2026, 8, 11, 3, tzinfo=SAO_PAULO),
+            backup_date=date(2026, 8, 11),
+            completed_at=datetime(2026, 8, 11, 3, tzinfo=SAO_PAULO),
             succeeded=True,
         )
 
@@ -99,11 +103,42 @@ class BackupSchedulerDecisionTest(SimpleTestCase):
         self.assertTrue(decision.run_now)
         self.assertEqual(decision.sleep_seconds, 0)
 
+    def test_success_completed_after_midnight_does_not_cover_new_date(self):
+        last_attempt = LastAttempt(
+            backup_date=date(2026, 8, 12),
+            completed_at=datetime(2026, 8, 13, 0, 1, tzinfo=SAO_PAULO),
+            succeeded=True,
+        )
+
+        decision = self.decide(
+            datetime(2026, 8, 13, 0, 1, tzinfo=SAO_PAULO),
+            last_attempt,
+        )
+
+        self.assertFalse(decision.run_now)
+        self.assertEqual(decision.sleep_seconds, 2 * 3600 + 59 * 60)
+
+    def test_failure_completed_after_midnight_retries_from_completion(self):
+        last_attempt = LastAttempt(
+            backup_date=date(2026, 8, 12),
+            completed_at=datetime(2026, 8, 13, 0, 1, tzinfo=SAO_PAULO),
+            succeeded=False,
+        )
+
+        decision = self.decide(
+            datetime(2026, 8, 13, 0, 31, tzinfo=SAO_PAULO),
+            last_attempt,
+        )
+
+        self.assertFalse(decision.run_now)
+        self.assertEqual(decision.sleep_seconds, 30 * 60)
+
     def test_next_schedule_remains_local_three_across_dst(self):
         new_york = ZoneInfo('America/New_York')
         now = datetime(2026, 3, 7, 20, tzinfo=new_york)
         last_attempt = LastAttempt(
-            at=datetime(2026, 3, 7, 3, tzinfo=new_york),
+            backup_date=date(2026, 3, 7),
+            completed_at=datetime(2026, 3, 7, 3, tzinfo=new_york),
             succeeded=True,
         )
 
@@ -123,7 +158,8 @@ class BackupSchedulerDecisionTest(SimpleTestCase):
     def test_failure_retry_uses_elapsed_seconds_during_fall_fold(self):
         new_york = ZoneInfo('America/New_York')
         last_attempt = LastAttempt(
-            at=datetime(2026, 11, 1, 1, 30, tzinfo=new_york, fold=0),
+            backup_date=date(2026, 11, 1),
+            completed_at=datetime(2026, 11, 1, 1, 30, tzinfo=new_york, fold=0),
             succeeded=False,
         )
         now = datetime(2026, 11, 1, 1, 45, tzinfo=new_york, fold=0)
@@ -142,7 +178,8 @@ class BackupSchedulerDecisionTest(SimpleTestCase):
     def test_success_during_fall_fold_sleeps_until_tomorrow_without_busy_loop(self):
         new_york = ZoneInfo('America/New_York')
         last_attempt = LastAttempt(
-            at=datetime(2026, 11, 1, 1, 30, tzinfo=new_york, fold=0),
+            backup_date=date(2026, 11, 1),
+            completed_at=datetime(2026, 11, 1, 1, 30, tzinfo=new_york, fold=0),
             succeeded=True,
         )
         now = datetime(2026, 11, 1, 1, 45, tzinfo=new_york, fold=1)
@@ -270,7 +307,7 @@ class BackupSchedulerCommandTest(SimpleTestCase):
     @patch('core.management.commands.run_backup_scheduler.time.sleep')
     @patch('core.management.commands.run_backup_scheduler.datetime')
     @patch('core.management.commands.run_backup_scheduler.R2BackupConfig.from_env')
-    def test_success_schedules_tomorrow_from_completion_time(
+    def test_success_started_before_midnight_does_not_cover_completion_date(
         self,
         config_from_env,
         clock,
@@ -280,9 +317,9 @@ class BackupSchedulerCommandTest(SimpleTestCase):
         config_from_env.return_value = self.config
         timeline = []
         timestamps = iter((
-            datetime(2026, 8, 12, 3, tzinfo=SAO_PAULO),
-            datetime(2026, 8, 13, 4, tzinfo=SAO_PAULO),
-            datetime(2026, 8, 13, 4, tzinfo=SAO_PAULO),
+            datetime(2026, 8, 12, 23, 59, tzinfo=SAO_PAULO),
+            datetime(2026, 8, 13, 0, 1, tzinfo=SAO_PAULO),
+            datetime(2026, 8, 13, 0, 1, tzinfo=SAO_PAULO),
         ))
 
         def now_after_backup(*args):
@@ -303,12 +340,45 @@ class BackupSchedulerCommandTest(SimpleTestCase):
             call_command('run_backup_scheduler')
 
         backup_command.assert_called_once_with('backup_to_r2')
-        self.assertEqual(stopped.exception.args, (23 * 3600.0,))
+        self.assertEqual(stopped.exception.args, (2 * 3600.0 + 59 * 60.0,))
         self.assertEqual(timeline, ['clock', 'backup', 'clock', 'clock'])
         output = '\n'.join(captured.output)
         self.assertIn('backup_scheduler_succeeded', output)
         self.assertIn('backup_scheduler_wait', output)
         self.assertNotIn('backup_scheduler_failed', output)
+
+    @patch('core.management.commands.run_backup_scheduler.call_command')
+    @patch('core.management.commands.run_backup_scheduler.time.sleep')
+    @patch('core.management.commands.run_backup_scheduler.datetime')
+    @patch('core.management.commands.run_backup_scheduler.R2BackupConfig.from_env')
+    def test_failure_started_before_midnight_retries_from_completion_time(
+        self,
+        config_from_env,
+        clock,
+        sleeper,
+        backup_command,
+    ):
+        config_from_env.return_value = self.config
+        timestamps = iter((
+            datetime(2026, 8, 12, 23, 59, tzinfo=SAO_PAULO),
+            datetime(2026, 8, 13, 0, 1, tzinfo=SAO_PAULO),
+            datetime(2026, 8, 13, 0, 31, tzinfo=SAO_PAULO),
+        ))
+        clock.now.side_effect = lambda *args: next(timestamps)
+        sleeper.side_effect = stop_after_sleep
+        backup_command.side_effect = CommandError('private backup failure')
+
+        with (
+            self.assertRaises(StopScheduler) as stopped,
+            self.assertLogs('lar_finance.backup', level='INFO') as captured,
+        ):
+            call_command('run_backup_scheduler')
+
+        backup_command.assert_called_once_with('backup_to_r2')
+        self.assertEqual(stopped.exception.args, (30 * 60.0,))
+        output = '\n'.join(captured.output)
+        self.assertIn('backup_scheduler_failed', output)
+        self.assertIn('backup_scheduler_wait', output)
 
     @patch('core.management.commands.run_backup_scheduler.call_command')
     @patch('core.management.commands.run_backup_scheduler.time.sleep')

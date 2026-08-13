@@ -1,4 +1,5 @@
 import hashlib
+import re
 import sqlite3
 import sys
 import tempfile
@@ -15,6 +16,9 @@ from core.r2_storage import R2StorageError, RemoteObject
 
 LOCAL_BACKUP_ERRORS = (OSError, ValueError, sqlite3.Error)
 REMOTE_OPERATION_ERRORS = (OSError, BotoCoreError, ClientError, R2StorageError)
+TEMPORARY_BACKUP_PATTERN = re.compile(
+    r'\.lar-finance-r2-[A-Za-z0-9_-]+\.sqlite3'
+)
 
 
 class BackupAlreadyRunning(RuntimeError):
@@ -43,13 +47,17 @@ class BackupOutcome:
     deleted_keys: tuple[str, ...]
 
     @classmethod
-    def already_exists(cls, remote: RemoteObject) -> 'BackupOutcome':
+    def already_exists(
+        cls,
+        remote: RemoteObject,
+        deleted_keys: tuple[str, ...] = (),
+    ) -> 'BackupOutcome':
         return cls(
             status='already_exists',
             key=remote.key,
             size=remote.size,
             sha256=remote.sha256,
-            deleted_keys=(),
+            deleted_keys=deleted_keys,
         )
 
     @classmethod
@@ -107,16 +115,47 @@ def temporary_backup_path(directory: Path):
     try:
         yield path
     finally:
-        primary_error_active = sys.exc_info()[0] is not None
+        primary_error = sys.exc_info()[1]
         try:
             path.unlink(missing_ok=True)
         except OSError:
-            if not primary_error_active:
-                raise BackupVerificationError(
-                    'Temporary backup could not be cleaned up.',
-                    error_code='cleanup_failed',
-                    stage='cleanup',
-                ) from None
+            cleanup_error = BackupVerificationError(
+                'Temporary backup could not be cleaned up.',
+                error_code='cleanup_failed',
+                stage='cleanup',
+            )
+            if primary_error is None:
+                raise cleanup_error from None
+            if isinstance(primary_error, Exception):
+                raise cleanup_error from primary_error
+
+
+def cleanup_stale_temporary_backups(directory: Path) -> None:
+    try:
+        if not directory.exists():
+            return
+        if directory.is_symlink() or not directory.is_dir():
+            raise OSError
+        resolved_directory = directory.resolve(strict=True)
+        for candidate in directory.iterdir():
+            if (
+                TEMPORARY_BACKUP_PATTERN.fullmatch(candidate.name) is None
+                or candidate.is_symlink()
+            ):
+                continue
+            resolved_candidate = candidate.resolve(strict=True)
+            if (
+                resolved_candidate.parent != resolved_directory
+                or not resolved_candidate.is_file()
+            ):
+                continue
+            resolved_candidate.unlink()
+    except OSError:
+        raise BackupVerificationError(
+            'Temporary backup residue could not be cleaned up.',
+            error_code='cleanup_failed',
+            stage='cleanup',
+        ) from None
 
 
 def file_identity(path: Path) -> tuple[int, str]:
@@ -141,6 +180,22 @@ def delete_expired_oldest_first(storage, objects, retained) -> tuple[str, ...]:
     return tuple(deleted)
 
 
+def enforce_retention(config, storage) -> tuple[str, ...]:
+    try:
+        objects = storage.list_managed()
+        retained = select_retained_keys(
+            objects,
+            config.daily_retention,
+            config.weekly_retention,
+            config.monthly_retention,
+        )
+        return delete_expired_oldest_first(storage, objects, retained)
+    except REMOTE_OPERATION_ERRORS:
+        raise BackupRetentionError(
+            'Remote backup retention could not be completed.'
+        ) from None
+
+
 @contextmanager
 def _backup_lock(lock):
     try:
@@ -162,6 +217,8 @@ def execute_remote_backup(config, storage, database_path, now) -> BackupOutcome:
     lock = FileLock(str(source.parent / '.lar-finance-r2-backup.lock'), timeout=0)
 
     with _backup_lock(lock):
+        backup_directory = source.parent / 'backups'
+        cleanup_stale_temporary_backups(backup_directory)
         try:
             existing = storage.head_managed(key)
         except REMOTE_OPERATION_ERRORS:
@@ -171,9 +228,10 @@ def execute_remote_backup(config, storage, database_path, now) -> BackupOutcome:
                 stage='preflight',
             ) from None
         if existing is not None:
-            return BackupOutcome.already_exists(existing)
+            deleted = enforce_retention(config, storage)
+            return BackupOutcome.already_exists(existing, deleted)
 
-        with temporary_backup_path(source.parent / 'backups') as temporary_path:
+        with temporary_backup_path(backup_directory) as temporary_path:
             try:
                 backup_sqlite(source, temporary_path)
                 _, sha256 = file_identity(temporary_path)
@@ -196,21 +254,5 @@ def execute_remote_backup(config, storage, database_path, now) -> BackupOutcome:
                     'Remote backup upload could not be verified.'
                 ) from None
 
-            try:
-                objects = storage.list_managed()
-                retained = select_retained_keys(
-                    objects,
-                    config.daily_retention,
-                    config.weekly_retention,
-                    config.monthly_retention,
-                )
-                deleted = delete_expired_oldest_first(
-                    storage,
-                    objects,
-                    retained,
-                )
-            except REMOTE_OPERATION_ERRORS:
-                raise BackupRetentionError(
-                    'Remote backup retention could not be completed.'
-                ) from None
+            deleted = enforce_retention(config, storage)
             return BackupOutcome.created(remote, deleted)
