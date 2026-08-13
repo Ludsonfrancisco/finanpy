@@ -87,11 +87,10 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
             key='web',
             indentation=2,
         )
-        web_service_keys = {
-            line.strip().split(':', maxsplit=1)[0]
-            for line in web_service_lines
-            if len(line) - len(line.lstrip()) == 4 and ':' in line
-        }
+        web_service_keys = self._yaml_mapping_keys(
+            web_service_lines,
+            indentation=4,
+        )
 
         self.assertNotIn('command', web_service_keys)
 
@@ -99,28 +98,100 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
         workflow_lines = Path(BASE_DIR, '.github', 'workflows', 'ci.yml').read_text(
             encoding='utf-8'
         ).splitlines()
-        django_job_lines = self._yaml_mapping_body(
+        jobs_lines = self._yaml_mapping_body(
             workflow_lines,
+            key='jobs',
+            indentation=0,
+        )
+        django_job_lines = self._yaml_mapping_body(
+            jobs_lines,
             key='django',
             indentation=2,
         )
-        step_names = [
-            line.strip().removeprefix('- name:').strip()
-            for line in django_job_lines
-            if line.strip().startswith('- name:')
-        ]
+        steps = self._yaml_sequence_mappings(
+            django_job_lines,
+            key='steps',
+            indentation=4,
+        )
+        step_names = [step['name'] for step in steps]
         build_name = 'Build production image'
 
         self.assertIn(build_name, step_names)
         self.assertGreater(step_names.index(build_name), step_names.index('Coverage gate'))
-        build_name_index = next(
-            index
-            for index, line in enumerate(django_job_lines)
-            if line.strip() == f'- name: {build_name}'
-        )
+        build_step = next(step for step in steps if step['name'] == build_name)
         self.assertEqual(
-            django_job_lines[build_name_index + 1].strip(),
-            'run: docker build --tag lar-finance-ci:${{ github.sha }} .',
+            build_step['run'],
+            'docker build --tag lar-finance-ci:${{ github.sha }} .',
+        )
+
+    def test_ci_smokes_the_pinned_supervisor_version_after_build(self):
+        workflow_lines = Path(BASE_DIR, '.github', 'workflows', 'ci.yml').read_text(
+            encoding='utf-8'
+        ).splitlines()
+        jobs_lines = self._yaml_mapping_body(
+            workflow_lines,
+            key='jobs',
+            indentation=0,
+        )
+        django_job_lines = self._yaml_mapping_body(
+            jobs_lines,
+            key='django',
+            indentation=2,
+        )
+        steps = self._yaml_sequence_mappings(
+            django_job_lines,
+            key='steps',
+            indentation=4,
+        )
+        step_names = [step['name'] for step in steps]
+        build_name = 'Build production image'
+        smoke_name = 'Verify Supervisor version'
+
+        self.assertIn(smoke_name, step_names)
+        self.assertGreater(step_names.index(smoke_name), step_names.index(build_name))
+        smoke_step = next(step for step in steps if step['name'] == smoke_name)
+        self.assertEqual(
+            smoke_step['run'],
+            'test "$(docker run --rm lar-finance-ci:${{ github.sha }} '
+            'supervisord --version)" = "4.3.0"',
+        )
+
+    def test_yaml_step_parser_ignores_list_items_inside_block_scalars(self):
+        workflow_lines = [
+            'jobs:',
+            '  django:',
+            '    steps:',
+            '      - name: Tests',
+            '        run: |',
+            '          echo running tests',
+            '          - name: Build production image',
+            '            run: docker build --tag fake .',
+        ]
+
+        self.assertEqual(
+            self._yaml_sequence_mappings(
+                workflow_lines,
+                key='steps',
+                indentation=4,
+            ),
+            [{'name': 'Tests', 'run': '|'}],
+        )
+
+    def test_yaml_mapping_parser_normalizes_quoted_keys(self):
+        compose_lines = [
+            'services:',
+            '  web:',
+            '    "command": gunicorn core.wsgi:application',
+        ]
+        web_service_lines = self._yaml_mapping_body(
+            compose_lines,
+            key='web',
+            indentation=2,
+        )
+
+        self.assertEqual(
+            self._yaml_mapping_keys(web_service_lines, indentation=4),
+            {'command'},
         )
 
     @staticmethod
@@ -147,3 +218,60 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
             body.append(line)
 
         return body
+
+    @staticmethod
+    def _yaml_mapping_keys(lines, *, indentation):
+        return {
+            SQLiteDeploymentConfigurationTest._yaml_key_value(line.strip())[0]
+            for line in lines
+            if (
+                len(line) - len(line.lstrip()) == indentation
+                and ':' in line
+                and not line.lstrip().startswith(('#', '- '))
+            )
+        }
+
+    @classmethod
+    def _yaml_sequence_mappings(cls, lines, *, key, indentation):
+        body = cls._yaml_mapping_body(lines, key=key, indentation=indentation)
+        entries = []
+        entry = None
+        item_indentation = indentation + 2
+        field_indentation = item_indentation + 2
+
+        for line in body:
+            stripped = line.strip()
+            current_indentation = len(line) - len(line.lstrip())
+            if current_indentation == item_indentation and stripped.startswith('- '):
+                if entry is not None:
+                    entries.append(entry)
+                entry = {}
+                field, value = cls._yaml_key_value(stripped.removeprefix('- '))
+                entry[field] = value
+            elif (
+                entry is not None
+                and current_indentation == field_indentation
+                and ':' in stripped
+                and not stripped.startswith(('#', '- '))
+            ):
+                field, value = cls._yaml_key_value(stripped)
+                entry[field] = value
+
+        if entry is not None:
+            entries.append(entry)
+
+        return entries
+
+    @staticmethod
+    def _yaml_key_value(text):
+        raw_key, separator, value = text.partition(':')
+        if not separator:
+            raise ValueError(f'Expected a YAML key/value pair: {text!r}')
+
+        key = raw_key.strip()
+        if key.startswith('"') and key.endswith('"'):
+            key = json.loads(key)
+        elif key.startswith("'") and key.endswith("'"):
+            key = key[1:-1].replace("''", "'")
+
+        return key, value.strip()
