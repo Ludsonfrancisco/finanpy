@@ -36,6 +36,9 @@ testes usam somente fixtures sintéticas e anonimizadas.
   automaticamente e explicado no recibo.
 - Lançamentos apenas semelhantes são avisos para decisão humana; nunca são
   excluídos silenciosamente.
+- Como o OFX Nubank não traz categoria, o importador aplica automaticamente a
+  categoria do Lar chamada `Não categorizado`, criando uma categoria de receita
+  ou despesa conforme o sinal do lançamento quando ela ainda não existir.
 - Campos não presentes no OFX, como limite, parcelas futuras, total de parcelas
   ou próximas faturas, ficam como “não informado”; o sistema nunca os estima.
 
@@ -98,6 +101,9 @@ uma tela Flutter.
 
 - Contas já cadastradas são a fonte da associação a `Household` e
   `FinancialOwner`; um OFX jamais pode escolher outro Lar.
+- Todo lançamento importado recebe a categoria do mesmo Lar `Não categorizado`,
+  no tipo compatível com seu sinal. A categoria é um ponto de partida explícito,
+  não uma classificação inferida.
 - O cartão OFX é tratado como movimentos de crédito existentes; não cria modelo
   de fatura, limite ou parcelamento.
 - Não existirão valores padrão para dados ausentes.
