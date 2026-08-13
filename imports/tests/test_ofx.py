@@ -1,0 +1,89 @@
+from datetime import date
+from decimal import Decimal
+from pathlib import Path
+
+from django.test import SimpleTestCase
+
+from imports.ofx import (
+    OversizedOfxError,
+    ParsedNubankOfx,
+    UnsupportedOfxError,
+    parse_nubank_ofx,
+)
+
+FIXTURES_DIR = Path(__file__).parent / 'fixtures'
+
+
+class ParseNubankOfxTest(SimpleTestCase):
+    def test_parses_synthetic_nubank_account_statement(self):
+        parsed = parse_nubank_ofx(self._fixture_bytes('nubank-account.ofx'))
+
+        self.assertEqual(
+            parsed,
+            ParsedNubankOfx(
+                product_type='bank_account',
+                external_account_id='synthetic-account-001',
+                statement_start=date(2026, 1, 1),
+                statement_end=date(2026, 1, 31),
+                transactions=(
+                    self._transaction(
+                        external_id='synthetic-fitid-001',
+                        posted_on=date(2026, 1, 2),
+                        amount=Decimal('-42.50'),
+                        description='Synthetic market purchase',
+                        transaction_type='expense',
+                    ),
+                    self._transaction(
+                        external_id=None,
+                        posted_on=date(2026, 1, 3),
+                        amount=Decimal('125.75'),
+                        description='Synthetic payment received',
+                        transaction_type='income',
+                    ),
+                ),
+            ),
+        )
+
+    def test_parses_synthetic_nubank_card_statement(self):
+        parsed = parse_nubank_ofx(self._fixture_bytes('nubank-card.ofx'))
+
+        self.assertEqual(parsed.product_type, 'credit_card')
+        self.assertEqual(parsed.external_account_id, 'synthetic-card-002')
+        self.assertEqual(parsed.statement_start, date(2026, 2, 1))
+        self.assertEqual(parsed.statement_end, date(2026, 2, 28))
+        self.assertEqual(parsed.transactions[0].external_id, 'synthetic-card-fitid-001')
+        self.assertEqual(parsed.transactions[0].transaction_type, 'expense')
+
+    def test_rejects_synthetic_non_ofx_content(self):
+        with self.assertRaises(UnsupportedOfxError):
+            parse_nubank_ofx(self._fixture_bytes('nubank-invalid.ofx'))
+
+    def test_rejects_account_statement_without_account_id(self):
+        content = self._fixture_bytes('nubank-account.ofx').replace(
+            b'<ACCTID>synthetic-account-001', b'<ACCTID>'
+        )
+
+        with self.assertRaises(UnsupportedOfxError):
+            parse_nubank_ofx(content)
+
+    def test_rejects_content_larger_than_ten_mebibytes(self):
+        with self.assertRaises(OversizedOfxError):
+            parse_nubank_ofx(b'x' * (10 * 1024 * 1024 + 1))
+
+    def test_normalizes_negative_zero_to_zero_amount(self):
+        content = self._fixture_bytes('nubank-account.ofx').replace(b'-42.50', b'-0')
+
+        parsed = parse_nubank_ofx(content)
+
+        self.assertEqual(parsed.transactions[0].amount, Decimal('0.00'))
+        self.assertEqual(parsed.transactions[0].transaction_type, 'income')
+
+    @staticmethod
+    def _fixture_bytes(name):
+        return (FIXTURES_DIR / name).read_bytes()
+
+    @staticmethod
+    def _transaction(**kwargs):
+        from imports.ofx import ParsedOfxTransaction
+
+        return ParsedOfxTransaction(**kwargs)
