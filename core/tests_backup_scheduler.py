@@ -253,11 +253,18 @@ class BackupSchedulerCommandTest(SimpleTestCase):
         clock.now.return_value = datetime(2026, 8, 12, 3, tzinfo=SAO_PAULO)
         sleeper.side_effect = stop_after_sleep
 
-        with self.assertRaises(StopScheduler) as stopped:
+        with (
+            self.assertRaises(StopScheduler) as stopped,
+            self.assertLogs('lar_finance.backup', level='INFO') as captured,
+        ):
             call_command('run_backup_scheduler')
 
         backup_command.assert_called_once_with('backup_to_r2')
         self.assertEqual(stopped.exception.args, (86400.0,))
+        output = '\n'.join(captured.output)
+        self.assertIn('backup_scheduler_succeeded', output)
+        self.assertIn('backup_scheduler_wait', output)
+        self.assertNotIn('backup_scheduler_failed', output)
 
     @patch('core.management.commands.run_backup_scheduler.call_command')
     @patch('core.management.commands.run_backup_scheduler.time.sleep')
@@ -289,12 +296,19 @@ class BackupSchedulerCommandTest(SimpleTestCase):
         sleeper.side_effect = stop_after_sleep
         backup_command.side_effect = successful_backup
 
-        with self.assertRaises(StopScheduler) as stopped:
+        with (
+            self.assertRaises(StopScheduler) as stopped,
+            self.assertLogs('lar_finance.backup', level='INFO') as captured,
+        ):
             call_command('run_backup_scheduler')
 
         backup_command.assert_called_once_with('backup_to_r2')
         self.assertEqual(stopped.exception.args, (23 * 3600.0,))
         self.assertEqual(timeline, ['clock', 'backup', 'clock', 'clock'])
+        output = '\n'.join(captured.output)
+        self.assertIn('backup_scheduler_succeeded', output)
+        self.assertIn('backup_scheduler_wait', output)
+        self.assertNotIn('backup_scheduler_failed', output)
 
     @patch('core.management.commands.run_backup_scheduler.call_command')
     @patch('core.management.commands.run_backup_scheduler.time.sleep')
@@ -356,12 +370,18 @@ class BackupSchedulerCommandTest(SimpleTestCase):
         sleeper.side_effect = stop_after_sleep
         backup_command.side_effect = failed_backup
 
-        with self.assertRaises(StopScheduler) as stopped:
+        with (
+            self.assertRaises(StopScheduler) as stopped,
+            self.assertLogs('lar_finance.backup', level='INFO') as captured,
+        ):
             call_command('run_backup_scheduler')
 
         backup_command.assert_called_once_with('backup_to_r2')
         self.assertEqual(stopped.exception.args, (3600.0,))
         self.assertEqual(timeline, ['clock', 'backup', 'clock', 'clock'])
+        output = '\n'.join(captured.output)
+        self.assertIn('backup_scheduler_failed', output)
+        self.assertIn('backup_scheduler_wait', output)
 
     @patch('core.management.commands.run_backup_scheduler.call_command')
     @patch('core.management.commands.run_backup_scheduler.time.sleep')
@@ -378,9 +398,14 @@ class BackupSchedulerCommandTest(SimpleTestCase):
         clock.now.return_value = datetime(2026, 8, 12, 2, tzinfo=SAO_PAULO)
         sleeper.side_effect = KeyboardInterrupt
 
-        call_command('run_backup_scheduler')
+        with self.assertLogs('lar_finance.backup', level='INFO') as captured:
+            call_command('run_backup_scheduler')
 
         backup_command.assert_not_called()
+        output = '\n'.join(captured.output)
+        self.assertIn('backup_scheduler_wait', output)
+        self.assertIn('backup_scheduler_stopped', output)
+        self.assertNotIn('backup_scheduler_failed', output)
 
     @patch('core.management.commands.run_backup_scheduler.call_command')
     @patch('core.management.commands.run_backup_scheduler.time.sleep')
