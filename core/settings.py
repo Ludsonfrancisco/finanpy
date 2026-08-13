@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'transactions',
     'users',
     'ai',
+    'imports',
     'api',
     'sync.apps.SyncConfig',
 ]
