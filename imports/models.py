@@ -1,3 +1,5 @@
+import uuid
+
 from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -49,6 +51,8 @@ class ImportBatch(models.Model):
         (CANCELLED, 'Cancelled'),
     ]
 
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
     household = models.ForeignKey(
         'households.Household',
         on_delete=models.PROTECT,
@@ -75,6 +79,7 @@ class ImportBatch(models.Model):
     )
     provider = models.CharField(max_length=32)
     product_type = models.CharField(max_length=32)
+    external_account_id = models.CharField(max_length=255)
     file_sha256 = models.CharField(max_length=64)
     statement_start = models.DateField()
     statement_end = models.DateField()
@@ -85,6 +90,7 @@ class ImportBatch(models.Model):
     created_count = models.PositiveIntegerField(default=0)
     duplicate_count = models.PositiveIntegerField(default=0)
     warning_count = models.PositiveIntegerField(default=0)
+    is_repeated_file = models.BooleanField(default=False)
 
     class Meta:
         indexes = [models.Index(fields=['household', 'status', 'expires_at'])]

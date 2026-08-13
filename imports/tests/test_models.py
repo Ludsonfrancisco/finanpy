@@ -159,6 +159,7 @@ class ImportModelTest(TransactionTestCase):
             'financial_owner': self.owner,
             'provider': 'nubank',
             'product_type': 'bank_account',
+            'external_account_id': 'account-1',
             'file_sha256': '1' * 64,
             'statement_start': date(2026, 1, 1),
             'statement_end': date(2026, 1, 31),
