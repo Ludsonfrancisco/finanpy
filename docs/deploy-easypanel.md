@@ -250,13 +250,17 @@ Um ensaio antigo ou feito com outro backup/hash não autoriza o deploy atual.
 
 6. Se qualquer comando falhar, mantenha manutenção ativa e inicie o rollback. Não
    inicie uma segunda migration concorrente.
-7. Inicie exatamente uma réplica com:
+7. Inicie exatamente uma réplica sem sobrescrever o command da imagem, para que
+   seu `CMD` inicie o Supervisor. Se o EasyPanel exigir command explícito, use:
 
    ```sh
-   gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 1
+   supervisord -c /app/deploy/supervisord.conf
    ```
 
-8. Confirme novamente o mount e `SQLITE_PATH`, execute a auditoria no container em
+   Não inicie Gunicorn diretamente: isso ignora o scheduler. A configuração
+   versionada mantém o web com um worker e um único `backup-scheduler`.
+8. Confirme novamente o mount, `SQLITE_PATH`, uma réplica, um worker e os dois
+   processos `web` e `backup-scheduler`; execute a auditoria no container em
    execução e faça os smoke checks.
 9. Libere o tráfego somente após todas as verificações passarem.
 

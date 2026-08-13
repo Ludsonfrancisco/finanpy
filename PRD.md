@@ -451,7 +451,6 @@ Pendentes:
 - Adicionar hash idempotente e `ImportBatch` antes do primeiro importador.
 - Separar “cartão” de “conta” antes de calcular saldos.
 - Exibir “não informado” em vez de `R$ 0,00` para dados ausentes.
-- Criar backup automatizado com teste de restauração.
 - Corrigir documentação divergente e padronizar UTF-8.
 
 ## 19. Riscos por eixo

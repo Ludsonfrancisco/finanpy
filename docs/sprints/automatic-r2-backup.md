@@ -24,7 +24,9 @@ autorização explícita.
    `HeadObject`.
 5. Lista e valida todo o catálogo gerenciado antes de calcular retenção.
 6. Exclui somente objetos gerenciados expirados, do mais antigo para o mais novo.
-7. Remove a cópia temporária e libera a trava, inclusive depois de falha.
+7. Tenta remover a cópia temporária e libera a trava ao sair. Se já houver uma
+   falha primária e o `unlink` também falhar, o erro de limpeza é suprimido para
+   preservar a causa original e um `.lar-finance-r2-*.sqlite3` pode permanecer.
 
 O processo nunca sobrescreve um objeto confirmado, nunca restaura automaticamente
 o banco de produção e não inicia retenção antes de confirmar o upload.
@@ -74,12 +76,54 @@ em stdout registra `timestamp`, `service`, `event`, `status`, `stage`, `key`,
 | `already_exists` | A chave gerenciada do dia já existe e seus metadados são válidos. Nenhum upload, sobrescrita ou retenção ocorre nessa tentativa. |
 | `lock_busy` | Outra execução detém a trava. Não force nem remova a trava com processo ativo; confirme a execução concorrente e aguarde o retry. |
 | `remote_invalid` | O preflight não conseguiu provar que o objeto do dia está ausente ou válido, por metadados, autorização, rede ou erro remoto. Não houve upload nem retenção; corrija a causa antes de repetir. |
-| `upload_failed` | O upload, a condição de não sobrescrita ou a confirmação remota falhou. A cópia temporária é removida e a retenção não inicia. Verifique R2 e repita sem renomear objetos. |
+| `upload_failed` | O upload, a condição de não sobrescrita ou a confirmação remota falhou. A limpeza temporária é tentada e a retenção não inicia; se o `unlink` também falhar, o arquivo pode permanecer. Verifique R2 e o diretório temporário antes de repetir. |
 | `retention_failed` | O novo objeto já foi confirmado, mas listagem ou exclusão falhou. Ele permanece no R2; exclusões anteriores à primeira falha podem ter sido concluídas. Preserve evidência, corrija o acesso/R2 e repita. |
 
 Erros `configuration_invalid`, `copy_failed` e `cleanup_failed` indicam,
 respectivamente, configuração inválida, falha na cópia íntegra e falha ao limpar
 o temporário. Nenhum deles autoriza apagar objetos ou editar o banco manualmente.
+
+### Resíduo temporário depois de falha
+
+Inspecione ou remova um resíduo somente com o `backup-scheduler` parado e sem
+nenhum `backup_to_r2` manual em execução. Não use globs em comandos de remoção.
+Primeiro pare e confirme os processos:
+
+```sh
+supervisorctl stop backup-scheduler
+supervisorctl status backup-scheduler
+pgrep -af 'manage.py backup_to_r2' && exit 1 || true
+```
+
+Depois informe um único path observado, valide-o e remova somente esse arquivo:
+
+```sh
+export R2_TEMP_CANDIDATE='/app/data/backups/.lar-finance-r2-<identificador>.sqlite3'
+python - <<'PY'
+import os
+import re
+from pathlib import Path
+
+temporary_directory = Path('/app/data/backups').resolve()
+production_database = Path('/app/data/db.sqlite3').resolve()
+candidate = Path(os.environ['R2_TEMP_CANDIDATE']).resolve(strict=True)
+valid_name = re.fullmatch(r'\.lar-finance-r2-[^/]+\.sqlite3', candidate.name)
+if (
+    candidate.parent != temporary_directory
+    or candidate == production_database
+    or valid_name is None
+    or not candidate.is_file()
+):
+    raise SystemExit('refusing unvalidated temporary path')
+candidate.unlink()
+print('validated temporary file removed')
+PY
+supervisorctl start backup-scheduler
+```
+
+Nunca substitua o path por `/app/data/db.sqlite3`, nunca remova o diretório
+`/app/data/backups` inteiro e nunca execute essa limpeza com scheduler ou backup
+manual ativo. Se a validação recusar o path, investigue em vez de contorná-la.
 
 ## Chave, metadados e retenção
 
@@ -199,7 +243,7 @@ enviados permanecem independentes.
 | Ruff oficial | `ruff check . --config pyproject.toml` | Aprovado |
 | Django/check/deploy/migrations | checks sem issues; nenhuma migration nova | Aprovado |
 | Docker e Supervisor | CI run `31661559845`, build real e smoke com Supervisor 4.3.0 | Aprovado no CI; não prova EasyPanel |
-| Secret scan direcionado | nenhum valor atribuído a access key ou secret em arquivo versionado | Aprovado; repetir antes do commit |
+| Secret scan direcionado | nenhum valor atribuído a access key ou secret em arquivo versionado | Aprovado na matriz final e no conteúdo commitado |
 | R2/EasyPanel reais | não executados nesta entrega | Aberto; exige autorização separada |
 
 O comando Ruff sem `--config` usa hoje `ruff.toml` e encontra dívida legada fora
