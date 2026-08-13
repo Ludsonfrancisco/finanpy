@@ -117,7 +117,10 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
         build_name = 'Build production image'
 
         self.assertIn(build_name, step_names)
-        self.assertGreater(step_names.index(build_name), step_names.index('Coverage gate'))
+        self.assertGreater(
+            step_names.index(build_name),
+            step_names.index('Coverage gate'),
+        )
         build_step = next(step for step in steps if step['name'] == build_name)
         self.assertEqual(
             build_step['run'],
@@ -197,7 +200,8 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
     @staticmethod
     def _supervisor_config():
         supervisor = configparser.RawConfigParser(interpolation=None)
-        with Path(BASE_DIR, 'deploy', 'supervisord.conf').open(encoding='utf-8') as file:
+        config_path = Path(BASE_DIR, 'deploy', 'supervisord.conf')
+        with config_path.open(encoding='utf-8') as file:
             supervisor.read_file(file)
         return supervisor
 
