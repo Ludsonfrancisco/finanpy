@@ -141,6 +141,30 @@ class R2StorageTest(SimpleTestCase):
         with self.stubber, self.assertRaises(ClientError):
             self.storage.head_managed(self.key)
 
+    def test_head_propagates_http_500_even_with_not_found_error_code(self):
+        for error_code in ('NoSuchKey', '404'):
+            with self.subTest(error_code=error_code):
+                self.stubber.add_client_error(
+                    'head_object',
+                    service_error_code=error_code,
+                    http_status_code=500,
+                    expected_params={'Bucket': self.bucket, 'Key': self.key},
+                )
+
+                with self.stubber, self.assertRaises(ClientError):
+                    self.storage.head_managed(self.key)
+
+    def test_head_propagates_http_403_even_with_nosuchkey_code(self):
+        self.stubber.add_client_error(
+            'head_object',
+            service_error_code='NoSuchKey',
+            http_status_code=403,
+            expected_params={'Bucket': self.bucket, 'Key': self.key},
+        )
+
+        with self.stubber, self.assertRaises(ClientError):
+            self.storage.head_managed(self.key)
+
     def test_head_does_not_treat_authentication_failure_as_absence(self):
         self.stubber.add_client_error(
             'head_object',

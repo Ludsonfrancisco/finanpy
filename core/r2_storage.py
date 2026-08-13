@@ -67,6 +67,10 @@ class R2Storage:
             status_code = error.response.get('ResponseMetadata', {}).get(
                 'HTTPStatusCode'
             )
+            if status_code == 403 or (
+                isinstance(status_code, int) and 500 <= status_code <= 599
+            ):
+                raise
             if status_code == 404 or error_code in {'404', 'NoSuchKey'}:
                 return None
             raise
