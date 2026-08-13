@@ -11,6 +11,7 @@ from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import SimpleTestCase
+from filelock import Timeout
 
 from core.backup_config import R2BackupConfig
 from core.backup_logging import serialize_backup_event
@@ -180,6 +181,43 @@ class BackupToR2CommandTest(SimpleTestCase):
         self.assertEqual(event['stage'], 'preflight')
         self.assertEqual(event['error_code'], 'remote_invalid')
         self.assertEqual(event['duration_ms'], 25)
+        self.assert_private_values_absent(stdout, stderr, captured, raised.exception)
+
+    @patch('core.management.commands.backup_to_r2.time.monotonic')
+    @patch('core.remote_backup.backup_sqlite')
+    @patch('core.management.commands.backup_to_r2.R2Storage.from_config')
+    @patch('core.management.commands.backup_to_r2.R2BackupConfig.from_env')
+    def test_copy_timeout_becomes_sanitized_failed_event_and_command_error(
+        self,
+        config_from_env,
+        storage_from_config,
+        backup_sqlite,
+        monotonic,
+    ):
+        config_from_env.return_value = self.config
+        storage = Mock()
+        storage.head_managed.return_value = None
+        storage_from_config.return_value = storage
+        backup_sqlite.side_effect = Timeout('private timeout path')
+        monotonic.side_effect = (300.0, 300.010)
+        stdout = StringIO()
+        stderr = StringIO()
+
+        with (
+            patch.object(settings, 'DATABASES', self.database_settings),
+            self.assertLogs('lar_finance.backup', level='ERROR') as captured,
+            self.assertRaises(CommandError) as raised,
+        ):
+            call_command('backup_to_r2', stdout=stdout, stderr=stderr)
+
+        self.assertEqual(str(raised.exception), 'Backup failed [copy_failed].')
+        event = json.loads(captured.records[0].getMessage())
+        self.assertEqual(event['event'], 'backup_failed')
+        self.assertEqual(event['status'], 'error')
+        self.assertEqual(event['stage'], 'copy')
+        self.assertEqual(event['error_code'], 'copy_failed')
+        self.assertEqual(event['duration_ms'], 10)
+        self.assertNotIn('private timeout path', '\n'.join(captured.output))
         self.assert_private_values_absent(stdout, stderr, captured, raised.exception)
 
     def test_backup_logger_uses_json_stdout_without_propagation(self):

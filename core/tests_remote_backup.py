@@ -87,12 +87,16 @@ class RemoteBackupPreflightTest(RemoteBackupTestMixin, SimpleTestCase):
         storage.delete.assert_not_called()
         self.assertFalse((self.db.parent / 'backups').exists())
 
-    def test_storage_timeout_is_not_misclassified_as_lock_contention(self):
+    def test_storage_timeout_is_sanitized_as_preflight_failure(self):
         storage = Mock()
-        storage.head_managed.side_effect = Timeout('remote-operation')
+        storage.head_managed.side_effect = Timeout('private preflight path')
 
-        with self.assertRaises(Timeout):
+        with self.assertRaises(BackupVerificationError) as raised:
             execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'remote_invalid')
+        self.assertEqual(raised.exception.stage, 'preflight')
+        self.assertNotIn('private preflight path', str(raised.exception))
 
     def test_programming_error_is_not_hidden_as_operational_failure(self):
         storage = Mock()
@@ -272,6 +276,18 @@ class RemoteBackupExecutionTest(RemoteBackupTestMixin, SimpleTestCase):
         storage.upload_and_verify.assert_not_called()
 
     @patch('core.remote_backup.backup_sqlite')
+    def test_copy_timeout_is_sanitized_with_copy_code(self, backup_mock):
+        backup_mock.side_effect = Timeout('private copy path')
+        storage, _ = self.storage_for_created_backup()
+
+        with self.assertRaises(BackupVerificationError) as raised:
+            execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'copy_failed')
+        self.assertEqual(raised.exception.stage, 'copy')
+        self.assertNotIn('private copy path', str(raised.exception))
+
+    @patch('core.remote_backup.backup_sqlite')
     def test_upload_failure_is_sanitized_and_cleans_temp(self, backup_mock):
         captured = {}
 
@@ -293,6 +309,21 @@ class RemoteBackupExecutionTest(RemoteBackupTestMixin, SimpleTestCase):
         storage.list_managed.assert_not_called()
 
     @patch('core.remote_backup.backup_sqlite')
+    def test_upload_timeout_is_sanitized_with_upload_code(self, backup_mock):
+        backup_mock.side_effect = lambda source, destination: destination.write_bytes(
+            self.backup_content
+        )
+        storage, _ = self.storage_for_created_backup()
+        storage.upload_and_verify.side_effect = Timeout('private upload path')
+
+        with self.assertRaises(BackupVerificationError) as raised:
+            execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'upload_failed')
+        self.assertEqual(raised.exception.stage, 'upload')
+        self.assertNotIn('private upload path', str(raised.exception))
+
+    @patch('core.remote_backup.backup_sqlite')
     def test_list_failure_is_sanitized_and_cleans_temp(self, backup_mock):
         captured = {}
 
@@ -309,6 +340,132 @@ class RemoteBackupExecutionTest(RemoteBackupTestMixin, SimpleTestCase):
 
         self.assertNotIn('secret catalog response', str(raised.exception))
         self.assertFalse(captured['path'].exists())
+
+    @patch('core.remote_backup.backup_sqlite')
+    def test_retention_timeout_is_sanitized_with_retention_code(self, backup_mock):
+        backup_mock.side_effect = lambda source, destination: destination.write_bytes(
+            self.backup_content
+        )
+        storage, _ = self.storage_for_created_backup()
+        storage.list_managed.side_effect = Timeout('private retention path')
+
+        with self.assertRaises(BackupRetentionError) as raised:
+            execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'retention_failed')
+        self.assertEqual(raised.exception.stage, 'retention')
+        self.assertNotIn('private retention path', str(raised.exception))
+
+    def test_reservation_failures_are_sanitized_as_copy_failure(self):
+        scenarios = (
+            ('mkdir', self._backup_mkdir_patch()),
+            (
+                'create',
+                patch(
+                    'core.remote_backup.tempfile.NamedTemporaryFile',
+                    side_effect=OSError('private create path'),
+                ),
+            ),
+            (
+                'close',
+                self._temporary_handle_patch(
+                    close_error=OSError('private close path')
+                ),
+            ),
+            (
+                'initial_unlink',
+                self._backup_unlink_patch(OSError('private unlink path')),
+            ),
+        )
+
+        for label, failure_patch in scenarios:
+            with self.subTest(operation=label), failure_patch:
+                storage, _ = self.storage_for_created_backup()
+                with self.assertRaises(BackupVerificationError) as raised:
+                    execute_remote_backup(self.config, storage, self.db, self.now)
+
+                self.assertEqual(raised.exception.error_code, 'copy_failed')
+                self.assertEqual(raised.exception.stage, 'copy')
+                self.assertNotIn('private', str(raised.exception))
+
+    @patch('core.remote_backup.backup_sqlite')
+    def test_cleanup_failure_after_success_is_sanitized(self, backup_mock):
+        backup_mock.side_effect = lambda source, destination: destination.write_bytes(
+            self.backup_content
+        )
+        storage, _ = self.storage_for_created_backup()
+
+        with self._backup_unlink_patch(None, OSError('private cleanup path')):
+            with self.assertRaises(BackupVerificationError) as raised:
+                execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'cleanup_failed')
+        self.assertEqual(raised.exception.stage, 'cleanup')
+        self.assertNotIn('private cleanup path', str(raised.exception))
+
+    @patch('core.remote_backup.backup_sqlite')
+    def test_cleanup_failure_does_not_mask_primary_copy_failure(self, backup_mock):
+        backup_mock.side_effect = OSError('private primary copy')
+        storage, _ = self.storage_for_created_backup()
+
+        with self._backup_unlink_patch(None, OSError('private cleanup path')):
+            with self.assertRaises(BackupVerificationError) as raised:
+                execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'copy_failed')
+        self.assertEqual(raised.exception.stage, 'copy')
+        self.assertNotIn('private primary copy', str(raised.exception))
+        self.assertNotIn('private cleanup path', str(raised.exception))
+
+    @patch('core.remote_backup.backup_sqlite')
+    def test_process_control_exceptions_are_preserved(self, backup_mock):
+        for exception_type in (KeyboardInterrupt, SystemExit):
+            with self.subTest(exception_type=exception_type.__name__):
+                backup_mock.side_effect = exception_type()
+                storage, _ = self.storage_for_created_backup()
+
+                with self.assertRaises(exception_type):
+                    execute_remote_backup(self.config, storage, self.db, self.now)
+
+    def _temporary_handle_patch(self, *, close_error):
+        handle = Mock()
+        handle.name = str(self.db.parent / 'backups' / 'reserved.sqlite3')
+        handle.close.side_effect = close_error
+        return patch(
+            'core.remote_backup.tempfile.NamedTemporaryFile',
+            return_value=handle,
+        )
+
+    def _backup_mkdir_patch(self):
+        original_mkdir = Path.mkdir
+        backup_directory = self.db.parent / 'backups'
+
+        def mkdir(path, *args, **kwargs):
+            if path == backup_directory:
+                raise OSError('private mkdir path')
+            return original_mkdir(path, *args, **kwargs)
+
+        return patch('core.remote_backup.Path.mkdir', autospec=True, side_effect=mkdir)
+
+    def _backup_unlink_patch(self, *effects):
+        original_unlink = Path.unlink
+        remaining_effects = iter(effects)
+
+        def unlink(path, *args, **kwargs):
+            if path.suffix == '.sqlite3':
+                try:
+                    effect = next(remaining_effects)
+                except StopIteration:
+                    effect = None
+                if isinstance(effect, BaseException):
+                    raise effect
+            return original_unlink(path, *args, **kwargs)
+
+        return patch(
+            'core.remote_backup.Path.unlink',
+            autospec=True,
+            side_effect=unlink,
+        )
 
     @patch('core.remote_backup.backup_sqlite')
     def test_nonblocking_file_lock_rejects_concurrent_run(self, backup_mock):

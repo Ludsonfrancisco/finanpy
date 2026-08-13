@@ -1,5 +1,6 @@
 import hashlib
 import sqlite3
+import sys
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -67,17 +68,55 @@ class BackupOutcome:
 
 
 def create_unused_temporary_path(directory: Path) -> Path:
-    directory.mkdir(parents=True, exist_ok=True)
-    handle = tempfile.NamedTemporaryFile(
-        dir=directory,
-        prefix='.lar-finance-r2-',
-        suffix='.sqlite3',
-        delete=False,
-    )
-    path = Path(handle.name)
-    handle.close()
-    path.unlink()
-    return path
+    handle = None
+    path = None
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        handle = tempfile.NamedTemporaryFile(
+            dir=directory,
+            prefix='.lar-finance-r2-',
+            suffix='.sqlite3',
+            delete=False,
+        )
+        path = Path(handle.name)
+        handle.close()
+        handle = None
+        path.unlink()
+        return path
+    except OSError:
+        if handle is not None:
+            try:
+                handle.close()
+            except OSError:
+                pass
+        if path is not None:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise BackupVerificationError(
+            'Temporary backup path could not be reserved.',
+            error_code='copy_failed',
+            stage='copy',
+        ) from None
+
+
+@contextmanager
+def temporary_backup_path(directory: Path):
+    path = create_unused_temporary_path(directory)
+    try:
+        yield path
+    finally:
+        primary_error_active = sys.exc_info()[0] is not None
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            if not primary_error_active:
+                raise BackupVerificationError(
+                    'Temporary backup could not be cleaned up.',
+                    error_code='cleanup_failed',
+                    stage='cleanup',
+                ) from None
 
 
 def file_identity(path: Path) -> tuple[int, str]:
@@ -125,8 +164,6 @@ def execute_remote_backup(config, storage, database_path, now) -> BackupOutcome:
     with _backup_lock(lock):
         try:
             existing = storage.head_managed(key)
-        except Timeout:
-            raise
         except REMOTE_OPERATION_ERRORS:
             raise BackupVerificationError(
                 'Existing remote backup could not be verified.',
@@ -136,16 +173,14 @@ def execute_remote_backup(config, storage, database_path, now) -> BackupOutcome:
         if existing is not None:
             return BackupOutcome.already_exists(existing)
 
-        temporary_path = create_unused_temporary_path(source.parent / 'backups')
-        try:
+        with temporary_backup_path(source.parent / 'backups') as temporary_path:
             try:
                 backup_sqlite(source, temporary_path)
                 _, sha256 = file_identity(temporary_path)
-            except Timeout:
-                raise
             except LOCAL_BACKUP_ERRORS:
                 raise BackupVerificationError(
                     'Local SQLite backup could not be verified.',
+                    error_code='copy_failed',
                     stage='copy',
                 ) from None
 
@@ -156,8 +191,6 @@ def execute_remote_backup(config, storage, database_path, now) -> BackupOutcome:
                     backup_date,
                     sha256,
                 )
-            except Timeout:
-                raise
             except REMOTE_OPERATION_ERRORS:
                 raise BackupVerificationError(
                     'Remote backup upload could not be verified.'
@@ -176,12 +209,8 @@ def execute_remote_backup(config, storage, database_path, now) -> BackupOutcome:
                     objects,
                     retained,
                 )
-            except Timeout:
-                raise
             except REMOTE_OPERATION_ERRORS:
                 raise BackupRetentionError(
                     'Remote backup retention could not be completed.'
                 ) from None
             return BackupOutcome.created(remote, deleted)
-        finally:
-            temporary_path.unlink(missing_ok=True)
