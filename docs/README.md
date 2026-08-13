@@ -11,6 +11,8 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
   concluída e suas evidências.
 - [Sprint 2 — API privada e sincronização](sprints/sprint-2-api-sync.md):
   entrega concluída, evidências e bloqueios operacionais restantes.
+- [Backup automático no R2](sprints/automatic-r2-backup.md): configuração,
+  operação, interpretação de resultados, restauração e rollback.
 
 ## Produto e engenharia
 

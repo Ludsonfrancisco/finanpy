@@ -66,6 +66,12 @@ jobs:
           coverage run manage.py test
           coverage report --fail-under=90
 
+      - name: Build production image
+        run: docker build --tag lar-finance-ci:${{ github.sha }} .
+
+      - name: Verify Supervisor version
+        run: test "$(docker run --rm lar-finance-ci:${{ github.sha }} supervisord --version)" = "4.3.0"
+
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest

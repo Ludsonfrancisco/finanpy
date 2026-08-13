@@ -1,8 +1,11 @@
 asgiref==3.11.1
+boto3==1.43.53
 Django==5.2.13
+filelock==3.32.0
 gunicorn==23.0.0
 Pillow==12.2.0
 sqlparse==0.5.5
+supervisor==4.3.0
 tzdata==2026.1
 python-dotenv==1.2.2
 ruff==0.15.11

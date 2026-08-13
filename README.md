@@ -13,7 +13,9 @@ modernização incremental.
 - API privada `/api/v1/` com sessões por dispositivo, sincronização idempotente,
   contrato OpenAPI e isolamento por Lar;
 - SQLite persistido em `/app/data/db.sqlite3` no container;
-- 276 testes e 98% de cobertura; gate mínimo de 90%;
+- backup R2 diário codificado com agenda supervisionada e retenção `14/8/12`,
+  ainda não ativado em produção;
+- 381 testes e 98% de cobertura; gate mínimo de 90%;
 - cadastro público removido;
 - importação bancária e aplicativo Flutter ainda não implementados.
 
@@ -30,6 +32,7 @@ total.
 - [UX mobile e desktop](docs/mobile-ux.md)
 - [Segurança e operação](docs/security-and-operations.md)
 - [Runbook do EasyPanel](docs/deploy-easypanel.md)
+- [Backup automático no R2](docs/sprints/automatic-r2-backup.md)
 - [Sprint 1 — Household Ledger](docs/sprints/sprint-1-household-ledger.md)
 - [Sprint 2 — API privada e sincronização](docs/sprints/sprint-2-api-sync.md)
 
@@ -99,12 +102,15 @@ python manage.py runserver
 
 ```bash
 python manage.py backup_sqlite --output /app/data/backups/lar-finance.sqlite3
+python manage.py backup_to_r2
 python manage.py audit_household_integrity
 ```
 
 O backup usa a API do SQLite e só conclui após a verificação de integridade. A
 auditoria é somente leitura, não imprime dados financeiros e retorna erro quando
-encontra inconsistências.
+encontra inconsistências. `backup_to_r2` exige as sete variáveis documentadas no
+[runbook do backup automático](docs/sprints/automatic-r2-backup.md), cria uma cópia
+consistente e só aplica retenção após confirmar o objeto remoto.
 
 ## Qualidade
 
@@ -126,4 +132,6 @@ foram revogadas. Um backup real foi armazenado em bucket R2 privado e restaurado
 com sucesso em ambiente descartável em 2026-08-12. A produção continua bloqueada
 até a validação restante do runbook no EasyPanel: imagem atual, migrations,
 persistência após restart, proxy, rate limit e smoke checks. Enquanto o banco for
-SQLite, a operação permanece limitada a uma réplica e um worker.
+SQLite, a operação permanece limitada a uma réplica e um worker. A automação
+diária para o R2 está codificada e testada, mas suas variáveis, execução real,
+restart e restauração ainda não foram ativados nem comprovados no EasyPanel.

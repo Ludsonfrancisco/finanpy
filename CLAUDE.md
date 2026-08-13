@@ -9,6 +9,7 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
 python manage.py test
+python manage.py backup_to_r2
 ruff check . --config pyproject.toml
 python manage.py check
 python manage.py makemigrations --check
@@ -86,6 +87,10 @@ As FKs legadas `user` permanecem para rastreabilidade e usam `PROTECT`.
   reutilizar o valor antigo ainda presente no histórico Git.
 - Backup real off-host restaurado com sucesso em 2026-08-12; evidência sanitizada
   em `docs/audits/2026-08-12-production-backup-restore.md`.
+- Backup R2 diário codificado com Supervisor, confirmação remota e retenção
+  `14/8/12`; ainda não ativado nem restaurado pela automação em produção.
+- Segredos R2 entram somente pelas sete variáveis do EasyPanel e nunca em Git,
+  argumentos, logs ou relatórios. Runbook: `docs/sprints/automatic-r2-backup.md`.
 - Implantação ainda bloqueada até validar imagem/migrations, persistência após
   restart, proxy, rate limit e smoke checks no EasyPanel real.
 
