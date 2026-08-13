@@ -293,7 +293,7 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 | Médio | documentação de arquitetura diz que só `/admin/` existe | onboarding e operação incorretos | documentação atualizada neste PRD |
 | Médio | UI por CDN e assets remotos | indisponibilidade/CSP | bundle local no fallback web |
 | Médio | cálculos no dashboard e propriedade `current_balance` podem causar consultas repetidas | degradação com volume | consultas agregadas/testes de performance |
-| Resolvido | cobertura percentual não estava configurada como gate | regressões invisíveis | CI exige no mínimo 90%; resultado atual 98% |
+| Resolvido | cobertura percentual não estava configurada como gate | regressões invisíveis | CI exige no mínimo 90%; resultado atual 97% |
 | Resolvido | screenshots/relatórios privados estavam versionados | PII e ruído no repositório | artefatos removidos e padrões adicionados ao `.gitignore` |
 
 ## 9. Riscos de segurança e privacidade
@@ -310,7 +310,7 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-Na branch da Sprint 3, 436 testes Django passaram com 98% de
+Na branch da Sprint 3, 454 testes Django passaram com 97% de
 cobertura (8.430 statements, 161 não cobertos). Ruff com a configuração oficial,
 warnings/deprecations, Django check, migrations check e deploy check estrito também
 passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de

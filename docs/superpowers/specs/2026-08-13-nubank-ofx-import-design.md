@@ -77,7 +77,7 @@ log.
 ### 4.2 Lote de importação e prévia
 
 Um lote temporário mantém somente o resultado normalizado necessário para a
-prévia, seu hash SHA-256 e avisos enquanto é acionável por até 24 horas. Ele não recebe o arquivo
+prévia, seu hash SHA-256 e avisos enquanto é acionável por até 23 horas. Ele não recebe o arquivo
 bruto. Arquivos acima de 10 MiB são recusados antes do parse. A prévia mostra
 quantidades de lançamentos novos, ignorados e que exigem atenção, além de conta,
 tipo do OFX e período detectados.
@@ -87,7 +87,9 @@ ledger ou nenhum entra. Cancelar remove as linhas normalizadas e preserva o
 recibo técnico sem alterar o ledger. Expirados são limpos nos serviços de
 importação, pelo comando idempotente e por um processo Supervisor independente
 que executa imediatamente no start e na expiração mais próxima, com espera
-limitada a uma hora.
+limitada a uma hora. No SQLite, os mutadores e o purge usam um file lock
+cooperativo; contenção esgotada é um erro temporário seguro e o scheduler tenta
+novamente em 60 segundos.
 
 ### 4.3 Idempotência e duplicidade
 
@@ -116,7 +118,8 @@ uma tela Flutter.
 - Nome original, caminho local, conteúdo, valores e descrições do OFX não podem
   aparecer nos logs técnicos.
 - O arquivo bruto não é persistido em nenhum estado; o lote de prévia deixa de
-  ser acionável em 24 horas e o tamanho máximo do arquivo é 10 MiB.
+  ser acionável em 23 horas e o tamanho máximo do arquivo é 10 MiB. Com polling
+  máximo de uma hora, as linhas normalizadas são removidas em até 24 horas.
 
 ## 6. Erros esperados
 

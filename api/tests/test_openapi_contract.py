@@ -240,6 +240,10 @@ class OpenApiContractTest(SimpleTestCase):
             for operation in self.contract['paths'][path].values():
                 if isinstance(operation, dict) and 'operationId' in operation:
                     self.assertEqual(operation['security'], [{'opaqueBearer': []}])
+                    self.assertEqual(
+                        operation['responses']['503']['x-error-codes'],
+                        ['import_temporarily_unavailable'],
+                    )
 
         preview = self.contract['paths']['/imports/ofx/preview/']['post']
         self.assertIn(
@@ -259,5 +263,9 @@ class OpenApiContractTest(SimpleTestCase):
         self.assertIn('expires_at', batch_schema['required'])
         self.assertEqual(
             batch_schema['properties']['expires_at'],
-            {'type': 'string', 'format': 'date-time'},
+            {
+                'type': 'string',
+                'format': 'date-time',
+                'description': 'Preview is actionable for at most 23 hours.',
+            },
         )

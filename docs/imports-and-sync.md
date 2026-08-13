@@ -9,7 +9,7 @@ O Lar Finance começa com exportação/importação manual porque é a alternati
 O backend aceita OFX BRL estruturalmente compatível com o perfil Nubank testado
 para extrato de conta e cartão (`bank_account` e `credit_card`). O limite é 10 MiB. O servidor calcula
 SHA-256, analisa e armazena somente os dados normalizados da prévia; o OFX bruto
-é descartado. A prévia deixa de ser acionável em 24 horas e nunca altera o ledger antes da
+é descartado. A prévia deixa de ser acionável em 23 horas e nunca altera o ledger antes da
 confirmação explícita.
 
 Os arquivos cobertos não oferecem um marcador institucional confiável. Assim,
@@ -36,6 +36,12 @@ criação/consulta de importação, pelo comando idempotente
 `run_import_preview_purge_scheduler`, executado pelo Supervisor imediatamente no
 start e novamente na expiração mais próxima, com espera limitada a uma hora.
 Esse processo não depende do backup/R2.
+
+Enquanto o banco for SQLite, criação, vínculo, confirmação, cancelamento e purge
+usam o mesmo file lock cooperativo. Contenção transitória recebe tentativas
+limitadas; a API responde `503 import_temporarily_unavailable` sem expor detalhes
+do banco, e o scheduler tenta novamente em 60 segundos. A validade de 23 horas
+reserva a margem do polling para remover linhas normalizadas em até 24 horas.
 
 Fora deste piloto: CSV, outros bancos, Open Finance, limite, fatura futura,
 parcelas, empréstimos, categorização inteligente e Flutter. Campos ausentes não

@@ -15,7 +15,7 @@ depois da confirmação explícita.
 - parser do perfil OFX que aceita os formatos OFX 1.x SGML e XML esperados pelo
   piloto, exige `CURDEF=BRL` e rejeita texto, valor, precisão ou campos
   estruturais que não cabem no modelo persistido;
-- arquivo limitado a 10 MiB, hash SHA-256 por Lar, prévia válida por até 24h e
+- arquivo limitado a 10 MiB, hash SHA-256 por Lar, prévia válida por até 23h e
   descarte do conteúdo OFX bruto após o parse;
 - associação automática por identificador OFX já vinculado ou parada para
   vínculo explícito a uma conta do mesmo Lar; o responsável é o da conta;
@@ -34,7 +34,8 @@ depois da confirmação explícita.
   técnico do lote. Expirados são limpos de modo idempotente ao criar/consultar
   importações, pelo comando `python manage.py purge_import_previews` e pelo
   processo independente do Supervisor, que acorda na próxima expiração com
-  intervalo limitado a uma hora.
+  intervalo limitado a uma hora e nova tentativa em 60 segundos quando o lock
+  cooperativo estiver ocupado.
 
 ## Limites conscientes
 
@@ -65,6 +66,9 @@ confirmados: use o procedimento financeiro de correção/auditoria a definir.
   uma réplica, um worker web e os schedulers independentes.
 - SQLite continua limitado a uma réplica e um worker; concorrência além dessa
   topologia não foi homologada.
+- Os processos web e purge compartilham um file lock para serializar mutações de
+  importação. Contenção esgotada retorna `503 import_temporarily_unavailable`,
+  sem vazar a mensagem do SQLite.
 - O OFX não fornece de modo confiável limite, faturas futuras ou parcelas; esses
   dados seguem para a Sprint 4, sem valores presumidos.
 
@@ -81,23 +85,27 @@ confirmados: use o procedimento financeiro de correção/auditoria a definir.
 ## Correções da revisão final
 
 - contagens do recibo são recalculadas após avisos virarem lançamentos criados;
-- cancelamento relê e bloqueia o lote em transação atômica, sem sobrescrever
-  preview já vinculado ou confirmado;
+- cancelamento relê o lote em transação atômica, aceita preview pronto mesmo já
+  vinculado, retorna o mesmo recibo se repetido e rejeita lote confirmado;
 - conta OFX nunca é vinculada a `Account.CREDIT`, enquanto cartão exige esse tipo;
 - `ACCTID`, `FITID`, `MEMO`, moeda, escala e precisão do valor são validados antes
   de qualquer persistência e retornam erros OFX sanitizados;
 - linhas normalizadas canceladas são removidas imediatamente. Expiradas são
-  removidas até o prazo pelo scheduler Supervisor, que acorda para a expiração
-  mais próxima e limita a espera a uma hora; o recibo técnico do batch permanece;
+  removidas em até 24 horas pelo scheduler Supervisor: a prévia expira em 23
+  horas, o polling é limitado a uma hora e a contenção tenta novamente em 60
+  segundos; o recibo técnico do batch permanece;
 - OpenAPI registra 10 MiB, códigos estáveis, `expires_at` e a limitação de que o
   perfil estrutural não autentica a instituição de origem.
 
 ## Matriz final da Task 6
 
-- `python -Wd manage.py test` focado nas alterações: 84 testes aprovados sem
+- `python -Wd manage.py test` focado nas alterações: 91 testes aprovados sem
   `DeprecationWarning`.
-- `coverage run manage.py test` + `coverage report --fail-under=90`: 447 testes,
-  98% (8.620 statements, 163 não cobertos), gate aprovado.
+- `python -Wd manage.py test`: 454 testes aprovados em 178,534 segundos.
+- `coverage run manage.py test` + `coverage report --fail-under=90`: 454 testes,
+  97% (8.867 statements, 223 não cobertos), gate aprovado.
+- Revisão independente final: nenhum achado crítico ou importante após o teste
+  multiprocesso causal com SQLite real.
 - Ruff, `manage.py check`, migration drift e `git diff --check`: aprovados.
 - `check --deploy --fail-level WARNING` foi aprovado com variáveis de produção
   sintéticas. Com as variáveis efêmeras obrigatórias de teste (`DEBUG=True` e

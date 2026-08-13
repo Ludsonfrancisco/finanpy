@@ -24,7 +24,7 @@ SQLite, biblioteca padrão `xml.etree.ElementTree`, `hashlib`, `decimal`,
 - Nunca versionar, logar, copiar para fixture ou persistir o OFX bruto. Fixtures
   precisam ser sintéticas e sem dados financeiros reais.
 - Rejeitar arquivo acima de 10 MiB antes do parse; reter prévia normalizada no
-  máximo por 24 horas; lote confirmado preserva apenas recibo, linhas
+  máximo por 23 horas; lote confirmado preserva apenas recibo, linhas
   normalizadas e assinaturas anti-duplicação.
 - Todo arquivo exige prévia e confirmação explícita. Prévia, cancelamento, erro
   de parse e erro de confirmação não podem mudar `Transaction`.
@@ -644,7 +644,7 @@ migrations históricas.
 - [ ] **Step 3: Atualizar documentação com o estado entregue**
 
 Em `docs/imports-and-sync.md`, registrar OFX Nubank, limite 10 MiB, preview de
-24 h, confirmação, descarte bruto, categoria `Não categorizado`, deduplicação
+23 h, confirmação, descarte bruto, categoria `Não categorizado`, deduplicação
 por hash/FITID e que limite/parcelas/fatura futura seguem fora de escopo. Em
 `docs/ROADMAP.md`, marcar somente os itens efetivamente entregues da Sprint 3 e
 manter CSV, outros bancos e conciliação abertos. O handoff deve listar SHA(s),
@@ -691,7 +691,7 @@ Expected: revisão sem achado Critical/Important e sincronismo `0 0`.
 | OFX Nubank conta e cartão, sem estimar limite/parcelas | 2 |
 | Prévia obrigatória, conta conhecida/desconhecida e responsável automático | 1, 3, 5 |
 | Categoria explícita `Não categorizado` | 4 |
-| Descarte bruto, 10 MiB e 24 h | 2, 3, 5, 6 |
+| Descarte bruto, 10 MiB, preview de 23 h e purge em até 24 h | 2, 3, 5, 6 |
 | Hash/FITID/similaridade e recibo | 1, 3, 4, 5 |
 | Confirmação atômica e sync | 4, 5 |
 | Isolamento, erros seguros e logs sem PII | 3, 5, 6 |
@@ -702,7 +702,7 @@ Expected: revisão sem achado Critical/Important e sincronismo `0 0`.
 - Cobertura: todos os requisitos da especificação possuem pelo menos uma task na
   tabela acima.
 - Ambiguidade removida: categoria é `Não categorizado`, arquivo máximo é 10 MiB,
-  prévia expira em 24 h, e a conta desconhecida exige vínculo com conta já
+  prévia expira em 23 h, e a conta desconhecida exige vínculo com conta já
   existente do mesmo Lar.
 - Consistência: os mesmos nomes `ImportBatch`, `ImportRecord`,
   `SourceReference`, `create_preview`, `bind_preview_account`,

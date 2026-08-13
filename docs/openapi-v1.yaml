@@ -443,6 +443,7 @@
           "400": {"$ref": "#/components/responses/BadRequest", "x-error-codes": ["invalid_ofx", "unsupported_ofx", "file_too_large", "invalid_import_state"]},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"},
+          "503": {"$ref": "#/components/responses/ServiceUnavailable", "x-error-codes": ["import_temporarily_unavailable"]},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       }
@@ -457,6 +458,7 @@
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"},
           "404": {"$ref": "#/components/responses/NotFound"},
+          "503": {"$ref": "#/components/responses/ServiceUnavailable", "x-error-codes": ["import_temporarily_unavailable"]},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       }
@@ -473,6 +475,7 @@
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"},
           "404": {"$ref": "#/components/responses/NotFound"},
+          "503": {"$ref": "#/components/responses/ServiceUnavailable", "x-error-codes": ["import_temporarily_unavailable"]},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       }
@@ -488,6 +491,7 @@
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"},
           "404": {"$ref": "#/components/responses/NotFound"},
+          "503": {"$ref": "#/components/responses/ServiceUnavailable", "x-error-codes": ["import_temporarily_unavailable"]},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       }
@@ -503,6 +507,7 @@
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"},
           "404": {"$ref": "#/components/responses/NotFound"},
+          "503": {"$ref": "#/components/responses/ServiceUnavailable", "x-error-codes": ["import_temporarily_unavailable"]},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       }
@@ -550,6 +555,11 @@
       },
       "TooManyRequests": {
         "description": "Throttle limit exceeded",
+        "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}},
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}
+      },
+      "ServiceUnavailable": {
+        "description": "Import mutation is temporarily serialized by SQLite",
         "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}},
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}
       },
@@ -788,7 +798,7 @@
           "product_type": {"type": "string", "enum": ["bank_account", "credit_card"]},
           "statement_start": {"type": "string", "format": "date"},
           "statement_end": {"type": "string", "format": "date"},
-          "expires_at": {"type": "string", "format": "date-time"},
+          "expires_at": {"type": "string", "format": "date-time", "description": "Preview is actionable for at most 23 hours."},
           "account_uuid": {"type": ["string", "null"], "format": "uuid"},
           "financial_owner_uuid": {"type": ["string", "null"], "format": "uuid"},
           "created_count": {"type": "integer", "minimum": 0},

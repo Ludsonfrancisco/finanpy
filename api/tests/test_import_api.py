@@ -1,5 +1,6 @@
 from io import BytesIO
 from pathlib import Path
+from unittest.mock import patch
 
 from django.test import TestCase
 
@@ -10,6 +11,7 @@ from api.tokens import issue_session
 from households.models import FinancialOwner
 from households.services import ensure_household_for_user, get_financial_owner
 from imports.models import ImportBatch
+from imports.services import ImportBusyError
 from users.models import User
 
 FIXTURES = Path(__file__).parents[2] / 'imports' / 'tests' / 'fixtures'
@@ -111,6 +113,51 @@ class ImportApiTest(TestCase):
         )
         self.assertEqual(cancelled.status_code, 200)
         self.assertEqual(cancelled.json()['status'], ImportBatch.CANCELLED)
+
+    def test_sqlite_contention_returns_stable_domain_error_instead_of_500(self):
+        batch_uuid = self._preview().json()['uuid']
+        bound = self.client.post(
+            self._bind_url(batch_uuid),
+            {'account_uuid': str(self.account.uuid)},
+            content_type='application/json',
+            **self.auth,
+        )
+        self.assertEqual(bound.status_code, 200)
+
+        with patch(
+            'api.import_views.confirm_preview',
+            side_effect=ImportBusyError('Import operation is temporarily busy.'),
+        ):
+            response = self.client.post(
+                self._confirm_url(batch_uuid),
+                {},
+                content_type='application/json',
+                **self.auth,
+            )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json()['error']['code'], 'import_temporarily_unavailable'
+        )
+        self.assertEqual(
+            response.json()['error']['message'],
+            'A importação está temporariamente ocupada. Tente novamente.',
+        )
+
+    def test_detail_purge_contention_returns_same_safe_503(self):
+        batch_uuid = self._preview().json()['uuid']
+
+        with patch(
+            'api.import_views.get_batch_for_household',
+            side_effect=ImportBusyError('private lock detail'),
+        ):
+            response = self.client.get(self._detail_url(batch_uuid), **self.auth)
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json()['error']['code'], 'import_temporarily_unavailable'
+        )
+        self.assertNotIn('private lock detail', repr(response.json()))
 
     def test_other_household_batch_and_account_return_not_found(self):
         foreign_batch_uuid = self._preview(auth=self.foreign_auth).json()['uuid']

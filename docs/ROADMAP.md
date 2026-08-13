@@ -116,7 +116,7 @@ prometer suporte genérico de CSV ou conciliação completa.
 - [x] parser OFX BRL estruturalmente compatível com o perfil Nubank de
   conta/cartão, com testes de encoding/valor/data e limites persistíveis;
 - [ ] framework de perfis CSV versionados;
-- [x] preview acionável por até 24h sem alterar ledger, descarte imediato no
+- [x] preview acionável por até 23h sem alterar ledger, descarte imediato no
   cancelamento e purge idempotente de expirados por scheduler independente;
 - [x] mapeamento de owner/account e categoria `Não categorizado` por Lar/tipo;
 - [x] fingerprint/deduplicação por SHA, FITID e avisos, com teste de reimportação;

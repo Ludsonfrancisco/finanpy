@@ -13,6 +13,7 @@ from imports.ofx import (
 from imports.services import (
     ExpiredPreviewError,
     ImportAccessError,
+    ImportBusyError,
     ImportConflictError,
     ImportStateError,
     bind_preview_account,
@@ -53,6 +54,12 @@ class ExpiredImportPreview(InvalidOfx):
     default_code = 'expired_import_preview'
 
 
+class ImportTemporarilyUnavailable(APIException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = 'A importação está temporariamente ocupada. Tente novamente.'
+    default_code = 'import_temporarily_unavailable'
+
+
 def _read_ofx_upload(uploaded_file):
     """Read an uploaded OFX without retaining bytes above the accepted limit."""
     size = getattr(uploaded_file, 'size', None)
@@ -76,10 +83,14 @@ class ImportView(APIView):
                 household=self.request.auth.household,
                 batch_uuid=batch_uuid,
             )
+        except ImportBusyError as error:
+            self.handle_domain_error(error)
         except ImportAccessError as exc:
             raise NotFound() from exc
 
     def handle_domain_error(self, error):
+        if isinstance(error, ImportBusyError):
+            raise ImportTemporarilyUnavailable() from error
         if isinstance(error, ExpiredPreviewError):
             raise ExpiredImportPreview() from error
         if isinstance(error, (ImportStateError, ImportConflictError)):

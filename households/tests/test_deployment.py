@@ -39,7 +39,7 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
             ['python', 'manage.py', 'run_import_preview_purge_scheduler'],
         )
 
-    def test_supervisor_keeps_both_processes_running_and_forwards_signals(self):
+    def test_supervisor_keeps_all_processes_running_and_forwards_signals(self):
         supervisor = self._supervisor_config()
         expected_process_settings = {
             'directory': '/app',

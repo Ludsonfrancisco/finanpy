@@ -55,6 +55,13 @@ worker enquanto o banco for SQLite. Se esse requisito deixar de ser aceitável, 
 mudança correta é planejar a migração para um banco servidor, não compartilhar o
 arquivo SQLite entre gravadores concorrentes.
 
+Os fluxos de importação e o scheduler de purge gravam pelo mesmo file lock,
+criado automaticamente ao lado de `db.sqlite3` no volume `/app/data`. Não altere
+`SQLITE_PATH` para um local cujo diretório não seja compartilhado e gravável por
+todos os processos do mesmo container. Contenção esgotada retorna o código seguro
+`503 import_temporarily_unavailable`; o cliente pode tentar novamente, e o
+scheduler de purge repete em 60 segundos.
+
 ## Domínio, TLS, proxy e variáveis
 
 Configure o domínio no proxy do EasyPanel e emita um certificado TLS válido antes

@@ -15,7 +15,7 @@ modernização incremental.
 - SQLite persistido em `/app/data/db.sqlite3` no container;
 - backup R2 diário ativo em produção, com agenda supervisionada, retenção
   `14/8/12`, idempotência após restart e restauração isolada comprovada;
-- 436 testes e 98% de cobertura; gate mínimo de 90%;
+- 454 testes e 97% de cobertura; gate mínimo de 90%;
 - cadastro público removido;
 - piloto de importação manual OFX Nubank de conta/cartão, com prévia, confirmação
   explícita, deduplicação e sincronização; aplicativo Flutter ainda não implementado.

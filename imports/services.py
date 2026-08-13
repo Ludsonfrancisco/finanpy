@@ -1,13 +1,17 @@
 """Secure lifecycle services for normalized OFX previews and ledger confirmation."""
 
 import hashlib
+import time
 from datetime import timedelta
 from decimal import Decimal
+from pathlib import Path
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, OperationalError, connection, transaction
 from django.db.models import Q
 from django.utils import timezone
+from filelock import FileLock, Timeout
 
 from accounts.models import Account
 from api.models import DeviceSession
@@ -35,9 +39,29 @@ class ImportConflictError(ImportStateError):
     """Raised when confirmation races an existing source reference."""
 
 
+class ImportBusyError(ImportStateError):
+    """Raised when SQLite import writes cannot be serialized safely."""
+
+
+PREVIEW_TTL = timedelta(hours=23)
+DEFAULT_IMPORT_LOCK_TIMEOUT_SECONDS = 5.0
+DEFAULT_IMPORT_LOCK_RETRIES = 3
+DEFAULT_IMPORT_LOCK_RETRY_DELAY_SECONDS = 0.05
+
+
 def create_preview(*, household, device_session, content: bytes) -> ImportBatch:
+    return _run_serialized_import_mutation(
+        lambda: _create_preview(
+            household=household,
+            device_session=device_session,
+            content=content,
+        )
+    )
+
+
+def _create_preview(*, household, device_session, content: bytes) -> ImportBatch:
     """Parse bytes in memory and store only a normalized, non-ledger preview."""
-    purge_preview_records()
+    _purge_preview_records()
     if device_session.household_id != household.id:
         raise ImportAccessError('Device session is not available for this household.')
 
@@ -74,7 +98,7 @@ def create_preview(*, household, device_session, content: bytes) -> ImportBatch:
             file_sha256=file_sha256,
             statement_start=parsed.statement_start,
             statement_end=parsed.statement_end,
-            expires_at=timezone.now() + timedelta(hours=24),
+            expires_at=timezone.now() + PREVIEW_TTL,
             status=ImportBatch.PREVIEW_READY
             if link or repeated
             else ImportBatch.NEEDS_ACCOUNT_LINK,
@@ -97,6 +121,12 @@ def create_preview(*, household, device_session, content: bytes) -> ImportBatch:
 
 
 def bind_preview_account(*, batch: ImportBatch, account: Account) -> ImportBatch:
+    return _run_serialized_import_mutation(
+        lambda: _bind_preview_account(batch=batch, account=account)
+    )
+
+
+def _bind_preview_account(*, batch: ImportBatch, account: Account) -> ImportBatch:
     """Bind a still-actionable preview to a local account and classify its records."""
     with transaction.atomic():
         batch = (
@@ -153,12 +183,18 @@ def bind_preview_account(*, batch: ImportBatch, account: Account) -> ImportBatch
 
 
 def cancel_preview(*, batch: ImportBatch) -> ImportBatch:
+    return _run_serialized_import_mutation(lambda: _cancel_preview(batch=batch))
+
+
+def _cancel_preview(*, batch: ImportBatch) -> ImportBatch:
     """Cancel an actionable preview without deleting its audit receipt."""
     with transaction.atomic():
         batch = ImportBatch.objects.select_for_update().get(pk=batch.pk)
+        if batch.status == ImportBatch.CANCELLED:
+            return batch
+        if batch.status == ImportBatch.COMPLETED:
+            raise ImportStateError('A completed import cannot be cancelled.')
         _require_actionable(batch)
-        if batch.account_id is not None:
-            raise ImportStateError('A linked import preview cannot be cancelled.')
         batch.status = ImportBatch.CANCELLED
         _save(batch)
         batch.records.filter(transaction__isnull=True).delete()
@@ -166,6 +202,12 @@ def cancel_preview(*, batch: ImportBatch) -> ImportBatch:
 
 
 def confirm_preview(*, batch: ImportBatch, device_session) -> ImportBatch:
+    return _run_serialized_import_mutation(
+        lambda: _confirm_preview(batch=batch, device_session=device_session)
+    )
+
+
+def _confirm_preview(*, batch: ImportBatch, device_session) -> ImportBatch:
     """Atomically apply one linked, actionable preview to the household ledger."""
     with transaction.atomic():
         device_session = DeviceSession.objects.select_for_update().get(
@@ -264,6 +306,12 @@ def get_batch_for_household(*, household, batch_uuid) -> ImportBatch:
 
 
 def purge_preview_records(*, now=None) -> int:
+    return _run_serialized_import_mutation(
+        lambda: _purge_preview_records(now=now)
+    )
+
+
+def _purge_preview_records(*, now=None) -> int:
     """Discard private normalized rows while preserving minimal batch receipts."""
     cutoff = now or timezone.now()
     actionable_statuses = (
@@ -458,3 +506,73 @@ def _require_actionable(batch):
 def _save(instance):
     instance.full_clean()
     instance.save()
+
+
+def _run_serialized_import_mutation(operation):
+    """Serialize cooperative SQLite writers and bound lock-contention retries."""
+    if connection.vendor != 'sqlite':
+        return operation()
+
+    timeout_seconds = max(
+        0.0,
+        float(
+            getattr(
+                settings,
+                'IMPORT_MUTATION_LOCK_TIMEOUT_SECONDS',
+                DEFAULT_IMPORT_LOCK_TIMEOUT_SECONDS,
+            )
+        ),
+    )
+    retries = max(
+        1,
+        int(
+            getattr(
+                settings,
+                'IMPORT_MUTATION_LOCK_RETRIES',
+                DEFAULT_IMPORT_LOCK_RETRIES,
+            )
+        ),
+    )
+    retry_delay = max(
+        0.0,
+        float(
+            getattr(
+                settings,
+                'IMPORT_MUTATION_LOCK_RETRY_DELAY_SECONDS',
+                DEFAULT_IMPORT_LOCK_RETRY_DELAY_SECONDS,
+            )
+        ),
+    )
+
+    try:
+        with FileLock(_import_mutation_lock_path(), timeout=timeout_seconds):
+            for attempt in range(retries):
+                try:
+                    return operation()
+                except OperationalError as error:
+                    if not _is_transient_sqlite_lock(error):
+                        raise
+                    if attempt == retries - 1:
+                        raise ImportBusyError(
+                            'Import operation is temporarily busy.'
+                        ) from error
+                    time.sleep(retry_delay)
+    except Timeout as error:
+        raise ImportBusyError('Import operation is temporarily busy.') from error
+
+    raise ImportBusyError('Import operation is temporarily busy.')
+
+
+def _import_mutation_lock_path() -> str:
+    configured = getattr(settings, 'IMPORT_MUTATION_LOCK_PATH', None)
+    if configured:
+        return str(configured)
+
+    database_name = str(connection.settings_dict['NAME'])
+    if database_name == ':memory:' or database_name.startswith('file:'):
+        return str(Path(settings.BASE_DIR) / '.lar-finance-imports.lock')
+    return str(Path(database_name).resolve().parent / '.lar-finance-imports.lock')
+
+
+def _is_transient_sqlite_lock(error: OperationalError) -> bool:
+    return connection.vendor == 'sqlite' and 'locked' in str(error).lower()

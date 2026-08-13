@@ -1,3 +1,8 @@
+import json
+import multiprocessing
+import sqlite3
+import tempfile
+from contextlib import closing
 from datetime import date, datetime, timedelta
 from datetime import timezone as datetime_timezone
 from decimal import Decimal
@@ -6,8 +11,8 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.db import IntegrityError
-from django.test import TestCase
+from django.db import IntegrityError, OperationalError
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
 from accounts.models import Account
@@ -20,6 +25,7 @@ from imports.models import ImportAccountLink, ImportBatch, ImportRecord, SourceR
 from imports.services import (
     ExpiredPreviewError,
     ImportAccessError,
+    ImportBusyError,
     ImportConflictError,
     ImportStateError,
     bind_preview_account,
@@ -28,6 +34,12 @@ from imports.services import (
     create_preview,
     get_batch_for_household,
     next_preview_purge_delay,
+)
+from imports.tests.process_workers import (
+    confirm_process,
+    purge_process,
+    seed_process_database,
+    wait_until_process_finishes,
 )
 from sync.models import SyncChange
 from transactions.models import Transaction
@@ -192,7 +204,7 @@ class ImportPreviewServiceTest(TestCase):
                     status,
                 )
 
-    def test_cancel_reloads_batch_and_rejects_stale_linked_or_completed_state(self):
+    def test_cancel_reloads_batch_accepts_linked_preview_and_rejects_completed(self):
         stale_unlinked = create_preview(
             household=self.household,
             device_session=self.device,
@@ -200,19 +212,24 @@ class ImportPreviewServiceTest(TestCase):
         )
         linked = bind_preview_account(batch=stale_unlinked, account=self.account)
 
-        with self.assertRaises(ImportStateError):
-            cancel_preview(batch=stale_unlinked)
+        cancelled = cancel_preview(batch=stale_unlinked)
         self.assertEqual(
             ImportBatch.objects.get(pk=linked.pk).status,
-            ImportBatch.PREVIEW_READY,
+            ImportBatch.CANCELLED,
         )
+        self.assertEqual(cancelled.status, ImportBatch.CANCELLED)
+        self.assertFalse(cancelled.records.exists())
 
-        stale_linked = ImportBatch.objects.get(pk=linked.pk)
-        confirm_preview(batch=linked, device_session=self.device)
+        same_receipt = cancel_preview(batch=stale_unlinked)
+        self.assertEqual(same_receipt.pk, cancelled.pk)
+        self.assertEqual(same_receipt.status, ImportBatch.CANCELLED)
+
+        stale_linked = self._bound_preview(content=self.content + b'\n')
+        confirm_preview(batch=stale_linked, device_session=self.device)
         with self.assertRaises(ImportStateError):
             cancel_preview(batch=stale_linked)
         self.assertEqual(
-            ImportBatch.objects.get(pk=linked.pk).status,
+            ImportBatch.objects.get(pk=stale_linked.pk).status,
             ImportBatch.COMPLETED,
         )
 
@@ -325,7 +342,7 @@ class ImportPreviewServiceTest(TestCase):
         self.assertEqual(other.status, ImportBatch.NEEDS_ACCOUNT_LINK)
 
     @patch('imports.services.timezone.now')
-    def test_preview_expires_in_24_hours_and_does_not_log_financial_data(self, now):
+    def test_preview_expires_in_23_hours_and_does_not_log_financial_data(self, now):
         frozen = datetime(2026, 3, 1, tzinfo=datetime_timezone.utc)
         now.return_value = frozen
         with self.assertNoLogs('imports.services'):
@@ -335,11 +352,30 @@ class ImportPreviewServiceTest(TestCase):
                 content=self.content,
             )
 
-        self.assertEqual(batch.expires_at, frozen + timedelta(hours=24))
+        self.assertEqual(batch.expires_at, frozen + timedelta(hours=23))
         record = batch.records.get(line_number=1)
         self.assertEqual(record.external_id, 'synthetic-fitid-001')
         self.assertEqual(record.description, 'Synthetic market purchase')
         self.assertEqual(record.amount, Decimal('-42.50'))
+
+    @patch('imports.services.timezone.now')
+    def test_preview_created_while_scheduler_sleeps_is_purged_within_24_hours(
+        self, now
+    ):
+        created_at = datetime(2026, 3, 1, tzinfo=datetime_timezone.utc)
+        now.return_value = created_at
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+        latest_hourly_poll = batch.expires_at + timedelta(hours=1)
+
+        deleted = services.purge_preview_records(now=latest_hourly_poll)
+
+        self.assertLessEqual(latest_hourly_poll, created_at + timedelta(hours=24))
+        self.assertGreater(deleted, 0)
+        self.assertFalse(batch.records.exists())
 
     def test_confirm_preview_creates_transactions_references_and_sync_receipt(self):
         batch = self._bound_preview()
@@ -822,3 +858,137 @@ class ImportPreviewServiceTest(TestCase):
         import hashlib
 
         return hashlib.sha256(content).hexdigest()
+
+
+class ImportMutationSerializationTest(SimpleTestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.lock_path = str(Path(self.temp_dir.name) / 'imports.lock')
+
+    def test_purge_and_confirmation_cannot_enter_write_sections_together(self):
+        context = multiprocessing.get_context('spawn')
+        db_path = str(Path(self.temp_dir.name) / 'process.sqlite3')
+        metadata_path = str(Path(self.temp_dir.name) / 'metadata.json')
+        marker_path = str(Path(self.temp_dir.name) / 'purge-active')
+        overlap_path = str(Path(self.temp_dir.name) / 'overlap')
+        seed = context.Process(
+            target=seed_process_database,
+            args=(
+                db_path,
+                self.lock_path,
+                str(FIXTURES / 'nubank-account.ofx'),
+                metadata_path,
+            ),
+        )
+        seed.start()
+        wait_until_process_finishes(seed)
+        self.assertEqual(seed.exitcode, 0)
+        metadata = json.loads(Path(metadata_path).read_text(encoding='utf-8'))
+
+        purge_entered = context.Event()
+        release_purge = context.Event()
+        confirm_ready = context.Event()
+        confirm_entered = context.Event()
+        purge = context.Process(
+            target=purge_process,
+            args=(
+                db_path,
+                self.lock_path,
+                purge_entered,
+                release_purge,
+                marker_path,
+            ),
+        )
+        confirm = context.Process(
+            target=confirm_process,
+            args=(
+                db_path,
+                self.lock_path,
+                metadata['confirm_batch_id'],
+                metadata['device_id'],
+                marker_path,
+                overlap_path,
+                confirm_ready,
+                confirm_entered,
+            ),
+        )
+        purge.start()
+        try:
+            self.assertTrue(purge_entered.wait(timeout=5))
+            confirm.start()
+            self.assertTrue(confirm_ready.wait(timeout=5))
+            self.assertFalse(confirm_entered.wait(timeout=0.25))
+            self.assertFalse(Path(overlap_path).exists())
+            release_purge.set()
+            self.assertTrue(confirm_entered.wait(timeout=5))
+            wait_until_process_finishes(purge)
+            wait_until_process_finishes(confirm)
+        finally:
+            release_purge.set()
+            for process in (purge, confirm):
+                if process.pid is not None and process.is_alive():
+                    process.terminate()
+                if process.pid is not None:
+                    process.join(timeout=5)
+
+        self.assertEqual(purge.exitcode, 0)
+        self.assertEqual(confirm.exitcode, 0)
+        self.assertFalse(Path(overlap_path).exists())
+        with closing(sqlite3.connect(db_path)) as database:
+            expired_status = database.execute(
+                'SELECT status FROM imports_importbatch WHERE id = ?',
+                (metadata['expired_batch_id'].replace('-', ''),),
+            ).fetchone()[0]
+            expired_records = database.execute(
+                'SELECT COUNT(*) FROM imports_importrecord WHERE batch_id = ?',
+                (metadata['expired_batch_id'].replace('-', ''),),
+            ).fetchone()[0]
+            confirm_status = database.execute(
+                'SELECT status FROM imports_importbatch WHERE id = ?',
+                (metadata['confirm_batch_id'].replace('-', ''),),
+            ).fetchone()[0]
+        self.assertEqual(expired_status, ImportBatch.FAILED)
+        self.assertEqual(expired_records, 0)
+        self.assertEqual(confirm_status, ImportBatch.COMPLETED)
+
+    def test_transient_sqlite_lock_is_retried_with_a_finite_limit(self):
+        attempts = 0
+
+        def locked_then_succeeds():
+            nonlocal attempts
+            attempts += 1
+            if attempts < 3:
+                raise OperationalError('database is locked')
+            return 'receipt'
+
+        with (
+            self.settings(
+                IMPORT_MUTATION_LOCK_PATH=self.lock_path,
+                IMPORT_MUTATION_LOCK_RETRIES=3,
+                IMPORT_MUTATION_LOCK_RETRY_DELAY_SECONDS=0,
+            ),
+            patch('imports.services.connection.vendor', 'sqlite'),
+        ):
+            result = services._run_serialized_import_mutation(
+                locked_then_succeeds
+            )
+
+        self.assertEqual(result, 'receipt')
+        self.assertEqual(attempts, 3)
+
+    def test_exhausted_sqlite_lock_retries_raise_safe_domain_error(self):
+        with (
+            self.settings(
+                IMPORT_MUTATION_LOCK_PATH=self.lock_path,
+                IMPORT_MUTATION_LOCK_RETRIES=2,
+                IMPORT_MUTATION_LOCK_RETRY_DELAY_SECONDS=0,
+            ),
+            patch('imports.services.connection.vendor', 'sqlite'),
+            self.assertRaises(ImportBusyError),
+        ):
+            services._run_serialized_import_mutation(
+                lambda: (_ for _ in ()).throw(
+                    OperationalError('database is locked')
+                )
+            )
