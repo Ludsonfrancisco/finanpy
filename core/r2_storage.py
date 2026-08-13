@@ -67,7 +67,7 @@ class R2Storage:
             status_code = error.response.get('ResponseMetadata', {}).get(
                 'HTTPStatusCode'
             )
-            if status_code == 404 or error_code in {'404', 'NoSuchKey', 'NotFound'}:
+            if status_code == 404 or error_code in {'404', 'NoSuchKey'}:
                 return None
             raise
 
@@ -182,6 +182,7 @@ class R2Storage:
         if (
             str(size) != size_text
             or size != content_length
+            or not isinstance(sha256, str)
             or SHA256_PATTERN.fullmatch(sha256) is None
             or backup_date.isoformat() != backup_date_text
             or backup_date != key_date

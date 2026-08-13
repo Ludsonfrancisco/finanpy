@@ -108,6 +108,39 @@ class R2StorageTest(SimpleTestCase):
         with self.stubber:
             self.assertIsNone(self.storage.head_managed(self.key))
 
+    def test_head_returns_none_for_textual_404_code(self):
+        self.stubber.add_client_error(
+            'head_object',
+            service_error_code='404',
+            http_status_code=400,
+            expected_params={'Bucket': self.bucket, 'Key': self.key},
+        )
+
+        with self.stubber:
+            self.assertIsNone(self.storage.head_managed(self.key))
+
+    def test_head_propagates_notfound_code_without_http_404(self):
+        self.stubber.add_client_error(
+            'head_object',
+            service_error_code='NotFound',
+            http_status_code=400,
+            expected_params={'Bucket': self.bucket, 'Key': self.key},
+        )
+
+        with self.stubber, self.assertRaises(ClientError):
+            self.storage.head_managed(self.key)
+
+    def test_head_propagates_http_500(self):
+        self.stubber.add_client_error(
+            'head_object',
+            service_error_code='InternalError',
+            http_status_code=500,
+            expected_params={'Bucket': self.bucket, 'Key': self.key},
+        )
+
+        with self.stubber, self.assertRaises(ClientError):
+            self.storage.head_managed(self.key)
+
     def test_head_does_not_treat_authentication_failure_as_absence(self):
         self.stubber.add_client_error(
             'head_object',
@@ -136,6 +169,22 @@ class R2StorageTest(SimpleTestCase):
                 self.valid_head(sha256=invalid_sha256)
                 with self.stubber, self.assertRaises(RemoteObjectInvalid):
                     self.storage.head_managed(self.key)
+
+    def test_head_rejects_non_string_sha256_metadata(self):
+        for invalid_sha256 in (None, 42, []):
+            with self.subTest(sha256=invalid_sha256):
+                response = {
+                    'ContentLength': 4,
+                    'Metadata': {
+                        'sha256': invalid_sha256,
+                        'size': '4',
+                        'backup-date': '2026-08-12',
+                        'retention': 'daily',
+                    },
+                }
+                with patch.object(self.client, 'head_object', return_value=response):
+                    with self.assertRaises(RemoteObjectInvalid):
+                        self.storage.head_managed(self.key)
 
     def test_head_rejects_size_metadata_that_disagrees_with_content_length(self):
         self.stubber.add_response(
@@ -225,6 +274,49 @@ class R2StorageTest(SimpleTestCase):
                 sha256=self.sha256,
                 retention=frozenset({'daily'}),
             ),
+        )
+
+    def test_upload_uses_all_exact_retention_labels_for_monthly_sunday(self):
+        backup_date = date(2026, 3, 1)
+        key = 'production/backups/2026/03/lar-finance-2026-03-01.sqlite3'
+        expected_metadata = {
+            'sha256': self.sha256,
+            'size': '4',
+            'backup-date': '2026-03-01',
+            'retention': 'daily,weekly,monthly',
+        }
+        self.stubber.add_response(
+            'put_object',
+            {},
+            {
+                'Bucket': self.bucket,
+                'Key': key,
+                'Body': ANY,
+                'ContentType': 'application/vnd.sqlite3',
+                'Metadata': expected_metadata,
+                'IfNoneMatch': '*',
+            },
+        )
+        self.stubber.add_response(
+            'head_object',
+            {'ContentLength': 4, 'Metadata': expected_metadata},
+            {'Bucket': self.bucket, 'Key': key},
+        )
+
+        with TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / 'backup.sqlite3'
+            path.write_bytes(self.content)
+            with self.stubber:
+                remote = self.storage.upload_and_verify(
+                    path,
+                    key,
+                    backup_date,
+                    self.sha256,
+                )
+
+        self.assertEqual(
+            remote.retention,
+            frozenset({'daily', 'weekly', 'monthly'}),
         )
 
     def test_upload_rejects_invalid_local_sha256_before_calling_r2(self):
@@ -326,6 +418,46 @@ class R2StorageTest(SimpleTestCase):
                     self.sha256,
                 )
 
+    def test_upload_converts_non_string_remote_sha256_to_verification_error(self):
+        expected_metadata = {
+            'sha256': self.sha256,
+            'size': '4',
+            'backup-date': '2026-08-12',
+            'retention': 'daily',
+        }
+        self.stubber.add_response(
+            'put_object',
+            {},
+            {
+                'Bucket': self.bucket,
+                'Key': self.key,
+                'Body': ANY,
+                'ContentType': 'application/vnd.sqlite3',
+                'Metadata': expected_metadata,
+                'IfNoneMatch': '*',
+            },
+        )
+        invalid_head = {
+            'ContentLength': 4,
+            'Metadata': expected_metadata | {'sha256': None},
+        }
+
+        with TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / 'backup.sqlite3'
+            path.write_bytes(self.content)
+            with self.stubber, patch.object(
+                self.client,
+                'head_object',
+                return_value=invalid_head,
+            ):
+                with self.assertRaises(RemoteVerificationError):
+                    self.storage.upload_and_verify(
+                        path,
+                        self.key,
+                        self.backup_date,
+                        self.sha256,
+                    )
+
     def test_upload_sanitizes_precondition_failed_code_as_conflict(self):
         self.assert_upload_conflict(
             service_error_code='PreconditionFailed',
@@ -424,6 +556,30 @@ class R2StorageTest(SimpleTestCase):
 
         with self.stubber, self.assertRaises(RemoteObjectInvalid):
             self.storage.list_managed()
+
+    def test_list_fails_for_non_string_sha256_metadata(self):
+        self.stubber.add_response(
+            'list_objects_v2',
+            {'IsTruncated': False, 'Contents': [{'Key': self.key}]},
+            {'Bucket': self.bucket, 'Prefix': 'production/backups/'},
+        )
+        invalid_head = {
+            'ContentLength': 4,
+            'Metadata': {
+                'sha256': 42,
+                'size': '4',
+                'backup-date': '2026-08-12',
+                'retention': 'daily',
+            },
+        }
+
+        with self.stubber, patch.object(
+            self.client,
+            'head_object',
+            return_value=invalid_head,
+        ):
+            with self.assertRaises(RemoteObjectInvalid):
+                self.storage.list_managed()
 
     def test_delete_uses_the_exact_bucket_and_key(self):
         self.stubber.add_response(
