@@ -382,6 +382,27 @@ class ImportPreviewServiceTest(TestCase):
             ).exists()
         )
 
+    def test_repeated_fitid_inside_batch_rolls_back_before_any_write(self):
+        batch = self._bound_preview()
+        second = batch.records.get(line_number=2)
+        second.external_id = batch.records.get(line_number=1).external_id
+        second.full_clean()
+        second.save(update_fields=['external_id'])
+
+        with self.assertRaises(ImportConflictError):
+            confirm_preview(batch=batch, device_session=self.device)
+
+        self.assertEqual(
+            Transaction.objects.filter(household=self.household).count(), 0
+        )
+        self.assertEqual(
+            SourceReference.objects.filter(account=self.account).count(), 0
+        )
+        self.assertEqual(
+            ImportBatch.objects.get(pk=batch.pk).status,
+            ImportBatch.PREVIEW_READY,
+        )
+
     def test_reconfirming_completed_preview_is_idempotent(self):
         batch = self._bound_preview()
         confirm_preview(batch=batch, device_session=self.device)
@@ -411,6 +432,46 @@ class ImportPreviewServiceTest(TestCase):
         fresh = self._bound_preview(content=self.content + b'\n\n')
         with self.assertRaises(ImportAccessError):
             confirm_preview(batch=fresh, device_session=self.other_device)
+
+        fresh = self._bound_preview(content=self.content + b'\n\n\n')
+        self.device.revoked_at = timezone.now()
+        self.device.save(update_fields=['revoked_at'])
+        with self.assertRaises(ImportAccessError):
+            confirm_preview(batch=fresh, device_session=self.device)
+
+    def test_confirmation_creates_independent_income_uncategorized_category(self):
+        batch = self._bound_preview()
+        for record in batch.records.all():
+            record.transaction_type = 'income'
+            record.full_clean()
+            record.save(update_fields=['transaction_type'])
+
+        confirm_preview(batch=batch, device_session=self.device)
+
+        self.assertTrue(
+            Category.objects.filter(
+                household=self.household,
+                name='Não categorizado',
+                type=Category.INCOME,
+            ).exists()
+        )
+
+    def test_category_creation_collision_reuses_the_concurrent_category(self):
+        batch = self._bound_preview()
+        existing = Category.objects.create(
+            user=self.user,
+            household=self.household,
+            name='Não categorizado',
+            type=Category.EXPENSE,
+        )
+
+        confirmed = confirm_preview(batch=batch, device_session=self.device)
+
+        self.assertEqual(confirmed.status, ImportBatch.COMPLETED)
+        self.assertEqual(
+            Transaction.objects.filter(category=existing).count(),
+            1,
+        )
 
     def test_confirmation_skips_duplicates_and_creates_warnings(self):
         batch = self._bound_preview()

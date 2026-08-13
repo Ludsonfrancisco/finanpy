@@ -4,6 +4,7 @@ import hashlib
 from datetime import timedelta
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -187,6 +188,8 @@ def confirm_preview(*, batch: ImportBatch, device_session) -> ImportBatch:
             for record in records
             if record.outcome in (ImportRecord.PENDING, ImportRecord.WARNING)
         ]
+        if len(reference_ids) != len(set(reference_ids)):
+            raise ImportConflictError('Import preview contains repeated references.')
         if (
             SourceReference.objects.select_for_update()
             .filter(
@@ -233,7 +236,7 @@ def confirm_preview(*, batch: ImportBatch, device_session) -> ImportBatch:
                     transaction=ledger_transaction,
                 )
                 _save(reference)
-            except IntegrityError as error:
+            except (IntegrityError, ValidationError) as error:
                 raise ImportConflictError(
                     'Import preview conflicts with an existing reference.'
                 ) from error
@@ -346,14 +349,27 @@ def _uncategorized_category(*, household, user, transaction_type):
     ).first()
     if category is not None:
         return category
-    category = Category(
-        user=user,
-        household=household,
-        name='Não categorizado',
-        type=transaction_type,
-    )
-    _save(category)
-    return category
+    try:
+        with transaction.atomic():
+            category = Category(
+                user=user,
+                household=household,
+                name='Não categorizado',
+                type=transaction_type,
+            )
+            _save(category)
+            return category
+    except (IntegrityError, ValidationError):
+        category = Category.objects.filter(
+            household=household,
+            name='Não categorizado',
+            type=transaction_type,
+        ).first()
+        if category is None:
+            raise ImportStateError(
+                'Uncategorized category could not be created safely.'
+            )
+        return category
 
 
 def _require_confirmation_access(batch, device_session):
