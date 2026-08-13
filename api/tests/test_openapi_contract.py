@@ -17,7 +17,7 @@ OPENAPI_EXPECTATIONS = (
     ('version', '3.1.0'),
     ('security_scheme', 'opaqueBearer'),
     ('error_schema', 'ErrorEnvelope'),
-    ('route_count', 16),
+    ('route_count', 21),
 )
 
 REQUIRED_SCHEMAS = {
@@ -34,6 +34,7 @@ REQUIRED_SCHEMAS = {
     'PushResult',
     'SyncChange',
     'DeltaPage',
+    'ImportBatch',
 }
 
 OPENAPI_HTTP_METHODS = {'get', 'post', 'put', 'patch', 'delete'}
@@ -88,7 +89,9 @@ def runtime_api_operations(patterns=None, prefix=''):
             operations.update(runtime_api_operations(pattern.url_patterns, route))
         elif isinstance(pattern, URLPattern) and route.startswith('api/v1/'):
             relative = route.removeprefix('api/v1')
-            normalized = relative.replace('<uuid:device_uuid>', '{device_uuid}')
+            normalized = relative.replace('<uuid:device_uuid>', '{device_uuid}').replace(
+                '<uuid:batch_uuid>', '{batch_uuid}'
+            )
             view_class = pattern.callback.view_class
             methods = {
                 method
@@ -152,7 +155,7 @@ class OpenApiContractTest(SimpleTestCase):
     def test_all_api_routes_are_represented(self):
         routes = runtime_api_operations()
 
-        self.assertEqual(len(routes), 16)
+        self.assertEqual(len(routes), 21)
         self.assertEqual(set(self.contract['paths']), set(routes))
 
     def test_path_http_methods_are_exact(self):
@@ -223,3 +226,17 @@ class OpenApiContractTest(SimpleTestCase):
 
     def test_openapi_expectations_are_documented(self):
         self.assertEqual(len(OPENAPI_EXPECTATIONS), 4)
+
+    def test_import_routes_use_private_device_security(self):
+        import_paths = {
+            '/imports/ofx/preview/',
+            '/imports/{batch_uuid}/',
+            '/imports/{batch_uuid}/bind-account/',
+            '/imports/{batch_uuid}/confirm/',
+            '/imports/{batch_uuid}/cancel/',
+        }
+        self.assertTrue(import_paths.issubset(self.contract['paths']))
+        for path in import_paths:
+            for operation in self.contract['paths'][path].values():
+                if isinstance(operation, dict) and 'operationId' in operation:
+                    self.assertEqual(operation['security'], [{'opaqueBearer': []}])

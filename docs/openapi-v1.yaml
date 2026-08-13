@@ -431,6 +431,80 @@
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       }
+    },
+    "/imports/ofx/preview/": {
+      "post": {
+        "operationId": "previewNubankOfx",
+        "security": [{"opaqueBearer": []}],
+        "requestBody": {"required": true, "content": {"multipart/form-data": {"schema": {"type": "object", "required": ["file"], "properties": {"file": {"type": "string", "format": "binary"}}, "additionalProperties": false}}}},
+        "responses": {
+          "201": {"description": "Private normalized import preview", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ImportBatch"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/imports/{batch_uuid}/": {
+      "parameters": [{"name": "batch_uuid", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}],
+      "get": {
+        "operationId": "getImportPreview",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Private normalized import preview", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ImportBatch"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/imports/{batch_uuid}/bind-account/": {
+      "parameters": [{"name": "batch_uuid", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}],
+      "post": {
+        "operationId": "bindImportAccount",
+        "security": [{"opaqueBearer": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["account_uuid"], "properties": {"account_uuid": {"type": "string", "format": "uuid"}}, "additionalProperties": false}}}},
+        "responses": {
+          "200": {"description": "Preview linked to an account", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ImportBatch"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/imports/{batch_uuid}/confirm/": {
+      "parameters": [{"name": "batch_uuid", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}],
+      "post": {
+        "operationId": "confirmImportPreview",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Confirmed import receipt", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ImportBatch"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/imports/{batch_uuid}/cancel/": {
+      "parameters": [{"name": "batch_uuid", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}],
+      "post": {
+        "operationId": "cancelImportPreview",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Cancelled import receipt", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ImportBatch"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
     }
   },
   "components": {
@@ -702,6 +776,25 @@
             ]
           }
         }
+      },
+      "ImportBatch": {
+        "type": "object",
+        "required": ["uuid", "status", "provider", "product_type", "statement_start", "statement_end", "account_uuid", "financial_owner_uuid", "created_count", "duplicate_count", "warning_count", "is_repeated_file"],
+        "properties": {
+          "uuid": {"type": "string", "format": "uuid"},
+          "status": {"type": "string", "enum": ["preview_ready", "needs_account_link", "completed", "failed", "cancelled"]},
+          "provider": {"const": "nubank"},
+          "product_type": {"type": "string", "enum": ["bank_account", "credit_card"]},
+          "statement_start": {"type": "string", "format": "date"},
+          "statement_end": {"type": "string", "format": "date"},
+          "account_uuid": {"type": ["string", "null"], "format": "uuid"},
+          "financial_owner_uuid": {"type": ["string", "null"], "format": "uuid"},
+          "created_count": {"type": "integer", "minimum": 0},
+          "duplicate_count": {"type": "integer", "minimum": 0},
+          "warning_count": {"type": "integer", "minimum": 0},
+          "is_repeated_file": {"type": "boolean"}
+        },
+        "additionalProperties": false
       },
       "DeltaPage": {
         "type": "object",
