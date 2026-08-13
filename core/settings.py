@@ -127,7 +127,10 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': (
+            'django.contrib.auth.password_validation.'
+            'UserAttributeSimilarityValidator'
+        ),
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
@@ -245,6 +248,11 @@ LOGGING = {
         'lar_finance.api.diagnostic': {
             'handlers': ['api_diagnostic_stdout'],
             'level': 'ERROR',
+            'propagate': False,
+        },
+        'lar_finance.backup': {
+            'handlers': ['api_stdout'],
+            'level': 'INFO',
             'propagate': False,
         },
         'django': {
