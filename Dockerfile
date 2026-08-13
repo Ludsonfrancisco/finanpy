@@ -20,5 +20,5 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-# SQLite supports one worker; multi-process workers require PostgreSQL coordination.
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1"]
+# Supervisor is PID 1 and keeps the single SQLite web worker and backup scheduler isolated.
+CMD ["supervisord", "-c", "/app/deploy/supervisord.conf"]
