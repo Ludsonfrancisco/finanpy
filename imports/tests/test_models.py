@@ -2,7 +2,6 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TransactionTestCase
 
@@ -84,98 +83,105 @@ class ImportModelTest(TransactionTestCase):
                 transaction=self.transaction,
             )
 
-    def test_account_link_rejects_account_from_another_household(self):
-        other_account, other_owner, other_household = (
-            self._other_household_financial_data()
-        )
+    def test_account_link_rejects_account_from_another_household_on_create(self):
+        other_account, _, _ = self._other_household_financial_data()
 
-        link = ImportAccountLink(
-            household=self.household,
-            account=other_account,
-            provider='nubank',
-            product_type='bank_account',
-            external_account_id='account-2',
-        )
+        with self.assertRaises(IntegrityError):
+            ImportAccountLink.objects.create(
+                household=self.household,
+                account=other_account,
+                provider='nubank',
+                product_type='bank_account',
+                external_account_id='account-2',
+            )
 
-        with self.assertRaises(ValidationError):
-            link.full_clean()
+    def test_batch_rejects_foreign_device_session_on_create(self):
+        _, other_owner, other_household = self._other_household_financial_data()
 
-        self.assertEqual(other_owner.household, other_household)
+        with self.assertRaises(IntegrityError):
+            self._create_batch(
+                device_session_id=self._device_session_id(
+                    other_household,
+                    other_owner,
+                ),
+            )
 
-    def test_batch_rejects_financial_references_from_another_household(self):
-        other_account, other_owner, _ = self._other_household_financial_data()
-        batch = ImportBatch(
-            household=self.household,
-            device_session_id=self._device_session_id(),
-            account=other_account,
-            financial_owner=other_owner,
-            provider='nubank',
-            product_type='bank_account',
-            file_sha256='0' * 64,
-            statement_start=date(2026, 1, 1),
-            statement_end=date(2026, 1, 31),
-            expires_at='2026-02-01T00:00:00Z',
-        )
+    def test_batch_rejects_foreign_account_on_create(self):
+        other_account, _, _ = self._other_household_financial_data()
 
-        with self.assertRaises(ValidationError):
-            batch.full_clean()
+        with self.assertRaises(IntegrityError):
+            self._create_batch(account=other_account)
 
-    def test_record_rejects_transaction_from_another_household(self):
+    def test_batch_rejects_foreign_financial_owner_on_create(self):
+        _, other_owner, _ = self._other_household_financial_data()
+
+        with self.assertRaises(IntegrityError):
+            self._create_batch(financial_owner=other_owner)
+
+    def test_record_rejects_transaction_from_another_household_on_create(self):
         batch = self._batch()
         other_transaction = self._other_household_transaction()
-        record = ImportRecord(
-            batch=batch,
-            line_number=1,
-            posted_on=date(2026, 1, 1),
-            amount=Decimal('10.00'),
-            description='Imported transaction',
-            transaction_type=Transaction.EXPENSE,
-            fingerprint='fingerprint-1',
-            outcome='pending',
-            transaction=other_transaction,
-        )
 
-        with self.assertRaises(ValidationError):
-            record.full_clean()
+        with self.assertRaises(IntegrityError):
+            ImportRecord.objects.create(
+                batch=batch,
+                line_number=1,
+                posted_on=date(2026, 1, 1),
+                amount=Decimal('10.00'),
+                description='Imported transaction',
+                transaction_type=Transaction.EXPENSE,
+                fingerprint='fingerprint-1',
+                outcome='pending',
+                transaction=other_transaction,
+            )
 
-    def test_source_reference_rejects_transaction_from_another_household(self):
+    def test_source_reference_rejects_transaction_from_another_household_on_create(
+        self,
+    ):
         other_transaction = self._other_household_transaction()
-        source_reference = SourceReference(
-            account=self.account,
-            provider='nubank',
-            external_id='fitid-2',
-            transaction=other_transaction,
-        )
 
-        with self.assertRaises(ValidationError):
-            source_reference.full_clean()
+        with self.assertRaises(IntegrityError):
+            SourceReference.objects.create(
+                account=self.account,
+                provider='nubank',
+                external_id='fitid-2',
+                transaction=other_transaction,
+            )
 
     def _batch(self):
-        return ImportBatch.objects.create(
-            household=self.household,
-            device_session_id=self._device_session_id(),
-            account=self.account,
-            financial_owner=self.owner,
-            provider='nubank',
-            product_type='bank_account',
-            file_sha256='1' * 64,
-            statement_start=date(2026, 1, 1),
-            statement_end=date(2026, 1, 31),
-            expires_at='2026-02-01T00:00:00Z',
-        )
+        return self._create_batch()
 
-    def _device_session_id(self):
+    def _create_batch(self, **overrides):
+        values = {
+            'household': self.household,
+            'device_session_id': self._device_session_id(),
+            'account': self.account,
+            'financial_owner': self.owner,
+            'provider': 'nubank',
+            'product_type': 'bank_account',
+            'file_sha256': '1' * 64,
+            'statement_start': date(2026, 1, 1),
+            'statement_end': date(2026, 1, 31),
+            'expires_at': '2026-02-01T00:00:00Z',
+        }
+        values.update(overrides)
+        return ImportBatch.objects.create(**values)
+
+    def _device_session_id(self, household=None, owner=None):
+        household = household or self.household
+        owner = owner or self.owner
+        user = owner.household.memberships.get(is_active=True).user
         from api.models import DeviceSession
 
         return DeviceSession.objects.create(
-            user=self.user,
-            household=self.household,
-            default_owner=self.owner,
+            user=user,
+            household=household,
+            default_owner=owner,
             platform=DeviceSession.WINDOWS,
             name='Import device',
-            access_token_digest=f'access-{self.user.pk}'.ljust(64, '0'),
+            access_token_digest=f'access-{user.pk}'.ljust(64, '0'),
             access_expires_at='2026-02-01T00:00:00Z',
-            refresh_token_digest=f'refresh-{self.user.pk}'.ljust(64, '0'),
+            refresh_token_digest=f'refresh-{user.pk}'.ljust(64, '0'),
             refresh_expires_at='2026-02-01T00:00:00Z',
         ).pk
 
