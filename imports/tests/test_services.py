@@ -439,6 +439,14 @@ class ImportPreviewServiceTest(TestCase):
         with self.assertRaises(ImportAccessError):
             confirm_preview(batch=fresh, device_session=self.device)
 
+    def test_confirmation_rejects_expired_device_session(self):
+        batch = self._bound_preview()
+        self.device.access_expires_at = timezone.now() - timedelta(seconds=1)
+        self.device.save(update_fields=['access_expires_at'])
+
+        with self.assertRaises(ImportAccessError):
+            confirm_preview(batch=batch, device_session=self.device)
+
     def test_confirmation_creates_independent_income_uncategorized_category(self):
         batch = self._bound_preview()
         for record in batch.records.all():
@@ -471,6 +479,75 @@ class ImportPreviewServiceTest(TestCase):
         self.assertEqual(
             Transaction.objects.filter(category=existing).count(),
             1,
+        )
+
+    def test_category_lookup_insert_race_reloads_the_concurrent_category(self):
+        batch = self._bound_preview()
+        existing = Category.objects.create(
+            user=self.user,
+            household=self.household,
+            name='Não categorizado',
+            type=Category.EXPENSE,
+        )
+        original_filter = Category.objects.filter
+
+        class EmptyLookup:
+            @staticmethod
+            def first():
+                return None
+
+        calls = 0
+
+        def raced_filter(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return EmptyLookup()
+            return original_filter(*args, **kwargs)
+
+        with patch(
+            'imports.services.Category.objects.filter',
+            side_effect=raced_filter,
+        ):
+            confirmed = confirm_preview(batch=batch, device_session=self.device)
+
+        self.assertEqual(confirmed.status, ImportBatch.COMPLETED)
+        self.assertEqual(Transaction.objects.filter(category=existing).count(), 1)
+
+    def test_late_source_reference_collision_rolls_back_every_confirmation_write(self):
+        batch = self._bound_preview()
+        original_save = services._save
+        writes = 0
+
+        def collision_on_second_reference(instance):
+            nonlocal writes
+            if isinstance(instance, SourceReference):
+                writes += 1
+                if writes == 2:
+                    raise IntegrityError('simulated late source reference collision')
+            return original_save(instance)
+
+        with patch('imports.services._save', side_effect=collision_on_second_reference):
+            with self.assertRaises(ImportConflictError):
+                confirm_preview(batch=batch, device_session=self.device)
+
+        self.assertEqual(
+            Transaction.objects.filter(household=self.household).count(), 0
+        )
+        self.assertEqual(
+            SourceReference.objects.filter(account=self.account).count(), 0
+        )
+        self.assertFalse(
+            Category.objects.filter(
+                household=self.household,
+                name='Não categorizado',
+            ).exists()
+        )
+        restored = ImportBatch.objects.get(pk=batch.pk)
+        self.assertEqual(restored.status, ImportBatch.PREVIEW_READY)
+        self.assertEqual(
+            list(restored.records.values_list('outcome', flat=True)),
+            [ImportRecord.PENDING, ImportRecord.PENDING],
         )
 
     def test_confirmation_skips_duplicates_and_creates_warnings(self):
