@@ -291,7 +291,7 @@ class ImportPreviewServiceTest(TestCase):
         self.assertEqual(other.duplicate_count, 0)
 
     def test_missing_fitid_matching_completed_record_is_warning(self):
-        content = self.content.replace(b'<FITID>synthetic-fitid-001\n', b'')
+        content = self.content.replace(b'<FITID>synthetic-fitid-001', b'')
         ImportAccountLink.objects.create(
             household=self.household,
             account=self.account,
