@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -5,6 +6,10 @@ from typing import Literal
 from xml.etree import ElementTree
 
 MAX_OFX_BYTES = 10 * 1024 * 1024
+OFX_DATE_PATTERN = re.compile(
+    r'\d{8}(?:\d{6}(?:\.\d{1,3})?(?:\[[+-]\d{1,2}(?::[A-Za-z0-9 _+.-]+)?\])?)?'
+)
+CP1252_CHARSETS = {b'1252', b'CP1252', b'WINDOWS-1252'}
 
 
 class OfxParseError(ValueError):
@@ -76,6 +81,12 @@ def _decode(content: bytes) -> str:
     try:
         if content.startswith(b'\xef\xbb\xbf'):
             return content.decode('utf-8-sig')
+        if b'<OFX>' not in content.upper():
+            return content.decode('cp1252')
+        charset_match = re.search(br'(?im)^CHARSET\s*:\s*([^\r\n]+)', content)
+        charset = charset_match.group(1).strip().upper() if charset_match else None
+        if charset not in CP1252_CHARSETS:
+            raise OfxParseError('OFX content has an unsupported encoding.')
         return content.decode('cp1252')
     except UnicodeDecodeError as error:
         raise OfxParseError('OFX content has an unsupported encoding.') from error
@@ -101,12 +112,16 @@ def _parse_sgml(text: str) -> ElementTree.Element:
     position = 0
     container_tags = {
         'OFX',
+        'SIGNONMSGSRSV1',
+        'SONRS',
+        'STATUS',
         'BANKMSGSRSV1',
         'STMTTRNRS',
         'STMTRS',
         'BANKACCTFROM',
         'BANKTRANLIST',
         'STMTTRN',
+        'LEDGERBAL',
         'CREDITCARDMSGSRSV1',
         'CCSTMTTRNRS',
         'CCSTMTRS',
@@ -187,6 +202,8 @@ def _optional_text(element: ElementTree.Element | None, tag: str) -> str | None:
 
 
 def _parse_date(value: str) -> date:
+    if OFX_DATE_PATTERN.fullmatch(value) is None:
+        raise OfxParseError('OFX date is invalid.')
     try:
         return date.fromisoformat(f'{value[:4]}-{value[4:6]}-{value[6:8]}')
     except ValueError as error:

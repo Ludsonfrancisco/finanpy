@@ -5,6 +5,7 @@ from pathlib import Path
 from django.test import SimpleTestCase
 
 from imports.ofx import (
+    OfxParseError,
     OversizedOfxError,
     ParsedNubankOfx,
     UnsupportedOfxError,
@@ -53,6 +54,43 @@ class ParseNubankOfxTest(SimpleTestCase):
         self.assertEqual(parsed.statement_end, date(2026, 2, 28))
         self.assertEqual(parsed.transactions[0].external_id, 'synthetic-card-fitid-001')
         self.assertEqual(parsed.transactions[0].transaction_type, 'expense')
+
+    def test_parses_canonical_sgml_with_signon_status_and_ledger_sections(self):
+        parsed = parse_nubank_ofx(self._fixture_bytes('nubank-canonical-sgml.ofx'))
+
+        self.assertEqual(parsed.external_account_id, 'synthetic-canonical-003')
+        self.assertEqual(parsed.transactions[0].posted_on, date(2026, 3, 2))
+
+    def test_rejects_bomless_utf8_declared_by_ofx_header(self):
+        content = self._fixture_bytes('nubank-account.ofx').replace(
+            b'CHARSET:1252', b'CHARSET:UTF-8'
+        )
+
+        with self.assertRaises(OfxParseError):
+            parse_nubank_ofx(content + 'Synthetic caf\u00e9'.encode('utf-8'))
+
+    def test_accepts_ofx_timezone_suffix_on_posted_date(self):
+        parsed = parse_nubank_ofx(self._fixture_bytes('nubank-canonical-sgml.ofx'))
+
+        self.assertEqual(parsed.transactions[0].posted_on, date(2026, 3, 2))
+
+    def test_rejects_malformed_ofx_date_or_timezone(self):
+        fixture = self._fixture_bytes('nubank-canonical-sgml.ofx')
+        for malformed_value in (b'20260302invalid', b'20260302120000[-03'):
+            with self.subTest(value=malformed_value), self.assertRaises(OfxParseError):
+                content = fixture.replace(b'20260302120000[-03:00]', malformed_value)
+                parse_nubank_ofx(content)
+
+    def test_rejects_transactions_missing_required_fields(self):
+        fixture = self._fixture_bytes('nubank-account.ofx')
+        for tag, value in (
+            (b'DTPOSTED', b'20260102120000'),
+            (b'TRNAMT', b'-42.50'),
+            (b'MEMO', b'Synthetic market purchase'),
+        ):
+            with self.subTest(tag=tag), self.assertRaises(OfxParseError):
+                content = fixture.replace(b'<' + tag + b'>' + value, b'<' + tag + b'>')
+                parse_nubank_ofx(content)
 
     def test_rejects_synthetic_non_ofx_content(self):
         with self.assertRaises(UnsupportedOfxError):
