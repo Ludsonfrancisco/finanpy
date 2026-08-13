@@ -19,12 +19,15 @@ from imports.models import ImportAccountLink, ImportBatch, ImportRecord, SourceR
 from imports.services import (
     ExpiredPreviewError,
     ImportAccessError,
+    ImportConflictError,
     ImportStateError,
     bind_preview_account,
     cancel_preview,
+    confirm_preview,
     create_preview,
     get_batch_for_household,
 )
+from sync.models import SyncChange
 from transactions.models import Transaction
 
 FIXTURES = Path(__file__).parent / 'fixtures'
@@ -312,6 +315,128 @@ class ImportPreviewServiceTest(TestCase):
         self.assertEqual(record.description, 'Synthetic market purchase')
         self.assertEqual(record.amount, Decimal('-42.50'))
 
+    def test_confirm_preview_creates_transactions_references_and_sync_receipt(self):
+        batch = self._bound_preview()
+        sync_before = SyncChange.objects.filter(
+            household=self.household,
+            entity_type='transaction',
+        ).count()
+
+        confirmed = confirm_preview(batch=batch, device_session=self.device)
+
+        self.assertEqual(confirmed.status, ImportBatch.COMPLETED)
+        self.assertEqual(
+            Transaction.objects.filter(household=self.household).count(), 2
+        )
+        self.assertEqual(
+            SourceReference.objects.filter(account=self.account).count(), 2
+        )
+        self.assertEqual(
+            SyncChange.objects.filter(
+                household=self.household,
+                entity_type='transaction',
+            ).count(),
+            sync_before + 2,
+        )
+        self.assertTrue(
+            Category.objects.filter(
+                household=self.household,
+                name='Não categorizado',
+                type=Category.EXPENSE,
+            ).exists()
+        )
+        self.assertEqual(
+            list(confirmed.records.values_list('outcome', flat=True)),
+            [ImportRecord.CREATED, ImportRecord.CREATED],
+        )
+
+    def test_conflicting_second_fitid_rolls_back_preview_confirmation(self):
+        batch = self._bound_preview()
+        second = batch.records.get(line_number=2)
+        second.external_id = 'synthetic-conflict'
+        second.full_clean()
+        second.save(update_fields=['external_id'])
+        existing = self._transaction(
+            self.user, self.household, self.owner, self.account
+        )
+        SourceReference.objects.create(
+            account=self.account,
+            provider='nubank',
+            external_id='synthetic-conflict',
+            transaction=existing,
+        )
+        baseline = Transaction.objects.count()
+
+        with self.assertRaises(ImportConflictError):
+            confirm_preview(batch=batch, device_session=self.device)
+
+        self.assertEqual(Transaction.objects.count(), baseline)
+        self.assertEqual(
+            ImportBatch.objects.get(pk=batch.pk).status,
+            ImportBatch.PREVIEW_READY,
+        )
+        self.assertFalse(
+            Category.objects.filter(
+                household=self.household,
+                name='Não categorizado',
+            ).exists()
+        )
+
+    def test_reconfirming_completed_preview_is_idempotent(self):
+        batch = self._bound_preview()
+        confirm_preview(batch=batch, device_session=self.device)
+        before = Transaction.objects.count()
+
+        same_receipt = confirm_preview(batch=batch, device_session=self.device)
+
+        self.assertEqual(same_receipt.status, ImportBatch.COMPLETED)
+        self.assertEqual(Transaction.objects.count(), before)
+
+    def test_confirmation_rejects_expired_unlinked_invalid_and_foreign_device(self):
+        batch = self._bound_preview()
+        batch.expires_at = timezone.now() - timedelta(seconds=1)
+        batch.save(update_fields=['expires_at'])
+        with self.assertRaises(ExpiredPreviewError):
+            confirm_preview(batch=batch, device_session=self.device)
+
+        unlinked = self._bound_preview(content=self.content + b'\n')
+        ImportBatch.objects.filter(pk=unlinked.pk).update(
+            account=None,
+            financial_owner=None,
+            status=ImportBatch.NEEDS_ACCOUNT_LINK,
+        )
+        with self.assertRaises(ImportStateError):
+            confirm_preview(batch=unlinked, device_session=self.device)
+
+        fresh = self._bound_preview(content=self.content + b'\n\n')
+        with self.assertRaises(ImportAccessError):
+            confirm_preview(batch=fresh, device_session=self.other_device)
+
+    def test_confirmation_skips_duplicates_and_creates_warnings(self):
+        batch = self._bound_preview()
+        duplicate = batch.records.get(line_number=1)
+        duplicate.outcome = ImportRecord.DUPLICATE
+        duplicate.full_clean()
+        duplicate.save(update_fields=['outcome'])
+        warning = batch.records.get(line_number=2)
+        warning.outcome = ImportRecord.WARNING
+        warning.full_clean()
+        warning.save(update_fields=['outcome'])
+
+        confirm_preview(batch=batch, device_session=self.device)
+
+        self.assertEqual(
+            Transaction.objects.filter(household=self.household).count(), 1
+        )
+        self.assertEqual(
+            ImportRecord.objects.get(pk=duplicate.pk).outcome,
+            ImportRecord.DUPLICATE,
+        )
+        self.assertEqual(
+            ImportRecord.objects.get(pk=warning.pk).outcome,
+            ImportRecord.CREATED,
+        )
+
     def _setup_household(self, email):
         user = get_user_model().objects.create_user(email=email, password='password')
         household = ensure_household_for_user(user)
@@ -350,6 +475,14 @@ class ImportPreviewServiceTest(TestCase):
             expires_at='2027-01-01T00:00:00Z',
             status=ImportBatch.COMPLETED,
         )
+
+    def _bound_preview(self, content=None):
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=content or self.content,
+        )
+        return bind_preview_account(batch=batch, account=self.account)
 
     def _transaction(self, user, household, owner, account):
         category = Category.objects.create(

@@ -8,6 +8,10 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from accounts.models import Account
+from api.models import DeviceSession
+from categories.models import Category
+from sync.context import capture_sync_context
+from transactions.models import Transaction
 
 from .models import ImportAccountLink, ImportBatch, ImportRecord, SourceReference
 from .ofx import parse_nubank_ofx
@@ -23,6 +27,10 @@ class ImportStateError(Exception):
 
 class ExpiredPreviewError(ImportStateError):
     """Raised when an actionable preview has expired."""
+
+
+class ImportConflictError(ImportStateError):
+    """Raised when confirmation races an existing source reference."""
 
 
 def create_preview(*, household, device_session, content: bytes) -> ImportBatch:
@@ -153,6 +161,91 @@ def cancel_preview(*, batch: ImportBatch) -> ImportBatch:
     return batch
 
 
+def confirm_preview(*, batch: ImportBatch, device_session) -> ImportBatch:
+    """Atomically apply one linked, actionable preview to the household ledger."""
+    with transaction.atomic():
+        device_session = DeviceSession.objects.select_for_update().get(
+            pk=device_session.pk
+        )
+        batch = (
+            ImportBatch.objects.select_for_update()
+            .select_related('account__financial_owner', 'financial_owner')
+            .get(pk=batch.pk)
+        )
+        _require_confirmation_access(batch, device_session)
+        if batch.status == ImportBatch.COMPLETED:
+            return batch
+        if batch.status != ImportBatch.PREVIEW_READY or batch.account_id is None:
+            raise ImportStateError('Import preview is not ready for confirmation.')
+        _require_actionable(batch)
+        if batch.financial_owner_id != batch.account.financial_owner_id:
+            raise ImportStateError('Import preview owner is invalid.')
+
+        records = list(batch.records.select_for_update().order_by('line_number'))
+        reference_ids = [
+            _reference_external_id(record)
+            for record in records
+            if record.outcome in (ImportRecord.PENDING, ImportRecord.WARNING)
+        ]
+        if (
+            SourceReference.objects.select_for_update()
+            .filter(
+                account=batch.account,
+                provider=batch.provider,
+                external_id__in=reference_ids,
+            )
+            .exists()
+        ):
+            raise ImportConflictError(
+                'Import preview conflicts with an existing reference.'
+            )
+
+        categories = {}
+        for record in records:
+            if record.outcome not in (ImportRecord.PENDING, ImportRecord.WARNING):
+                continue
+            category = categories.setdefault(
+                record.transaction_type,
+                _uncategorized_category(
+                    household=batch.household,
+                    user=device_session.user,
+                    transaction_type=record.transaction_type,
+                ),
+            )
+            with capture_sync_context(device_session=device_session, operation_id=None):
+                ledger_transaction = Transaction(
+                    user=device_session.user,
+                    household=batch.household,
+                    financial_owner=batch.account.financial_owner,
+                    account=batch.account,
+                    category=category,
+                    description=record.description,
+                    amount=abs(record.amount),
+                    date=record.posted_on,
+                    type=record.transaction_type,
+                )
+                _save(ledger_transaction)
+            try:
+                reference = SourceReference(
+                    account=batch.account,
+                    provider=batch.provider,
+                    external_id=_reference_external_id(record),
+                    transaction=ledger_transaction,
+                )
+                _save(reference)
+            except IntegrityError as error:
+                raise ImportConflictError(
+                    'Import preview conflicts with an existing reference.'
+                ) from error
+            record.transaction = ledger_transaction
+            record.outcome = ImportRecord.CREATED
+            _save(record)
+
+        batch.status = ImportBatch.COMPLETED
+        _save(batch)
+        return batch
+
+
 def get_batch_for_household(*, household, batch_uuid) -> ImportBatch:
     """Return a batch only when it belongs to the requested household."""
     try:
@@ -239,6 +332,38 @@ def _record_fingerprint(account, record):
         )
     )
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _reference_external_id(record):
+    return record.external_id or record.fingerprint
+
+
+def _uncategorized_category(*, household, user, transaction_type):
+    category = Category.objects.filter(
+        household=household,
+        name='Não categorizado',
+        type=transaction_type,
+    ).first()
+    if category is not None:
+        return category
+    category = Category(
+        user=user,
+        household=household,
+        name='Não categorizado',
+        type=transaction_type,
+    )
+    _save(category)
+    return category
+
+
+def _require_confirmation_access(batch, device_session):
+    if device_session.household_id != batch.household_id:
+        raise ImportAccessError('Device session is not available for this household.')
+    if (
+        device_session.revoked_at is not None
+        or device_session.access_expires_at <= timezone.now()
+    ):
+        raise ImportAccessError('Device session is not active.')
 
 
 def _require_actionable(batch):
