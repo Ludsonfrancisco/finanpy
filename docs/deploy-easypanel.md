@@ -34,8 +34,8 @@ O SQLite exige que esta aplicação opere com uma única instância gravadora:
 
 - exatamente **1 réplica** do serviço web no EasyPanel;
 - Gunicorn com exatamente **1 worker**;
-- Supervisor inicia Gunicorn e um único `run_backup_scheduler`; não crie um
-  segundo cron/job para o mesmo comando;
+- Supervisor inicia Gunicorn, um único `run_backup_scheduler` e um único
+  `run_import_preview_purge_scheduler`; não crie cron/job duplicado;
 - volume persistente montado em `/app/data`;
 - `SQLITE_PATH=/app/data/db.sqlite3`;
 - se houver uploads, volume persistente adicional montado em `/app/media`.
@@ -54,6 +54,13 @@ Não habilite autoscaling, rolling deploy com duas réplicas simultâneas ou mai
 worker enquanto o banco for SQLite. Se esse requisito deixar de ser aceitável, a
 mudança correta é planejar a migração para um banco servidor, não compartilhar o
 arquivo SQLite entre gravadores concorrentes.
+
+Os fluxos de importação e o scheduler de purge gravam pelo mesmo file lock,
+criado automaticamente ao lado de `db.sqlite3` no volume `/app/data`. Não altere
+`SQLITE_PATH` para um local cujo diretório não seja compartilhado e gravável por
+todos os processos do mesmo container. Contenção esgotada retorna o código seguro
+`503 import_temporarily_unavailable`; o cliente pode tentar novamente, e o
+scheduler de purge repete em 60 segundos.
 
 ## Domínio, TLS, proxy e variáveis
 
@@ -263,11 +270,12 @@ Um ensaio antigo ou feito com outro backup/hash não autoriza o deploy atual.
    supervisord -c /app/deploy/supervisord.conf
    ```
 
-   Não inicie Gunicorn diretamente: isso ignora o scheduler. A configuração
-   versionada mantém o web com um worker e um único `backup-scheduler`.
-8. Confirme novamente o mount, `SQLITE_PATH`, uma réplica, um worker e os dois
-   processos `web` e `backup-scheduler`; execute a auditoria no container em
-   execução e faça os smoke checks.
+   Não inicie Gunicorn diretamente: isso ignora os schedulers. A configuração
+   versionada mantém o web com um worker, um `backup-scheduler` e um
+   `import-preview-purge` independente do R2.
+8. Confirme novamente o mount, `SQLITE_PATH`, uma réplica, um worker e os três
+   processos `web`, `backup-scheduler` e `import-preview-purge`; execute a
+   auditoria no container em execução e faça os smoke checks.
 9. Libere o tráfego somente após todas as verificações passarem.
 
 Prefira um job one-off ou deploy hook para `migrate`; não o acople a todo restart do
@@ -296,9 +304,10 @@ Registre apenas status e identificadores técnicos, nunca conteúdo financeiro:
 Qualquer falha de persistência, isolamento por Lar, autenticação, auditoria ou TLS é
 critério de rollback.
 
-Depois da ativação específica do backup, os smoke checks também devem confirmar
-os dois processos do Supervisor, um resultado `created` ou `already_exists`, a
-chave única do dia e um restart idempotente sem indisponibilizar o web.
+Depois da ativação desta imagem, os smoke checks também devem confirmar os três
+processos do Supervisor. Para backup, confirme `created` ou `already_exists`, a
+chave única do dia e restart idempotente. Para imports, confirme o evento
+`purged_import_records` sem conteúdo financeiro e processo saudável após restart.
 
 ## Rollback
 

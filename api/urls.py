@@ -8,6 +8,13 @@ from api.auth_views import (
     RefreshView,
     RevokeDeviceView,
 )
+from api.import_views import (
+    BindImportAccountView,
+    CancelImportView,
+    ConfirmImportView,
+    ImportBatchDetailView,
+    OfxPreviewView,
+)
 from api.resources import (
     AccountListView,
     BootstrapView,
@@ -36,6 +43,27 @@ urlpatterns = [
     path('bootstrap/', BootstrapView.as_view(), name='bootstrap'),
     path('sync/push/', SyncPushView.as_view(), name='sync-push'),
     path('sync/changes/', SyncPullView.as_view(), name='sync-changes'),
+    path('imports/ofx/preview/', OfxPreviewView.as_view(), name='ofx-preview'),
+    path(
+        'imports/<uuid:batch_uuid>/',
+        ImportBatchDetailView.as_view(),
+        name='import-detail',
+    ),
+    path(
+        'imports/<uuid:batch_uuid>/bind-account/',
+        BindImportAccountView.as_view(),
+        name='import-bind-account',
+    ),
+    path(
+        'imports/<uuid:batch_uuid>/confirm/',
+        ConfirmImportView.as_view(),
+        name='import-confirm',
+    ),
+    path(
+        'imports/<uuid:batch_uuid>/cancel/',
+        CancelImportView.as_view(),
+        name='import-cancel',
+    ),
     path(
         'devices/<uuid:device_uuid>/revoke/',
         RevokeDeviceView.as_view(),

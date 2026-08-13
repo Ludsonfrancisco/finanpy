@@ -4,6 +4,49 @@
 
 O Lar Finance começa com exportação/importação manual porque é a alternativa de menor custo e menor dependência. Quando a experiência estiver confiável, um provedor automático poderá ser conectado sem substituir o ledger, os importadores ou a conciliação.
 
+## Implementação atual: piloto OFX Nubank
+
+O backend aceita OFX BRL estruturalmente compatível com o perfil Nubank testado
+para extrato de conta e cartão (`bank_account` e `credit_card`). O limite é 10 MiB. O servidor calcula
+SHA-256, analisa e armazena somente os dados normalizados da prévia; o OFX bruto
+é descartado. A prévia deixa de ser acionável em 23 horas e nunca altera o ledger antes da
+confirmação explícita.
+
+Os arquivos cobertos não oferecem um marcador institucional confiável. Assim,
+o rótulo interno `nubank` indica o perfil de compatibilidade, não autentica a
+origem. O parser exige `CURDEF=BRL`, estrutura conta/cartão e limites que cabem
+nos models; outro banco com estrutura idêntica pode ser aceito.
+
+A conta é encontrada pelo identificador OFX vinculado. Sem vínculo, a prévia
+fica aguardando que o usuário selecione uma conta do mesmo Lar; o responsável
+financeiro é herdado dessa conta. A confirmação cria lançamentos de modo
+atômico, referências de origem e eventos de sincronização. Categorias
+`Não categorizado` são separadas para receita e despesa dentro do Lar.
+
+A deduplicação é feita por SHA do arquivo por Lar, FITID por conta/provedor e
+aviso por fingerprint. Arquivo/FITID repetido é ignorado; fingerprint semelhante
+é só aviso e requer confirmação. A API privada oferece criar prévia, consultar,
+vincular conta, confirmar e cancelar; seus payloads resumidos não trazem linhas
+ou dados financeiros. O contrato está em `docs/openapi-v1.yaml`.
+
+Cancelar remove imediatamente as linhas normalizadas, mantendo apenas o recibo
+técnico do lote. Linhas de previews expirados são removidas no início de
+criação/consulta de importação, pelo comando idempotente
+`python manage.py purge_import_previews` e pelo processo independente
+`run_import_preview_purge_scheduler`, executado pelo Supervisor imediatamente no
+start e novamente na expiração mais próxima, com espera limitada a uma hora.
+Esse processo não depende do backup/R2.
+
+Enquanto o banco for SQLite, criação, vínculo, confirmação, cancelamento e purge
+usam o mesmo file lock cooperativo. Contenção transitória recebe tentativas
+limitadas; a API responde `503 import_temporarily_unavailable` sem expor detalhes
+do banco, e o scheduler tenta novamente em 60 segundos. A validade de 23 horas
+reserva a margem do polling para remover linhas normalizadas em até 24 horas.
+
+Fora deste piloto: CSV, outros bancos, Open Finance, limite, fatura futura,
+parcelas, empréstimos, categorização inteligente e Flutter. Campos ausentes não
+são inferidos.
+
 ## O que cada fonte pode trazer
 
 | Fonte | Movimentações | Saldo | Cartão/fatura | Limite | Empréstimo | Investimentos | Observação |
