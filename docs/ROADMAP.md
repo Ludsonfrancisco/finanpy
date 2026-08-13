@@ -105,25 +105,30 @@ Aceite: cliente de teste cria/edita/sincroniza dados sem acessar outro household
 
 Riscos: auth escolhida inadequada para desktop; conflito complexo. Mitigação: spike/ADR e versão explícita.
 
-## Sprint 3 — Importação OFX/CSV e conciliação
+## Sprint 3 — Piloto OFX Nubank e deduplicação
 
-Objetivo: reduzir trabalho manual com import idempotente.
+Objetivo: reduzir trabalho manual com importação OFX Nubank idempotente, sem
+prometer suporte genérico de CSV ou conciliação completa.
 
 - [ ] coletar fixtures anonimizadas das instituições `[INVESTIGAR]`;
-- [ ] models `ImportBatch`, `ImportRecord`, `SourceReference`, `ReconciliationIssue`;
-- [ ] upload seguro, hash e limites;
-- [ ] parser OFX genérico com testes de encoding/valor/data;
+- [x] models `ImportBatch`, `ImportRecord`, `ImportAccountLink` e `SourceReference`;
+- [x] upload seguro, SHA-256 por Lar, limite de 10 MiB e descarte do OFX bruto;
+- [x] parser OFX sintético Nubank de conta/cartão com testes de encoding/valor/data;
 - [ ] framework de perfis CSV versionados;
-- [ ] preview sem alterar ledger;
-- [ ] mapeamento de owner/institution/account/category;
-- [ ] fingerprint/deduplicação e teste de reimportação;
+- [x] preview de até 24h sem alterar ledger;
+- [x] mapeamento de owner/account e categoria `Não categorizado` por Lar/tipo;
+- [x] fingerprint/deduplicação por SHA, FITID e avisos, com teste de reimportação;
 - [ ] conciliação de transferências e estornos;
-- [ ] commit atômico e recibo;
-- [ ] endpoints de job/status/cancelamento;
-- [ ] métricas e logs seguros;
-- [ ] matriz real de cobertura por banco.
+- [x] confirmação atômica, recibo e eventos de sincronização;
+- [x] cinco endpoints privados de prévia, consulta, vínculo, confirmação e cancelamento;
+- [x] logs/payloads sem OFX bruto, linhas ou dados financeiros;
+- [x] matriz de cobertura do piloto Nubank com fixtures sintéticas.
 
-Aceite: importar duas vezes o mesmo arquivo não duplica; linha inválida é explicada; cancelamento não altera o ledger.
+Entregue: [Sprint 3 — Importação OFX Nubank](sprints/sprint-3-ofx-import.md).
+
+Aceite atendido no piloto: importar duas vezes o mesmo arquivo não duplica; OFX
+inválido não altera o ledger; cancelamento não altera o ledger; confirmação é
+explícita e atômica. CSV, outros bancos e conciliação permanecem pendentes.
 
 Riscos: formatos divergentes e encoding; falso positivo de duplicata. Mitigação: profiles/fixtures e sugestão humana em baixa confiança.
 

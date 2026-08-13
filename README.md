@@ -15,9 +15,10 @@ modernização incremental.
 - SQLite persistido em `/app/data/db.sqlite3` no container;
 - backup R2 diário ativo em produção, com agenda supervisionada, retenção
   `14/8/12`, idempotência após restart e restauração isolada comprovada;
-- 383 testes e 98% de cobertura; gate mínimo de 90%;
+- 436 testes e 98% de cobertura; gate mínimo de 90%;
 - cadastro público removido;
-- importação bancária e aplicativo Flutter ainda não implementados.
+- piloto de importação manual OFX Nubank de conta/cartão, com prévia, confirmação
+  explícita, deduplicação e sincronização; aplicativo Flutter ainda não implementado.
 
 O backend será preservado e evoluído por sprints. Não há proposta de rewrite
 total.
@@ -36,6 +37,7 @@ total.
 - [Auditoria da ativação R2 em produção](docs/audits/automatic-r2-backup-production.md)
 - [Sprint 1 — Household Ledger](docs/sprints/sprint-1-household-ledger.md)
 - [Sprint 2 — API privada e sincronização](docs/sprints/sprint-2-api-sync.md)
+- [Sprint 3 — Importação OFX Nubank](docs/sprints/sprint-3-ofx-import.md)
 
 ## Acesso privado e criação do Lar
 
@@ -78,13 +80,17 @@ no servidor caseiro, siga o [runbook do EasyPanel](docs/deploy-easypanel.md).
 ## API privada v1
 
 O contrato OpenAPI está em [`docs/openapi-v1.yaml`](docs/openapi-v1.yaml). A API
-entrega 16 rotas sob `/api/v1/`: health, login/refresh/logout, dispositivos,
+entrega 21 rotas sob `/api/v1/`: health, login/refresh/logout, dispositivos,
 household/owners, contas, categorias, transações, resumo, bootstrap e push/pull
 de sincronização. Access tokens duram 15 minutos e refresh tokens 30 dias; os
 tokens são opacos, rotacionados e persistidos somente como digest. Login aceita
 5 tentativas/minuto e refresh 30/minuto.
 
-Não existe cliente Flutter nem interface/pipeline de importação nesta Sprint.
+Também há cinco rotas privadas de importação OFX Nubank: criar e consultar
+prévia, vincular conta, confirmar e cancelar. O arquivo é limitado a 10 MiB,
+descartado após normalização e só cria lançamentos depois da confirmação. Veja
+[a documentação de importação](docs/imports-and-sync.md). Não existe cliente
+Flutter nesta Sprint.
 
 ## Desenvolvimento local
 

@@ -4,6 +4,30 @@
 
 O Lar Finance começa com exportação/importação manual porque é a alternativa de menor custo e menor dependência. Quando a experiência estiver confiável, um provedor automático poderá ser conectado sem substituir o ledger, os importadores ou a conciliação.
 
+## Implementação atual: piloto OFX Nubank
+
+O backend já aceita OFX sintético compatível com Nubank para extrato de conta e
+cartão (`bank_account` e `credit_card`). O limite é 10 MiB. O servidor calcula
+SHA-256, analisa e armazena somente os dados normalizados da prévia; o OFX bruto
+é descartado. A prévia expira em até 24 horas e nunca altera o ledger antes da
+confirmação explícita.
+
+A conta é encontrada pelo identificador OFX vinculado. Sem vínculo, a prévia
+fica aguardando que o usuário selecione uma conta do mesmo Lar; o responsável
+financeiro é herdado dessa conta. A confirmação cria lançamentos de modo
+atômico, referências de origem e eventos de sincronização. Categorias
+`Não categorizado` são separadas para receita e despesa dentro do Lar.
+
+A deduplicação é feita por SHA do arquivo por Lar, FITID por conta/provedor e
+aviso por fingerprint. Arquivo/FITID repetido é ignorado; fingerprint semelhante
+é só aviso e requer confirmação. A API privada oferece criar prévia, consultar,
+vincular conta, confirmar e cancelar; seus payloads resumidos não trazem linhas
+ou dados financeiros. O contrato está em `docs/openapi-v1.yaml`.
+
+Fora deste piloto: CSV, outros bancos, Open Finance, limite, fatura futura,
+parcelas, empréstimos, categorização inteligente e Flutter. Campos ausentes não
+são inferidos.
+
 ## O que cada fonte pode trazer
 
 | Fonte | Movimentações | Saldo | Cartão/fatura | Limite | Empréstimo | Investimentos | Observação |
