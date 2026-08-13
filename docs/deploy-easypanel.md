@@ -1,13 +1,14 @@
 # Runbook de deploy no EasyPanel
 
 Este documento descreve o procedimento operacional para publicar o Lar Finance com
-SQLite persistente. Ele foi escrito a partir da configuração atual do projeto, mas
-**não comprova que um deploy real tenha sido validado no EasyPanel**.
+SQLite persistente. Runtime, Supervisor, proxy, smoke público e backup R2 foram
+validados no EasyPanel `v2.33.1` em 2026-08-13. O aceite integral do runbook ainda
+tem gates abertos. A evidência sanitizada está em
+[automatic-r2-backup-production.md](audits/automatic-r2-backup-production.md).
 
 ## Estado e bloqueios de produção
 
-O deploy de produção permanece bloqueado até que o item operacional pendente abaixo
-seja concluído e registrado sem segredos:
+Estado dos gates operacionais, sem registrar segredos:
 
 - [x] Credencial histórica rotacionada no EasyPanel em 2026-08-12 e sessões Django
   anteriores revogadas. Nenhum valor foi registrado no repositório.
@@ -17,11 +18,13 @@ seja concluído e registrado sem segredos:
   `docs/audits/2026-08-12-production-backup-restore.md`.
 - [x] Automação diária R2, idempotência, retenção `14/8/12`, scheduler e
   isolamento do processo web implementados e cobertos por testes locais.
-- [ ] Cadastrar as variáveis R2, ativar a imagem e provar execução, restart,
+- [x] Cadastrar as variáveis R2, ativar a imagem e provar execução, restart,
   objeto remoto e restauração descartável da nova automação no EasyPanel real.
-- [ ] Concluir o restante deste runbook na instalação real: implantar a imagem
-  atual, aplicar migrations controladas, validar persistência após restart, proxy,
-  rate limit e smoke checks, e guardar versão da imagem e resultado.
+- [x] Implantar o `main` em `0d85999f4e66290fa06484d802d08fbb310ad164`,
+  validar schema final, persistência após restart, proxy e smoke público. A ordem
+  do `migrate` durante o deploy não ficou evidenciada e permanece aberta abaixo.
+- [ ] `[INVESTIGAR]` Materializar rollback por digest/tag imutável da imagem e
+  confirmar rate limit persistente para `POST /login/`.
 
 Interrompa o deploy se qualquer pré-requisito, backup, auditoria ou ensaio falhar.
 
@@ -41,10 +44,11 @@ O `docker-compose.yml` demonstra esses mounts localmente, mas os volumes do Comp
 não são criados automaticamente quando o EasyPanel publica diretamente pelo
 `Dockerfile`. Configure-os manualmente na aplicação.
 
-Na versão instalada `v2.32.2`, os mounts e jobs ficam em `Storage`, os scripts em
+Na versão instalada `v2.33.1`, os mounts e jobs ficam em `Storage`, os scripts em
 `Scripts`, o console no botão `Console` do serviço e os provedores externos em
-`Settings > Storage Providers`. `[INVESTIGAR]` Ainda é necessário confirmar o fluxo
-de deploy hook, migrations one-off e limite de réplicas durante o deploy real.
+`Settings > Storage Providers`. Uma réplica sem sobreposição foi comprovada. Ainda
+é necessário registrar o espaço livre antes da mudança, a ordem de migrations e o
+rollback por digest/tag imutável.
 
 Não habilite autoscaling, rolling deploy com duas réplicas simultâneas ou mais de um
 worker enquanto o banco for SQLite. Se esse requisito deixar de ser aceitável, a
@@ -189,7 +193,7 @@ O destino off-host escolhido é um bucket privado Cloudflare R2. A prova real de
 criptografa objetos e metadados em repouso automaticamente. Mantenha o token do
 EasyPanel limitado ao bucket `lar-finance-backups` e nunca registre suas chaves.
 
-Na instalação `v2.32.2`, o job nativo de `Volume Backups` não lê o volume Docker
+Na instalação `v2.33.1`, o job nativo de `Volume Backups` não lê o volume Docker
 legado `financeiro_sqlite_data`: ele procura um diretório do layout novo sob
 `/etc/easypanel/projects/.../volumes/sqlite_data`. Não recrie esse job até migrar
 o volume. A imagem candidata contorna essa limitação com um scheduler no próprio
@@ -200,10 +204,12 @@ container: ele usa a API de backup do SQLite antes do upload, confirma o objeto 
 python manage.py backup_to_r2
 ```
 
-Não execute esse comando para ativação real antes de concluir o preflight e a
-autorização operacional. Configuração, resultados, download descartável e rollback
-estão no [runbook do backup automático](sprints/automatic-r2-backup.md). O estado
-atual é: **código e testes concluídos; produção ainda não ativada**.
+Não execute esse comando antes de confirmar o preflight e evitar uma execução
+concorrente. Configuração, resultados, download descartável e rollback estão no
+[runbook do backup automático](sprints/automatic-r2-backup.md). O estado atual é:
+**automação ativa em produção, idempotência após restart e restauração descartável
+comprovadas em 2026-08-13**. Consulte a
+[auditoria](audits/automatic-r2-backup-production.md).
 
 ## Ensaio obrigatório em restauração descartável
 
@@ -326,9 +332,10 @@ em restauração descartável. Na ausência dessa prova específica, restaure o 
 não improvise um downgrade em produção e nunca altere manualmente a tabela
 `django_migrations`.
 
-`[INVESTIGAR]` Confirmar como a versão instalada do EasyPanel fixa uma imagem
-anterior, interrompe tráfego, executa restore no volume e impede uma segunda réplica
-durante o rollback.
+`[INVESTIGAR]` A versão instalada permitiu uma réplica sem sobreposição, start/stop
+e restore isolado, mas não expôs no fluxo usado um digest de imagem selecionável.
+Materializar e ensaiar rollback por digest/tag imutável antes da próxima mudança de
+schema ou infraestrutura.
 
 ## Registro da validação real
 
@@ -344,5 +351,8 @@ Ao concluir uma execução real, registre em local operacional seguro:
 - status do backup automático, chave lógica, tamanho, SHA-256, idempotência,
   restart e restauração da cópia descartável, sem credenciais.
 
-Enquanto esse registro não existir, o status correto continua sendo: **procedimento
-documentado, deploy real no EasyPanel ainda não validado**.
+O registro real de 2026-08-13 está em
+[automatic-r2-backup-production.md](audits/automatic-r2-backup-production.md). Ele
+comprova deploy, restart, topologia, proxy, smoke público, objeto idempotente e
+restauração isolada. Não comprova ainda rollback por digest imutável, rate limit de
+login ou alertas externos.

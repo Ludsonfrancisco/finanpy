@@ -1,6 +1,6 @@
 # Lar Finance — PRD do estado atual e evolução do produto
 
-> Fonte única de verdade do produto. Atualizado em 13/08/2026 a partir do candidato `codex/task-automatic-r2-backup`, migrations, 381 testes, configuração Docker e documentação operacional.
+> Fonte única de verdade do produto. Atualizado em 13/08/2026 a partir do `main` em `0d85999f4e66290fa06484d802d08fbb310ad164`, 383 testes, configuração Docker e validação real no EasyPanel/R2.
 
 ## Status e convenções
 
@@ -279,10 +279,11 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 | Severidade | Evidência | Impacto | Tratamento |
 |---|---|---|---|
 | Mitigado externamente | credencial existiu no histórico Git; valores foram removidos do HEAD e a senha foi rotacionada no EasyPanel em 2026-08-12 | reutilização futura do valor antigo ainda seria insegura | não reutilizar; avaliar reescrita destrutiva do histórico separadamente |
-| Resolvido | volume SQLite antes apontava para caminho de arquivo | persistência/boot não confiáveis | Sprint 1 passou a montar `/app/data`; validar no EasyPanel real |
-| Resolvido no código | flags e headers de segurança de produção | exposição em produção | settings por ambiente e `check --deploy --fail-level WARNING`; validação real do proxy continua bloqueada |
+| Resolvido | volume SQLite antes apontava para caminho de arquivo | persistência/boot não confiáveis | Sprint 1 passou a montar `/app/data`; mount, integridade e restart foram validados no EasyPanel real em 2026-08-13 |
+| Parcialmente resolvido | flags e headers de segurança de produção | exposição em produção | settings, proxy confiável e `check --deploy --fail-level WARNING` validados; rate limit persistente de login permanece `[INVESTIGAR]` |
 | Resolvido operacionalmente | ausência de backup real fora do servidor | perda do único disco/host impediria recuperação | SQLite real enviado a bucket R2 privado e restaurado com hash, migrations, auditoria e integridade em 2026-08-12 |
-| Resolvido no código; ativação aberta | job nativo do EasyPanel incompatível com o volume Docker legado | a nova automação ainda não foi executada em produção | scheduler supervisionado usa a API do SQLite, confirma o objeto no R2 e aplica retenção `14/8/12`; ativar e restaurar em tarefa operacional separada |
+| Resolvido operacionalmente | job nativo do EasyPanel incompatível com o volume Docker legado | perda de backups automáticos | scheduler supervisionado ativo usa a API do SQLite, confirma o objeto no R2, aplica retenção `14/8/12` e teve restart/idempotência/restauração comprovados em 2026-08-13 |
+| Alto `[INVESTIGAR]` | EasyPanel acompanha `main` sem digest de imagem selecionável registrado | rollback de código pode depender de rebuild de referência mutável | materializar e ensaiar rollback por digest/tag imutável |
 | Alto | SQLite com múltiplos clientes e sincronização futura | concorrência, lock e backup frágil | PostgreSQL incremental |
 | Resolvido no backend | API privada v1 e OpenAPI 1.0.0 entregues | Flutter ainda inexistente | manter testes de contrato e compatibilidade |
 | Alto | modelo mistura cartão e conta | saldos/faturas incorretos | separar agregados antes da importação completa |
@@ -307,8 +308,8 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-No candidato do backup automático, 381 testes Django passaram com 98% de
-cobertura (7.191 statements, 110 não cobertos). Ruff com a configuração oficial,
+No `main` implantado, 383 testes Django passaram com 98% de
+cobertura (7.266 statements, 119 não cobertos). Ruff com a configuração oficial,
 warnings/deprecations, Django check, migrations check e deploy check estrito também
 passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de
 refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI,
@@ -317,13 +318,13 @@ gateway R2, retenção, scheduler, concorrência e logs sanitizados.
 
 Sem cobertura comprovada:
 
-- deploy da imagem atual, migrations e smoke tests no EasyPanel real;
-- concorrência real e persistência após reinício no host;
+- rollback por digest imutável da imagem no EasyPanel real;
+- concorrência além da topologia suportada de uma réplica/um worker;
 - importações, deduplicação, cartões, faturas, offline e Flutter, pois não existem;
 - armazenamento seguro e ciclo de tokens em um cliente mobile/desktop real;
-- testes end-to-end reais no EasyPanel.
-- ativação, restart, download e restauração reais do objeto criado pela nova
-  automação R2.
+- testes end-to-end autenticados no EasyPanel; a prova atual cobre health e login
+  público, processos, integridade e backup, sem navegar nos dados financeiros;
+- rate limit persistente de `POST /login/` e alertas externos de backup.
 
 Novos recursos seguirão TDD: teste falha, implementação mínima, refatoração e suíte completa.
 
@@ -419,9 +420,9 @@ Offline-first:
 O roteiro completo, dependências, riscos e critérios de aceite estão em [ROADMAP.md](docs/ROADMAP.md). Ordem resumida:
 
 - [x] Sprint 1: acesso por Lar, responsáveis, backfill e integridade do ledger legado.
-- [ ] Fundação operacional restante: backup real externo, rotação e código do
-  backup R2 automático concluídos; ainda faltam ativar/provar a automação e
-  validar deploy, restart, proxy, rate limit e smoke checks no EasyPanel real.
+- [ ] Fundação operacional restante: backup externo e automação R2 estão ativos e
+  restaurados; deploy, restart, proxy e smoke público foram provados. Ainda faltam
+  rate limit persistente, alertas e rollback por imagem imutável.
 - [x] Sprint 2: API v1, autenticação e contrato de sincronização — concluída após revisão independente final sem achados.
 - [ ] Sprint 3: importação OFX/CSV, deduplicação e conciliação.
 - [ ] Sprint 4: cartões, faturas, limites e parcelamentos.
@@ -442,12 +443,13 @@ Concluídos: remoção de PII do HEAD, secret scanning, correção do volume
 SQLite, remoção de signup/landing, criação do Lar e responsáveis, backup
 consistente, auditoria de integridade, rotação externa da credencial histórica,
 restauração real off-host em R2 e implementação testada do backup diário R2 com
-retenção `14/8/12`.
+retenção `14/8/12`. Em 2026-08-13, a automação também foi ativada no EasyPanel e
+teve objeto, restart, idempotência e restauração descartável comprovados.
 
 Pendentes:
 
-- Ativar o backup automático no EasyPanel e provar objeto, restart, idempotência e
-  restauração descartável sem tocar no banco real.
+- Materializar rollback de imagem imutável, configurar rate limit persistente de
+  login e alertar falha/ausência do backup automático.
 - Adicionar hash idempotente e `ImportBatch` antes do primeiro importador.
 - Separar “cartão” de “conta” antes de calcular saldos.
 - Exibir “não informado” em vez de `R$ 0,00` para dados ausentes.
@@ -487,7 +489,8 @@ Pendentes:
 - Arquivos reais exportados por cada instituição e campos disponíveis.
 - Titularidade exata das sete conexões e nomes dos cartões adicionais.
 - Política de retenção dos arquivos originais.
-- Forma de acesso externo ao EasyPanel, domínio, TLS e disponibilidade do servidor.
+- SLA doméstico, mecanismo de rollback por digest e rate limit persistente no
+  EasyPanel/Cloudflare.
 - Versões/pacotes do Flutter, SQLite local e PostgreSQL.
 - Estratégia de resolução de conflitos no cliente e retenção de tombstones.
 - Método/custo de distribuição privada no iPhone.
@@ -500,11 +503,15 @@ Pendentes:
 - Branches remotas `final-sprints`, `finapy-pwa` e `fix/easytunnel-deploy` foram auditadas por diff em 2026-08-12. Nenhuma deve ser mesclada ou receber cherry-pick no estado atual; evidências e ideias preserváveis estão em `docs/audits/2026-08-12-remote-branches.md`.
 - O SQLite real do EasyPanel foi enviado a bucket R2 privado e restaurado em cópia descartável em 2026-08-12; hash, migrations, auditoria e integridade passaram. Evidência: `docs/audits/2026-08-12-production-backup-restore.md`.
 - A Sprint 1 registrou 151 testes; a Sprint 2 foi concluída com 277 testes e 98% de cobertura.
-- O candidato `codex/task-automatic-r2-backup` passou 381 testes e 98% de cobertura;
-  o runbook registra a matriz local. Isso não é evidência de ativação no
-  EasyPanel nem de uso do R2 real pela nova automação.
+- O `main` em `0d85999f4e66290fa06484d802d08fbb310ad164` passou 383 testes e
+  98% de cobertura. Em 2026-08-13, foi implantado no EasyPanel `v2.33.1`; a
+  automação R2 criou uma única chave, permaneceu idempotente após restart e o
+  objeto foi restaurado em cópia descartável com tamanho, SHA-256, migrations,
+  auditoria e integridade aprovados. Evidência:
+  `docs/audits/automatic-r2-backup-production.md`.
 - Ruff com `pyproject.toml`, warnings, Django check, migrations check e deploy
   check passaram localmente; a CI mantém esses gates e secret scan. O Ruff sem
   `--config` ainda encontra dívida legada sob `ruff.toml`.
 - Cadastro público e landing foram removidos; login e fallback web privado permanecem.
-- O servidor EasyPanel e a base real não foram alterados durante as Sprints 1 e 2.
+- O servidor EasyPanel foi atualizado de forma controlada em 2026-08-13. O ensaio
+  de restauração nunca apontou para a base real; a base permaneceu íntegra.
