@@ -4,7 +4,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.models import Account
-from imports.ofx import OfxParseError, OversizedOfxError, UnsupportedOfxError
+from imports.ofx import (
+    MAX_OFX_BYTES,
+    OfxParseError,
+    OversizedOfxError,
+    UnsupportedOfxError,
+)
 from imports.services import (
     ExpiredPreviewError,
     ImportAccessError,
@@ -48,6 +53,20 @@ class ExpiredImportPreview(InvalidOfx):
     default_code = 'expired_import_preview'
 
 
+def _read_ofx_upload(uploaded_file):
+    """Read an uploaded OFX without retaining bytes above the accepted limit."""
+    size = getattr(uploaded_file, 'size', None)
+    if isinstance(size, int) and size > MAX_OFX_BYTES:
+        raise OversizedOfxError('OFX content exceeds the maximum accepted size.')
+
+    content = bytearray()
+    for chunk in uploaded_file.chunks():
+        if len(content) + len(chunk) > MAX_OFX_BYTES:
+            raise OversizedOfxError('OFX content exceeds the maximum accepted size.')
+        content.extend(chunk)
+    return bytes(content)
+
+
 class ImportView(APIView):
     permission_classes = [IsDeviceSession]
 
@@ -76,7 +95,7 @@ class OfxPreviewView(ImportView):
             batch = create_preview(
                 household=request.auth.household,
                 device_session=request.auth,
-                content=serializer.validated_data['file'].read(),
+                content=_read_ofx_upload(serializer.validated_data['file']),
             )
         except OversizedOfxError as error:
             raise FileTooLarge() from error

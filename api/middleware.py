@@ -101,6 +101,7 @@ class ApiObservabilityMiddleware:
         if request.path.startswith('/api/v1/'):
             device = getattr(request, 'auth', None)
             authenticated = isinstance(device, DeviceSession)
+            is_import_route = request.path.startswith('/api/v1/imports/')
             event = {
                 'timestamp': timezone.now().isoformat(),
                 'level': 'INFO',
@@ -111,7 +112,9 @@ class ApiObservabilityMiddleware:
                 'status': response.status_code,
                 'duration_ms': duration_ms,
                 'authenticated': authenticated,
-                'device_uuid': str(device.uuid) if authenticated else None,
+                'device_uuid': (
+                    None if is_import_route or not authenticated else str(device.uuid)
+                ),
                 'error_code': _error_code(response),
             }
             logger.info(serialize_access_event(event))

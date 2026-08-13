@@ -4,6 +4,7 @@ from pathlib import Path
 from django.test import TestCase
 
 from accounts.models import Account
+from api.import_views import _read_ofx_upload
 from api.models import DeviceSession
 from api.tokens import issue_session
 from households.models import FinancialOwner
@@ -27,6 +28,7 @@ class ImportApiTest(TestCase):
         self.user, self.household, self.owner, self.account, self.auth = self._setup(
             'imports@example.test'
         )
+        self.device = DeviceSession.objects.get(household=self.household)
         (
             self.foreign_user,
             self.foreign_household,
@@ -150,7 +152,9 @@ class ImportApiTest(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()['error']['code'], 'invalid_ofx')
-        self.assertNotIn('private-value-987.65', '\n'.join(record.getMessage() for record in captured.records))
+        output = '\n'.join(record.getMessage() for record in captured.records)
+        self.assertNotIn('private-value-987.65', output)
+        self.assertNotIn(str(self.device.uuid), output)
 
     def test_unsupported_ofx_uses_its_stable_error_code(self):
         response = self.client.post(
@@ -162,6 +166,27 @@ class ImportApiTest(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()['error']['code'], 'unsupported_ofx')
+
+    def test_oversized_upload_is_rejected_before_reading_its_content(self):
+        class OversizedUpload:
+            size = 10 * 1024 * 1024 + 1
+
+            def chunks(self):
+                raise AssertionError('oversized file must not be read')
+
+        with self.assertRaisesRegex(ValueError, 'maximum'):
+            _read_ofx_upload(OversizedUpload())
+
+    def test_upload_without_reliable_size_is_read_only_up_to_the_limit(self):
+        class UnknownSizeUpload:
+            size = None
+
+            def chunks(self):
+                yield b'x' * (10 * 1024 * 1024)
+                yield b'y'
+
+        with self.assertRaisesRegex(ValueError, 'maximum'):
+            _read_ofx_upload(UnknownSizeUpload())
 
     def _preview(self, content=None, auth=None):
         return self.client.post(
