@@ -1,6 +1,7 @@
 import hashlib
 import re
 import sqlite3
+import stat
 import sys
 import tempfile
 from contextlib import contextmanager
@@ -149,24 +150,70 @@ def _is_owned_temporary_name(name: str) -> bool:
     )
 
 
+def _stat_identity(result) -> tuple[int, int, int]:
+    return result.st_dev, result.st_ino, stat.S_IFMT(result.st_mode)
+
+
+def _validated_directory(directory: Path):
+    try:
+        initial = directory.lstat()
+    except FileNotFoundError:
+        return None
+    if stat.S_ISLNK(initial.st_mode) or not stat.S_ISDIR(initial.st_mode):
+        raise OSError
+
+    resolved = directory.resolve(strict=True)
+    current = directory.lstat()
+    resolved_current = resolved.lstat()
+    expected_identity = _stat_identity(initial)
+    if (
+        stat.S_ISLNK(current.st_mode)
+        or not stat.S_ISDIR(current.st_mode)
+        or not stat.S_ISDIR(resolved_current.st_mode)
+        or _stat_identity(current) != expected_identity
+        or _stat_identity(resolved_current) != expected_identity
+    ):
+        raise OSError
+    return resolved, expected_identity
+
+
 def cleanup_stale_temporary_backups(directory: Path) -> None:
     try:
-        if not directory.exists():
+        validated_directory = _validated_directory(directory)
+        if validated_directory is None:
             return
-        if directory.is_symlink() or not directory.is_dir():
-            raise OSError
-        resolved_directory = directory.resolve(strict=True)
+        resolved_directory, directory_identity = validated_directory
         for candidate in directory.iterdir():
-            if not _is_owned_temporary_name(candidate.name) or candidate.is_symlink():
+            if not _is_owned_temporary_name(candidate.name):
+                continue
+            candidate_stat = candidate.lstat()
+            if stat.S_ISLNK(candidate_stat.st_mode):
+                continue
+            if not stat.S_ISREG(candidate_stat.st_mode):
                 continue
             resolved_candidate = candidate.resolve(strict=True)
+            revalidated_directory = _validated_directory(directory)
+            if (
+                revalidated_directory is None
+                or revalidated_directory
+                != (resolved_directory, directory_identity)
+            ):
+                raise OSError
+            current_candidate = candidate.lstat()
+            resolved_current = resolved_candidate.lstat()
             if (
                 resolved_candidate.parent != resolved_directory
-                or not resolved_candidate.is_file()
+                or stat.S_ISLNK(current_candidate.st_mode)
+                or not stat.S_ISREG(current_candidate.st_mode)
+                or not stat.S_ISREG(resolved_current.st_mode)
+                or _stat_identity(current_candidate)
+                != _stat_identity(candidate_stat)
+                or _stat_identity(resolved_current)
+                != _stat_identity(candidate_stat)
             ):
-                continue
+                raise OSError
             resolved_candidate.unlink()
-    except OSError:
+    except (OSError, RuntimeError):
         raise BackupVerificationError(
             'Temporary backup residue could not be cleaned up.',
             error_code='cleanup_failed',

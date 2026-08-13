@@ -1,3 +1,5 @@
+import stat
+from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, date, datetime, time
 from pathlib import Path
@@ -499,18 +501,7 @@ class RemoteBackupExecutionTest(RemoteBackupTestMixin, SimpleTestCase):
         storage = Mock()
         storage.head_managed.return_value = existing
         storage.list_managed.return_value = [existing]
-        original_is_symlink = Path.is_symlink
-
-        def is_symlink(path):
-            if path == apparent_symlink:
-                return True
-            return original_is_symlink(path)
-
-        with patch(
-            'core.remote_backup.Path.is_symlink',
-            autospec=True,
-            side_effect=is_symlink,
-        ):
+        with self._symlink_lstat_patch(apparent_symlink):
             outcome = execute_remote_backup(self.config, storage, self.db, self.now)
 
         self.assertEqual(outcome.status, 'already_exists')
@@ -553,18 +544,7 @@ class RemoteBackupExecutionTest(RemoteBackupTestMixin, SimpleTestCase):
         storage = Mock()
         storage.head_managed.return_value = existing
         storage.list_managed.return_value = [existing]
-        original_is_symlink = Path.is_symlink
-
-        def is_symlink(path):
-            if path == apparent_symlink:
-                return True
-            return original_is_symlink(path)
-
-        with patch(
-            'core.remote_backup.Path.is_symlink',
-            autospec=True,
-            side_effect=is_symlink,
-        ):
+        with self._symlink_lstat_patch(apparent_symlink):
             outcome = execute_remote_backup(self.config, storage, self.db, self.now)
 
         self.assertEqual(outcome.status, 'already_exists')
@@ -628,24 +608,61 @@ class RemoteBackupExecutionTest(RemoteBackupTestMixin, SimpleTestCase):
         staging_directory = backup_directory / '.lar-finance-r2-staging'
         staging_directory.mkdir(parents=True)
         storage = Mock()
-        original_is_symlink = Path.is_symlink
-
-        def is_symlink(path):
-            if path == staging_directory:
-                return True
-            return original_is_symlink(path)
-
-        with patch(
-            'core.remote_backup.Path.is_symlink',
-            autospec=True,
-            side_effect=is_symlink,
-        ):
+        with self._symlink_lstat_patch(staging_directory):
             with self.assertRaises(BackupVerificationError) as raised:
                 execute_remote_backup(self.config, storage, self.db, self.now)
 
         self.assertEqual(raised.exception.error_code, 'cleanup_failed')
         self.assertEqual(raised.exception.stage, 'cleanup')
         storage.head_managed.assert_not_called()
+
+    @patch('core.remote_backup.backup_sqlite')
+    def test_dangling_backup_directory_symlink_aborts_before_any_io(
+        self,
+        backup_mock,
+    ):
+        backup_directory = self.db.parent / 'backups'
+        storage = Mock()
+        existing = self.remote(date(2026, 8, 12))
+        storage.head_managed.return_value = existing
+        storage.list_managed.return_value = [existing]
+
+        with self._dangling_symlink_patch(backup_directory):
+            with self.assertRaises(BackupVerificationError) as raised:
+                execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'cleanup_failed')
+        self.assertEqual(raised.exception.stage, 'cleanup')
+        backup_mock.assert_not_called()
+        storage.head_managed.assert_not_called()
+        storage.list_managed.assert_not_called()
+        storage.upload_and_verify.assert_not_called()
+        storage.delete.assert_not_called()
+
+    @patch('core.remote_backup.backup_sqlite')
+    def test_dangling_staging_directory_symlink_aborts_before_any_io(
+        self,
+        backup_mock,
+    ):
+        backup_directory = self.db.parent / 'backups'
+        backup_directory.mkdir()
+        staging_directory = backup_directory / '.lar-finance-r2-staging'
+        storage = Mock()
+        existing = self.remote(date(2026, 8, 12))
+        storage.head_managed.return_value = existing
+        storage.list_managed.return_value = [existing]
+
+        with self._dangling_symlink_patch(staging_directory):
+            with self.assertRaises(BackupVerificationError) as raised:
+                execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'cleanup_failed')
+        self.assertEqual(raised.exception.stage, 'cleanup')
+        backup_mock.assert_not_called()
+        storage.head_managed.assert_not_called()
+        storage.list_managed.assert_not_called()
+        storage.upload_and_verify.assert_not_called()
+        storage.delete.assert_not_called()
 
     def test_stale_cleanup_failure_aborts_before_remote_operations(self):
         backup_directory = self.db.parent / 'backups'
@@ -688,6 +705,49 @@ class RemoteBackupExecutionTest(RemoteBackupTestMixin, SimpleTestCase):
             'core.remote_backup.tempfile.NamedTemporaryFile',
             return_value=handle,
         )
+
+    @contextmanager
+    def _dangling_symlink_patch(self, dangling_path):
+        original_exists = Path.exists
+        original_is_symlink = Path.is_symlink
+        original_lstat = Path.lstat
+
+        def exists(path):
+            if path == dangling_path:
+                return False
+            return original_exists(path)
+
+        def is_symlink(path):
+            if path == dangling_path:
+                return True
+            return original_is_symlink(path)
+
+        def lstat(path):
+            if path == dangling_path:
+                return Mock(st_mode=stat.S_IFLNK, st_dev=1, st_ino=99)
+            return original_lstat(path)
+
+        with (
+            patch.object(Path, 'exists', autospec=True, side_effect=exists),
+            patch.object(
+                Path,
+                'is_symlink',
+                autospec=True,
+                side_effect=is_symlink,
+            ),
+            patch.object(Path, 'lstat', autospec=True, side_effect=lstat),
+        ):
+            yield
+
+    def _symlink_lstat_patch(self, symlink_path):
+        original_lstat = Path.lstat
+
+        def lstat(path):
+            if path == symlink_path:
+                return Mock(st_mode=stat.S_IFLNK, st_dev=1, st_ino=98)
+            return original_lstat(path)
+
+        return patch.object(Path, 'lstat', autospec=True, side_effect=lstat)
 
     def _backup_mkdir_patch(self):
         original_mkdir = Path.mkdir
