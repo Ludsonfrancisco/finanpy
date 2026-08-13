@@ -1,5 +1,6 @@
 import logging
 import os
+import signal
 import time
 from datetime import datetime
 
@@ -12,14 +13,20 @@ from core.backup_scheduler import LastAttempt, decide_next_action
 logger = logging.getLogger('lar_finance.backup')
 
 
+def _handle_sigterm(signum, frame):
+    raise KeyboardInterrupt
+
+
 class Command(BaseCommand):
     help = 'Run the recoverable daily R2 backup scheduler.'
 
     def handle(self, *args, **options):
-        config = R2BackupConfig.from_env(os.environ)
-        last_attempt = None
+        previous_sigterm_handler = signal.getsignal(signal.SIGTERM)
+        signal.signal(signal.SIGTERM, _handle_sigterm)
 
         try:
+            config = R2BackupConfig.from_env(os.environ)
+            last_attempt = None
             while True:
                 now = datetime.now(config.time_zone)
                 decision = decide_next_action(
@@ -53,3 +60,5 @@ class Command(BaseCommand):
                 time.sleep(decision.sleep_seconds)
         except KeyboardInterrupt:
             logger.info('backup_scheduler_stopped')
+        finally:
+            signal.signal(signal.SIGTERM, previous_sigterm_handler)

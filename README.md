@@ -15,7 +15,7 @@ modernização incremental.
 - SQLite persistido em `/app/data/db.sqlite3` no container;
 - backup R2 diário codificado com agenda supervisionada e retenção `14/8/12`,
   ainda não ativado em produção;
-- 370 testes e 98% de cobertura; gate mínimo de 90%;
+- 381 testes e 98% de cobertura; gate mínimo de 90%;
 - cadastro público removido;
 - importação bancária e aplicativo Flutter ainda não implementados.
 

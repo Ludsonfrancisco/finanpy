@@ -1,5 +1,6 @@
+import signal
 from datetime import date, datetime, time
-from unittest.mock import patch
+from unittest.mock import call, patch
 from zoneinfo import ZoneInfo
 
 from django.core.management import call_command
@@ -497,6 +498,51 @@ class BackupSchedulerCommandTest(SimpleTestCase):
 
         backup_command.assert_called_once_with('backup_to_r2')
         sleeper.assert_not_called()
+        output = '\n'.join(captured.output)
+        self.assertIn('backup_scheduler_stopped', output)
+        self.assertNotIn('backup_scheduler_failed', output)
+
+    @patch('signal.signal')
+    @patch('signal.getsignal')
+    @patch('core.management.commands.run_backup_scheduler.call_command')
+    @patch('core.management.commands.run_backup_scheduler.datetime')
+    @patch('core.management.commands.run_backup_scheduler.R2BackupConfig.from_env')
+    def test_sigterm_handler_uses_keyboard_interrupt_unwind_and_is_restored(
+        self,
+        config_from_env,
+        clock,
+        backup_command,
+        get_signal,
+        set_signal,
+    ):
+        previous_handler = object()
+        installed = {}
+        get_signal.return_value = previous_handler
+        config_from_env.return_value = self.config
+        clock.now.return_value = datetime(2026, 8, 12, 3, tzinfo=SAO_PAULO)
+
+        def remember_handler(signum, handler):
+            if signum == signal.SIGTERM and 'handler' not in installed:
+                installed['handler'] = handler
+
+        def terminate_during_backup(*args):
+            installed['handler'](signal.SIGTERM, None)
+
+        set_signal.side_effect = remember_handler
+        backup_command.side_effect = terminate_during_backup
+
+        with self.assertLogs('lar_finance.backup', level='INFO') as captured:
+            call_command('run_backup_scheduler')
+
+        self.assertEqual(set_signal.call_count, 2)
+        installed_handler = installed['handler']
+        self.assertEqual(
+            set_signal.call_args_list,
+            [
+                call(signal.SIGTERM, installed_handler),
+                call(signal.SIGTERM, previous_handler),
+            ],
+        )
         output = '\n'.join(captured.output)
         self.assertIn('backup_scheduler_stopped', output)
         self.assertNotIn('backup_scheduler_failed', output)

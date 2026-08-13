@@ -98,9 +98,11 @@ nulo e o mesmo request ID, sem expor o texto da exceção.
 
 - cópia primária no volume SQLite atual; adaptar a rotina quando a migração
   futura para PostgreSQL for autorizada `[INVESTIGAR]`;
-- cópia temporária consistente criada sob `/app/data/backups` e normalmente
-  removida; se o `unlink` falhar durante outro erro, um resíduo pode permanecer.
-  A tentativa seguinte faz uma limpeza automática restrita; se ela também falhar,
+- cópia temporária consistente criada em staging exclusivo sob
+  `/app/data/backups` e normalmente removida; se o processo for encerrado sem
+  unwind ou o `unlink` falhar, o temporário SQLite, seu sidecar ou o temporário R2
+  pode permanecer. A tentativa seguinte faz uma limpeza automática restrita sob
+  o mesmo file lock; se ela também falhar,
   siga o [procedimento seguro do runbook](sprints/automatic-r2-backup.md#resíduo-temporário-depois-de-falha);
   ela é apenas etapa do upload e não conta como segunda cópia persistente;
 - cópia real fora do servidor/casa em bucket R2 privado, transferida por TLS, com

@@ -16,9 +16,14 @@ from core.r2_storage import R2StorageError, RemoteObject
 
 LOCAL_BACKUP_ERRORS = (OSError, ValueError, sqlite3.Error)
 REMOTE_OPERATION_ERRORS = (OSError, BotoCoreError, ClientError, R2StorageError)
-TEMPORARY_BACKUP_PATTERN = re.compile(
+R2_TEMPORARY_PATTERN = re.compile(
     r'\.lar-finance-r2-[A-Za-z0-9_-]+\.sqlite3'
 )
+SQLITE_STAGING_PATTERN = re.compile(
+    r'\.lar-finance-backup-[A-Za-z0-9_-]+\.tmp'
+)
+SQLITE_SIDECAR_SUFFIXES = ('-wal', '-shm', '-journal')
+STAGING_DIRECTORY_NAME = '.lar-finance-r2-staging'
 
 
 class BackupAlreadyRunning(RuntimeError):
@@ -130,6 +135,20 @@ def temporary_backup_path(directory: Path):
                 raise cleanup_error from primary_error
 
 
+def _is_owned_temporary_name(name: str) -> bool:
+    patterns = (R2_TEMPORARY_PATTERN, SQLITE_STAGING_PATTERN)
+    if any(pattern.fullmatch(name) for pattern in patterns):
+        return True
+    return any(
+        name.endswith(suffix)
+        and any(
+            pattern.fullmatch(name[: -len(suffix)])
+            for pattern in patterns
+        )
+        for suffix in SQLITE_SIDECAR_SUFFIXES
+    )
+
+
 def cleanup_stale_temporary_backups(directory: Path) -> None:
     try:
         if not directory.exists():
@@ -138,10 +157,7 @@ def cleanup_stale_temporary_backups(directory: Path) -> None:
             raise OSError
         resolved_directory = directory.resolve(strict=True)
         for candidate in directory.iterdir():
-            if (
-                TEMPORARY_BACKUP_PATTERN.fullmatch(candidate.name) is None
-                or candidate.is_symlink()
-            ):
+            if not _is_owned_temporary_name(candidate.name) or candidate.is_symlink():
                 continue
             resolved_candidate = candidate.resolve(strict=True)
             if (
@@ -218,7 +234,9 @@ def execute_remote_backup(config, storage, database_path, now) -> BackupOutcome:
 
     with _backup_lock(lock):
         backup_directory = source.parent / 'backups'
+        staging_directory = backup_directory / STAGING_DIRECTORY_NAME
         cleanup_stale_temporary_backups(backup_directory)
+        cleanup_stale_temporary_backups(staging_directory)
         try:
             existing = storage.head_managed(key)
         except REMOTE_OPERATION_ERRORS:
@@ -231,7 +249,7 @@ def execute_remote_backup(config, storage, database_path, now) -> BackupOutcome:
             deleted = enforce_retention(config, storage)
             return BackupOutcome.already_exists(existing, deleted)
 
-        with temporary_backup_path(backup_directory) as temporary_path:
+        with temporary_backup_path(staging_directory) as temporary_path:
             try:
                 backup_sqlite(source, temporary_path)
                 _, sha256 = file_identity(temporary_path)

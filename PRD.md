@@ -1,6 +1,6 @@
 # Lar Finance — PRD do estado atual e evolução do produto
 
-> Fonte única de verdade do produto. Atualizado em 13/08/2026 a partir do candidato `codex/task-automatic-r2-backup`, migrations, 370 testes, configuração Docker e documentação operacional.
+> Fonte única de verdade do produto. Atualizado em 13/08/2026 a partir do candidato `codex/task-automatic-r2-backup`, migrations, 381 testes, configuração Docker e documentação operacional.
 
 ## Status e convenções
 
@@ -307,8 +307,8 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-No candidato do backup automático, 370 testes Django passaram com 98% de
-cobertura (6.929 statements, 108 não cobertos). Ruff com a configuração oficial,
+No candidato do backup automático, 381 testes Django passaram com 98% de
+cobertura (7.191 statements, 110 não cobertos). Ruff com a configuração oficial,
 warnings/deprecations, Django check, migrations check e deploy check estrito também
 passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de
 refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI,
@@ -500,7 +500,7 @@ Pendentes:
 - Branches remotas `final-sprints`, `finapy-pwa` e `fix/easytunnel-deploy` foram auditadas por diff em 2026-08-12. Nenhuma deve ser mesclada ou receber cherry-pick no estado atual; evidências e ideias preserváveis estão em `docs/audits/2026-08-12-remote-branches.md`.
 - O SQLite real do EasyPanel foi enviado a bucket R2 privado e restaurado em cópia descartável em 2026-08-12; hash, migrations, auditoria e integridade passaram. Evidência: `docs/audits/2026-08-12-production-backup-restore.md`.
 - A Sprint 1 registrou 151 testes; a Sprint 2 foi concluída com 277 testes e 98% de cobertura.
-- O candidato `codex/task-automatic-r2-backup` passou 370 testes e 98% de cobertura;
+- O candidato `codex/task-automatic-r2-backup` passou 381 testes e 98% de cobertura;
   o runbook registra a matriz local. Isso não é evidência de ativação no
   EasyPanel nem de uso do R2 real pela nova automação.
 - Ruff com `pyproject.toml`, warnings, Django check, migrations check e deploy

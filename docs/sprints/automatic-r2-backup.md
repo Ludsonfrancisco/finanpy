@@ -20,9 +20,12 @@ autorização explícita.
 ## Fluxo e invariantes
 
 1. Adquire uma trava não bloqueante ao lado do banco.
-2. Ainda sob a trava, procura resíduos próprios com nome exato no diretório
-   temporário. Remove somente arquivos regulares, não simbólicos e validados; se
-   a limpeza falhar, retorna `cleanup_failed` antes de acessar o R2.
+2. Ainda sob a trava, procura resíduos próprios na raiz legada e no diretório
+   exclusivo `/app/data/backups/.lar-finance-r2-staging`. Reconhece somente
+   `.lar-finance-r2-*.sqlite3`, `.lar-finance-backup-*.tmp` e sidecars SQLite
+   `-wal`, `-shm` ou `-journal` cujo nome-base também seja próprio. Remove somente
+   arquivos regulares, não simbólicos, com parent resolvido e validado; se a
+   limpeza falhar, retorna `cleanup_failed` antes de acessar o R2.
 3. Calcula a chave do dia no timezone configurado e verifica se ela já existe.
 4. Se o objeto válido já existir, pula cópia/upload, mas repete a retenção antes
    de concluir `already_exists`.
@@ -33,7 +36,11 @@ autorização explícita.
    `HeadObject`.
 7. Lista e valida todo o catálogo gerenciado antes de calcular retenção.
 8. Exclui somente objetos gerenciados expirados, do mais antigo para o mais novo.
-9. Tenta remover a cópia temporária e libera a trava ao sair. Se uma falha
+9. O scheduler converte `SIGTERM` em interrupção controlada para que os contexts
+   tentem a limpeza e liberem a trava. `SIGKILL`, queda de energia e término antes
+   do unwind podem deixar resíduos; a próxima inicialização tenta removê-los e
+   retorna `cleanup_failed` sem acessar o R2 se não conseguir.
+10. Tenta remover a cópia temporária e libera a trava ao sair. Se uma falha
    primária e o `unlink` falharem juntos, expõe `cleanup_failed` e preserva a falha
    primária como causa sanitizada; a próxima tentativa tenta recuperar o resíduo
    antes de qualquer operação remota.
@@ -97,9 +104,11 @@ autoriza apagar objetos ou editar o banco manualmente.
 
 ### Resíduo temporário depois de falha
 
-Uma nova tentativa limpa automaticamente um resíduo próprio validado, sob a mesma
-trava, antes de acessar o R2. Use o procedimento manual abaixo somente se
-`cleanup_failed` persistir.
+Uma nova tentativa detecta e tenta limpar automaticamente resíduos próprios
+validados, sob a mesma trava, antes de acessar o R2. Isso inclui o temporário R2, o
+staging interno criado pela API SQLite e seus sidecars depois de `SIGKILL`, crash
+ou queda de energia. Use o procedimento manual abaixo somente se `cleanup_failed`
+persistir.
 
 Inspecione ou remova um resíduo somente depois de colocar o serviço em manutenção
 e pará-lo pelo mecanismo suportado do EasyPanel. Confirme na UI, no status e nos
@@ -112,24 +121,37 @@ EasyPanel que monte o mesmo `/app/data` sem iniciar a aplicação. Informe um ú
 path absoluto observado, sem glob nem loop, valide-o e remova somente esse arquivo:
 
 ```sh
-export R2_TEMP_CANDIDATE='/app/data/backups/.lar-finance-r2-<identificador>.sqlite3'
+export R2_TEMP_CANDIDATE='/app/data/backups/.lar-finance-r2-staging/.lar-finance-backup-<identificador>.tmp-wal'
 python - <<'PY'
 import os
 import re
 from pathlib import Path
 
-temporary_directory = Path('/app/data/backups').resolve()
+backup_path = Path('/app/data/backups')
+if backup_path.is_symlink() or not backup_path.is_dir():
+    raise SystemExit('refusing unsafe backup directory')
+backup_directory = backup_path.resolve(strict=True)
+staging_directory = backup_directory / '.lar-finance-r2-staging'
 production_database = Path('/app/data/db.sqlite3').resolve()
 provided_path = Path(os.environ['R2_TEMP_CANDIDATE'])
 if not provided_path.is_absolute() or provided_path.is_symlink():
     raise SystemExit('refusing non-absolute or symbolic temporary path')
 candidate = provided_path.resolve(strict=True)
+allowed_directories = {backup_directory}
+if staging_directory.exists():
+    if staging_directory.is_symlink() or not staging_directory.is_dir():
+        raise SystemExit('refusing unsafe staging directory')
+    allowed_directories.add(staging_directory.resolve(strict=True))
+owned_base = (
+    r'(?:\.lar-finance-r2-[A-Za-z0-9_-]+\.sqlite3'
+    r'|\.lar-finance-backup-[A-Za-z0-9_-]+\.tmp)'
+)
 valid_name = re.fullmatch(
-    r'\.lar-finance-r2-[A-Za-z0-9_-]+\.sqlite3',
+    rf'{owned_base}(?:-(?:wal|shm|journal))?',
     candidate.name,
 )
 if (
-    candidate.parent != temporary_directory
+    candidate.parent not in allowed_directories
     or candidate == production_database
     or valid_name is None
     or not candidate.is_file()
@@ -140,6 +162,8 @@ print('validated temporary file removed')
 PY
 ```
 
+O exemplo aceita um único artefato próprio por execução, na raiz legada ou no
+staging exclusivo; não aceita glob, loop, diretório, symlink ou path externo.
 Nunca substitua o path por `/app/data/db.sqlite3`, nunca remova o diretório
 `/app/data/backups` inteiro e nunca execute essa limpeza com scheduler ou backup
 manual ativo. Se não for possível provar que o container e os processos estão
@@ -264,12 +288,12 @@ enviados permanecem independentes.
 
 | Gate | Evidência em 2026-08-13 | Estado/limite |
 |---|---|---|
-| Testes focados com `-Wd` | 104 testes, sem falha nem `DeprecationWarning` | Aprovado localmente |
-| Suíte completa com `-Wd` | 376 testes | Aprovado localmente após os fixes desta wave |
-| Cobertura completa | 376 testes; 7.062 statements; 111 misses; 98% | Aprovado, mínimo 90% |
+| Testes focados com `-Wd` | 109 testes, sem falha nem `DeprecationWarning` | Aprovado localmente |
+| Suíte completa com `-Wd` | 381 testes | Aprovado localmente após os fixes desta wave |
+| Cobertura completa | 381 testes; 7.191 statements; 110 misses; 98% | Aprovado, mínimo 90% |
 | Ruff oficial | `ruff check . --config pyproject.toml` | Aprovado |
 | Django/check/deploy/migrations | checks sem issues; nenhuma migration nova | Aprovado |
-| Docker e Supervisor | CI run `31663696379` no head `5d4e461`, build real e smoke com Supervisor 4.3.0 | Aprovado nesse head; CI pós-fix ainda pendente e não prova EasyPanel |
+| Docker e Supervisor | CI run `31663696379` no head `5d4e461`, build real e smoke com Supervisor 4.3.0 | Aprovado somente nesse head; CI dos fixes seguintes, inclusive desta wave, ainda pendente e não prova EasyPanel |
 | Secret scan direcionado | nenhum valor atribuído a access key ou secret em arquivo versionado | Aprovado na matriz final e no conteúdo commitado |
 | R2/EasyPanel reais | não executados nesta entrega | Aberto; exige autorização separada |
 

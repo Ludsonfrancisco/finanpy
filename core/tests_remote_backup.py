@@ -190,7 +190,10 @@ class RemoteBackupExecutionTest(RemoteBackupTestMixin, SimpleTestCase):
         def create_backup(source, destination):
             captured['path'] = destination
             self.assertEqual(source, self.db.resolve())
-            self.assertEqual(destination.parent, self.db.parent / 'backups')
+            self.assertEqual(
+                destination.parent,
+                self.db.parent / 'backups' / '.lar-finance-r2-staging',
+            )
             self.assertFalse(destination.exists())
             destination.write_bytes(self.backup_content)
             events.append('copy')
@@ -516,6 +519,133 @@ class RemoteBackupExecutionTest(RemoteBackupTestMixin, SimpleTestCase):
         self.assertTrue(apparent_symlink.exists())
         self.assertEqual(self.db.read_bytes(), b'sqlite sentinel')
         backup_mock.assert_not_called()
+
+    @patch('core.remote_backup.backup_sqlite')
+    def test_retry_cleans_owned_staging_files_and_sqlite_sidecars(
+        self,
+        backup_mock,
+    ):
+        backup_directory = self.db.parent / 'backups'
+        staging_directory = backup_directory / '.lar-finance-r2-staging'
+        staging_directory.mkdir(parents=True)
+        legacy_base = backup_directory / '.lar-finance-backup-legacy.tmp'
+        staging_base = staging_directory / '.lar-finance-backup-restart.tmp'
+        owned = (
+            backup_directory / '.lar-finance-r2-legacy.sqlite3',
+            backup_directory / '.lar-finance-r2-legacy.sqlite3-wal',
+            legacy_base,
+            backup_directory / f'{legacy_base.name}-journal',
+            staging_directory / '.lar-finance-r2-restart.sqlite3',
+            staging_base,
+            staging_directory / f'{staging_base.name}-wal',
+            staging_directory / f'{staging_base.name}-shm',
+            staging_directory / f'{staging_base.name}-journal',
+        )
+        for path in owned:
+            path.write_bytes(b'owned staging residue')
+        unknown = staging_directory / 'manual-backup.tmp-wal'
+        apparent_symlink = staging_directory / '.lar-finance-backup-link.tmp-shm'
+        outside = self.db.parent / '.lar-finance-backup-outside.tmp'
+        unknown.write_bytes(b'unknown sentinel')
+        apparent_symlink.write_bytes(b'symlink sentinel')
+        outside.write_bytes(b'outside sentinel')
+        existing = self.remote(date(2026, 8, 12))
+        storage = Mock()
+        storage.head_managed.return_value = existing
+        storage.list_managed.return_value = [existing]
+        original_is_symlink = Path.is_symlink
+
+        def is_symlink(path):
+            if path == apparent_symlink:
+                return True
+            return original_is_symlink(path)
+
+        with patch(
+            'core.remote_backup.Path.is_symlink',
+            autospec=True,
+            side_effect=is_symlink,
+        ):
+            outcome = execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(outcome.status, 'already_exists')
+        for path in owned:
+            self.assertFalse(path.exists(), path.name)
+        self.assertTrue(unknown.exists())
+        self.assertTrue(apparent_symlink.exists())
+        self.assertTrue(outside.exists())
+        self.assertEqual(self.db.read_bytes(), b'sqlite sentinel')
+        backup_mock.assert_not_called()
+
+    def test_staging_cleanup_failure_aborts_before_remote_operations(self):
+        backup_directory = self.db.parent / 'backups'
+        staging_directory = backup_directory / '.lar-finance-r2-staging'
+        staging_directory.mkdir(parents=True)
+        residue = staging_directory / '.lar-finance-backup-owned.tmp'
+        residue.write_bytes(b'partial private backup')
+        storage = Mock()
+        existing = self.remote(date(2026, 8, 12))
+        storage.head_managed.return_value = existing
+        storage.list_managed.return_value = [existing]
+        original_unlink = Path.unlink
+
+        def unlink(path, *args, **kwargs):
+            if path == residue:
+                raise OSError('private staging cleanup path')
+            return original_unlink(path, *args, **kwargs)
+
+        with patch.object(
+            Path,
+            'unlink',
+            autospec=True,
+            side_effect=unlink,
+        ):
+            with self.assertRaises(BackupVerificationError) as raised:
+                execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'cleanup_failed')
+        self.assertEqual(raised.exception.stage, 'cleanup')
+        self.assertNotIn('private staging cleanup path', str(raised.exception))
+        storage.head_managed.assert_not_called()
+        storage.upload_and_verify.assert_not_called()
+        storage.list_managed.assert_not_called()
+
+    def test_staging_path_that_is_not_a_directory_aborts_before_remote(self):
+        backup_directory = self.db.parent / 'backups'
+        backup_directory.mkdir()
+        staging_path = backup_directory / '.lar-finance-r2-staging'
+        staging_path.write_bytes(b'not a directory')
+        storage = Mock()
+
+        with self.assertRaises(BackupVerificationError) as raised:
+            execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'cleanup_failed')
+        self.assertEqual(raised.exception.stage, 'cleanup')
+        storage.head_managed.assert_not_called()
+
+    def test_symbolic_staging_directory_aborts_before_remote(self):
+        backup_directory = self.db.parent / 'backups'
+        staging_directory = backup_directory / '.lar-finance-r2-staging'
+        staging_directory.mkdir(parents=True)
+        storage = Mock()
+        original_is_symlink = Path.is_symlink
+
+        def is_symlink(path):
+            if path == staging_directory:
+                return True
+            return original_is_symlink(path)
+
+        with patch(
+            'core.remote_backup.Path.is_symlink',
+            autospec=True,
+            side_effect=is_symlink,
+        ):
+            with self.assertRaises(BackupVerificationError) as raised:
+                execute_remote_backup(self.config, storage, self.db, self.now)
+
+        self.assertEqual(raised.exception.error_code, 'cleanup_failed')
+        self.assertEqual(raised.exception.stage, 'cleanup')
+        storage.head_managed.assert_not_called()
 
     def test_stale_cleanup_failure_aborts_before_remote_operations(self):
         backup_directory = self.db.parent / 'backups'
