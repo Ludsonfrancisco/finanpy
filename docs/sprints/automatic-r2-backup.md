@@ -2,8 +2,8 @@
 
 ## Estado da entrega
 
-A automação está codificada e testada no branch
-`codex/task-automatic-r2-backup`. A imagem inicia um Gunicorn e um scheduler pelo
+A automação está codificada, testada e implantada a partir do `main` no commit
+`0d85999f4e66290fa06484d802d08fbb310ad164`. A imagem inicia um Gunicorn e um scheduler pelo
 Supervisor. O scheduler tenta um backup por dia, às `03:00` em
 `America/Sao_Paulo`; depois de falha, tenta novamente em uma hora. Um restart
 depois do horário agenda a tentativa do dia imediatamente. A cobertura diária usa
@@ -11,11 +11,10 @@ a data local calculada no início da tentativa, enquanto o retry conta uma hora 
 partir da conclusão. Assim, uma tentativa iniciada antes da meia-noite não marca o
 dia seguinte como concluído.
 
-**Ainda não houve ativação no EasyPanel, execução desta automação contra o R2
-real, restart operacional nem restauração de um objeto produzido por ela.** O
-backup R2 manual restaurado em 2026-08-12 é uma evidência anterior e não substitui
-essa prova. Ativação é uma tarefa separada, depois de review, merge em `main` e
-autorização explícita.
+**A ativação foi concluída no EasyPanel real em 2026-08-13.** O scheduler criou o
+objeto do dia, retornou `already_exists` em nova execução e após restart, manteve
+uma única chave e o objeto foi restaurado com hash idêntico em cópia descartável.
+Consulte a [auditoria sanitizada](../audits/automatic-r2-backup-production.md).
 
 ## Fluxo e invariantes
 
@@ -288,14 +287,14 @@ enviados permanecem independentes.
 
 | Gate | Evidência em 2026-08-13 | Estado/limite |
 |---|---|---|
-| Testes focados com `-Wd` | 109 testes, sem falha nem `DeprecationWarning` | Aprovado localmente |
-| Suíte completa com `-Wd` | 381 testes | Aprovado localmente após os fixes desta wave |
-| Cobertura completa | 381 testes; 7.191 statements; 110 misses; 98% | Aprovado, mínimo 90% |
+| Testes focados com `-Wd` | 111 testes, sem falha nem `DeprecationWarning` | Aprovado localmente |
+| Suíte completa com `-Wd` | 383 testes | Aprovado localmente no head final |
+| Cobertura completa | 383 testes; 7.266 statements; 119 misses; 98% | Aprovado, mínimo 90% |
 | Ruff oficial | `ruff check . --config pyproject.toml` | Aprovado |
 | Django/check/deploy/migrations | checks sem issues; nenhuma migration nova | Aprovado |
-| Docker e Supervisor | CI run `31663696379` no head `5d4e461`, build real e smoke com Supervisor 4.3.0 | Aprovado somente nesse head; CI dos fixes seguintes, inclusive desta wave, ainda pendente e não prova EasyPanel |
+| Docker e Supervisor | CI run `31666763605` no head `0d85999f`, build real e smoke com Supervisor 4.3.0 | Aprovado no SHA implantado |
 | Secret scan direcionado | nenhum valor atribuído a access key ou secret em arquivo versionado | Aprovado na matriz final e no conteúdo commitado |
-| R2/EasyPanel reais | não executados nesta entrega | Aberto; exige autorização separada |
+| R2/EasyPanel reais | deploy, objeto, restart/idempotência e restauração isolada em 2026-08-13 | Aprovado; ver auditoria de produção |
 
 O comando Ruff sem `--config` usa hoje `ruff.toml` e encontra dívida legada fora
 do escopo desta documentação. O gate oficial com `pyproject.toml` permanece verde;

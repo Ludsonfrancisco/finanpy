@@ -13,9 +13,9 @@ modernização incremental.
 - API privada `/api/v1/` com sessões por dispositivo, sincronização idempotente,
   contrato OpenAPI e isolamento por Lar;
 - SQLite persistido em `/app/data/db.sqlite3` no container;
-- backup R2 diário codificado com agenda supervisionada e retenção `14/8/12`,
-  ainda não ativado em produção;
-- 381 testes e 98% de cobertura; gate mínimo de 90%;
+- backup R2 diário ativo em produção, com agenda supervisionada, retenção
+  `14/8/12`, idempotência após restart e restauração isolada comprovada;
+- 383 testes e 98% de cobertura; gate mínimo de 90%;
 - cadastro público removido;
 - importação bancária e aplicativo Flutter ainda não implementados.
 
@@ -33,6 +33,7 @@ total.
 - [Segurança e operação](docs/security-and-operations.md)
 - [Runbook do EasyPanel](docs/deploy-easypanel.md)
 - [Backup automático no R2](docs/sprints/automatic-r2-backup.md)
+- [Auditoria da ativação R2 em produção](docs/audits/automatic-r2-backup-production.md)
 - [Sprint 1 — Household Ledger](docs/sprints/sprint-1-household-ledger.md)
 - [Sprint 2 — API privada e sincronização](docs/sprints/sprint-2-api-sync.md)
 
@@ -126,12 +127,14 @@ coverage report --fail-under=90
 
 ## Situação de produção
 
-O código e o runbook não autorizam implantação automática. A credencial histórica
-foi rotacionada no EasyPanel real em 2026-08-12 e as sessões Django anteriores
-foram revogadas. Um backup real foi armazenado em bucket R2 privado e restaurado
-com sucesso em ambiente descartável em 2026-08-12. A produção continua bloqueada
-até a validação restante do runbook no EasyPanel: imagem atual, migrations,
-persistência após restart, proxy, rate limit e smoke checks. Enquanto o banco for
-SQLite, a operação permanece limitada a uma réplica e um worker. A automação
-diária para o R2 está codificada e testada, mas suas variáveis, execução real,
-restart e restauração ainda não foram ativados nem comprovados no EasyPanel.
+O commit `0d85999f4e66290fa06484d802d08fbb310ad164` está implantado no EasyPanel
+`v2.33.1`. Schema atual, integridade, auditoria, Supervisor, um worker, scheduler,
+proxy e smoke público de health/login foram validados em 2026-08-13. A automação
+diária criou uma única chave no bucket R2 privado, permaneceu idempotente após
+restart e foi restaurada com hash idêntico em cópia descartável. Consulte a
+[auditoria sanitizada](docs/audits/automatic-r2-backup-production.md).
+
+Enquanto o banco for SQLite, a operação permanece limitada a uma réplica e um
+worker. O aceite global do runbook ainda precisa de rollback por digest imutável,
+rate limit persistente de login e evidência completa de espaço/migrations. Também
+permanecem a retirada segura de credencial R2 anterior e alertas externos.

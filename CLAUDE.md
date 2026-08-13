@@ -87,12 +87,13 @@ As FKs legadas `user` permanecem para rastreabilidade e usam `PROTECT`.
   reutilizar o valor antigo ainda presente no histórico Git.
 - Backup real off-host restaurado com sucesso em 2026-08-12; evidência sanitizada
   em `docs/audits/2026-08-12-production-backup-restore.md`.
-- Backup R2 diário codificado com Supervisor, confirmação remota e retenção
-  `14/8/12`; ainda não ativado nem restaurado pela automação em produção.
+- Backup R2 diário ativo com Supervisor, confirmação remota e retenção `14/8/12`;
+  objeto de 2026-08-13 validado após restart e restaurado no servidor e off-host.
 - Segredos R2 entram somente pelas sete variáveis do EasyPanel e nunca em Git,
   argumentos, logs ou relatórios. Runbook: `docs/sprints/automatic-r2-backup.md`.
-- Implantação ainda bloqueada até validar imagem/migrations, persistência após
-  restart, proxy, rate limit e smoke checks no EasyPanel real.
+- Deploy, persistência após restart, proxy e smoke público foram validados no
+  EasyPanel real. O aceite global permanece bloqueado por rate limit persistente,
+  rollback por imagem imutável e evidência completa do preflight/migrations.
 
 Consulte `docs/architecture.md`, `docs/setup.md` e
 `docs/deploy-easypanel.md`.

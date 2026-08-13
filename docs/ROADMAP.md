@@ -39,7 +39,7 @@ Objetivo: tornar o projeto seguro e reproduzível antes de adicionar dados reais
 - [x] provar restauração isolada com banco sintético e schema atual;
 - [x] provar restauração off-host do backup real do EasyPanel;
 - [x] codificar e testar backup consistente para o R2 com retenção `14/8/12`;
-- [ ] ativar a automação no EasyPanel e provar execução, idempotência, restart e
+- [x] ativar a automação no EasyPanel e provar execução, idempotência, restart e
   restauração real do objeto gerado;
 - [x] auditar diffs das três branches remotas sem merge automático;
 - [ ] ADR-001 API/autenticação;

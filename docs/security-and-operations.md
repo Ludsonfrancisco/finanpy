@@ -30,9 +30,11 @@ réplica e um worker. O mecanismo passou por ensaio sintético e, em 2026-08-12,
 um backup real foi enviado a um bucket R2 privado e restaurado com hash, migrations,
 auditoria e integridade aprovados. O repositório agora inclui um scheduler
 supervisionado que cria o backup pela API do SQLite e o confirma no R2, sem depender
-do job nativo incompatível com o volume Docker legado do EasyPanel `v2.32.2`.
-Essa automação ainda não foi ativada nem comprovada em produção. PostgreSQL
-permanece a direção futura, não uma mudança autorizada nesta sprint.
+do job nativo incompatível com o volume Docker legado. No EasyPanel `v2.33.1`, a
+automação criou uma chave idempotente, sobreviveu a restart e o objeto foi
+restaurado no servidor e off-host em 2026-08-13. Rate limit, rollback imutável e
+alertas externos permanecem abertos. PostgreSQL continua a direção futura, não uma
+mudança autorizada nesta sprint.
 
 ## Controles de autenticação
 

@@ -3,9 +3,9 @@
 ## Objetivo
 
 Evoluir incrementalmente o monólito Django para uma plataforma financeira
-privada e multiplataforma. Linux/EasyPanel é o ambiente alvo do backend, mas a
-execução nesse ambiente ainda não foi comprovada. Flutter permanece como
-interface futura para iOS, Android e Windows.
+privada e multiplataforma. O backend está em execução no Linux/EasyPanel com
+SQLite, Supervisor, Gunicorn e scheduler R2 validados em 2026-08-13. Flutter
+permanece como interface futura para iOS, Android e Windows.
 
 ## Estado atual comprovado
 
@@ -18,7 +18,7 @@ interface futura para iOS, Android e Windows.
 | Banco | SQLite em caminho absoluto definido por `SQLITE_PATH` |
 | Autenticação | sessão Django no web; tokens opacos por dispositivo na API v1 |
 | Qualidade | Django TestCase, Coverage 7.13.5 e Ruff 0.15.11 |
-| Infra | Docker/Compose; EasyPanel doméstico ainda não validado nesta sprint |
+| Infra | Docker/Compose; EasyPanel `v2.33.1`, uma réplica e um worker validados |
 
 ```mermaid
 flowchart LR
@@ -188,7 +188,7 @@ qual versão vence.
 ## Limites e pontos para investigar
 
 - escolha e versão dos pacotes Flutter, API e banco local;
-- proxy, domínio, TLS, volumes e rate limit no EasyPanel real;
+- rate limit persistente, rollback por imagem imutável e SLA do EasyPanel real;
 - experiência de resolução de conflito no cliente;
 - amostras anonimizadas de OFX/CSV das instituições do casal;
 - necessidade de fila/worker após medir importações;
