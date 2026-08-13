@@ -7,7 +7,11 @@ from xml.etree import ElementTree
 
 MAX_OFX_BYTES = 10 * 1024 * 1024
 OFX_DATE_PATTERN = re.compile(
-    r'\d{8}(?:\d{6}(?:\.\d{1,3})?(?:\[[+-]\d{1,2}(?::[A-Za-z0-9 _+.-]+)?\])?)?'
+    r'(?P<date>\d{8})(?:'
+    r'(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})'
+    r'(?:\.\d{1,3})?'
+    r'(?:\[(?P<offset>[+-]\d{1,2})(?::[A-Za-z0-9 _+.-]+)?\])?'
+    r')?'
 )
 CP1252_CHARSETS = {b'1252', b'CP1252', b'WINDOWS-1252'}
 
@@ -102,8 +106,8 @@ def _parse_ofx(text: str) -> ElementTree.Element:
         return _parse_sgml(ofx)
     try:
         return ElementTree.fromstring(ofx)
-    except ElementTree.ParseError:
-        return _parse_sgml(ofx)
+    except ElementTree.ParseError as error:
+        raise OfxParseError('OFX XML markup is malformed.') from error
 
 
 def _parse_sgml(text: str) -> ElementTree.Element:
@@ -115,6 +119,7 @@ def _parse_sgml(text: str) -> ElementTree.Element:
         'SIGNONMSGSRSV1',
         'SONRS',
         'STATUS',
+        'FI',
         'BANKMSGSRSV1',
         'STMTTRNRS',
         'STMTRS',
@@ -202,12 +207,22 @@ def _optional_text(element: ElementTree.Element | None, tag: str) -> str | None:
 
 
 def _parse_date(value: str) -> date:
-    if OFX_DATE_PATTERN.fullmatch(value) is None:
+    match = OFX_DATE_PATTERN.fullmatch(value)
+    if match is None:
         raise OfxParseError('OFX date is invalid.')
     try:
-        return date.fromisoformat(f'{value[:4]}-{value[4:6]}-{value[6:8]}')
+        parsed_date = date.fromisoformat(
+            f'{match["date"][:4]}-{match["date"][4:6]}-{match["date"][6:8]}'
+        )
     except ValueError as error:
         raise OfxParseError('OFX date is invalid.') from error
+    if match['hour'] is not None:
+        clock_limits = (('hour', 23), ('minute', 59), ('second', 59))
+        if any(int(match[key]) > limit for key, limit in clock_limits):
+            raise OfxParseError('OFX time is invalid.')
+        if match['offset'] is not None and not -12 <= int(match['offset']) <= 14:
+            raise OfxParseError('OFX timezone offset is invalid.')
+    return parsed_date
 
 
 def _parse_amount(value: str) -> Decimal:

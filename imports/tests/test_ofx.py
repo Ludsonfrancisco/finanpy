@@ -61,6 +61,11 @@ class ParseNubankOfxTest(SimpleTestCase):
         self.assertEqual(parsed.external_account_id, 'synthetic-canonical-003')
         self.assertEqual(parsed.transactions[0].posted_on, date(2026, 3, 2))
 
+    def test_parses_sgml_signon_financial_institution_aggregate(self):
+        parsed = parse_nubank_ofx(self._fixture_bytes('nubank-signon-fi-sgml.ofx'))
+
+        self.assertEqual(parsed.external_account_id, 'synthetic-fi-account-004')
+
     def test_rejects_bomless_utf8_declared_by_ofx_header(self):
         content = self._fixture_bytes('nubank-account.ofx').replace(
             b'CHARSET:1252', b'CHARSET:UTF-8'
@@ -76,10 +81,25 @@ class ParseNubankOfxTest(SimpleTestCase):
 
     def test_rejects_malformed_ofx_date_or_timezone(self):
         fixture = self._fixture_bytes('nubank-canonical-sgml.ofx')
-        for malformed_value in (b'20260302invalid', b'20260302120000[-03'):
+        for malformed_value in (
+            b'20260302invalid',
+            b'20260302120000[-03',
+            b'20260302240000',
+            b'20260302126000',
+            b'20260302125960',
+            b'20260302120000[+99]',
+        ):
             with self.subTest(value=malformed_value), self.assertRaises(OfxParseError):
                 content = fixture.replace(b'20260302120000[-03:00]', malformed_value)
                 parse_nubank_ofx(content)
+
+    def test_rejects_malformed_xml_without_sgml_header_fallback(self):
+        content = self._fixture_bytes('nubank-account.ofx').replace(
+            b'DATA:OFXSGML', b'DATA:OFXXML'
+        )
+
+        with self.assertRaises(OfxParseError):
+            parse_nubank_ofx(content)
 
     def test_rejects_transactions_missing_required_fields(self):
         fixture = self._fixture_bytes('nubank-account.ofx')
