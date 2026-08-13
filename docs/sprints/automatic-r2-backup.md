@@ -85,17 +85,15 @@ o temporário. Nenhum deles autoriza apagar objetos ou editar o banco manualment
 
 ### Resíduo temporário depois de falha
 
-Inspecione ou remova um resíduo somente com o `backup-scheduler` parado e sem
-nenhum `backup_to_r2` manual em execução. Não use globs em comandos de remoção.
-Primeiro pare e confirme os processos:
+Inspecione ou remova um resíduo somente depois de colocar o serviço em manutenção
+e pará-lo pelo mecanismo suportado do EasyPanel. Confirme na UI, no status e nos
+logs da plataforma que o container e seus processos `web` e `backup-scheduler`
+estão realmente parados e que não existe execução manual de `backup_to_r2`. Não
+presuma que maintenance mode, sozinho, interrompe processos.
 
-```sh
-supervisorctl stop backup-scheduler
-supervisorctl status backup-scheduler
-pgrep -af 'manage.py backup_to_r2' && exit 1 || true
-```
-
-Depois informe um único path observado, valide-o e remova somente esse arquivo:
+Somente depois desse stop comprovado, use um one-off ou console suportado pelo
+EasyPanel que monte o mesmo `/app/data` sem iniciar a aplicação. Informe um único
+path absoluto observado, sem glob nem loop, valide-o e remova somente esse arquivo:
 
 ```sh
 export R2_TEMP_CANDIDATE='/app/data/backups/.lar-finance-r2-<identificador>.sqlite3'
@@ -106,8 +104,14 @@ from pathlib import Path
 
 temporary_directory = Path('/app/data/backups').resolve()
 production_database = Path('/app/data/db.sqlite3').resolve()
-candidate = Path(os.environ['R2_TEMP_CANDIDATE']).resolve(strict=True)
-valid_name = re.fullmatch(r'\.lar-finance-r2-[^/]+\.sqlite3', candidate.name)
+provided_path = Path(os.environ['R2_TEMP_CANDIDATE'])
+if not provided_path.is_absolute() or provided_path.is_symlink():
+    raise SystemExit('refusing non-absolute or symbolic temporary path')
+candidate = provided_path.resolve(strict=True)
+valid_name = re.fullmatch(
+    r'\.lar-finance-r2-[A-Za-z0-9_-]+\.sqlite3',
+    candidate.name,
+)
 if (
     candidate.parent != temporary_directory
     or candidate == production_database
@@ -118,12 +122,19 @@ if (
 candidate.unlink()
 print('validated temporary file removed')
 PY
-supervisorctl start backup-scheduler
 ```
 
 Nunca substitua o path por `/app/data/db.sqlite3`, nunca remova o diretório
 `/app/data/backups` inteiro e nunca execute essa limpeza com scheduler ou backup
-manual ativo. Se a validação recusar o path, investigue em vez de contorná-la.
+manual ativo. Se não for possível provar que o container e os processos estão
+parados, não apague nada: marque o procedimento como `[INVESTIGAR]` e escale ao
+operador da plataforma. Se a validação recusar o path, investigue em vez de
+contorná-la.
+
+Depois da inspeção, reinicie ou faça redeploy normalmente pela UI do EasyPanel,
+sem command override, para usar o `CMD` Supervisor da imagem. Confirme nos logs e
+no status da plataforma que `web` e `backup-scheduler` voltaram saudáveis antes de
+sair da manutenção.
 
 ## Chave, metadados e retenção
 
