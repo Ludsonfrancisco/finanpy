@@ -1,6 +1,6 @@
 # Lar Finance — PRD do estado atual e evolução do produto
 
-> Fonte única de verdade do produto. Atualizado em 10/08/2026 a partir do candidato `codex/sprint-2-api-sync`, migrations, 277 testes, configuração Docker e documentação operacional.
+> Fonte única de verdade do produto. Atualizado em 13/08/2026 a partir do candidato `codex/task-automatic-r2-backup`, migrations, 370 testes, configuração Docker e documentação operacional.
 
 ## Status e convenções
 
@@ -98,6 +98,7 @@ flowchart LR
 | Ambiente | python-dotenv 1.2.2 | `requirements.txt` |
 | Runtime indireto | asgiref 3.11.1, sqlparse 0.5.5, tzdata 2026.1 | `requirements.txt` |
 | Qualidade | Ruff 0.15.11, Coverage 7.13.5 | `requirements.txt` |
+| Backup remoto | boto3 1.43.53, filelock 3.32.0, Supervisor 4.3.0 e R2 S3 API | `requirements.txt`, `deploy/supervisord.conf`, `core/remote_backup.py` |
 | Banco | SQLite, caminho absoluto configurável; `/app/data/db.sqlite3` no container | `core/settings.py`, Docker e Compose |
 | Frontend | Django Templates, HTML/CSS/JavaScript e Tailwind via CDN | templates e documentação |
 | Fila/cache | inexistentes | settings e dependências |
@@ -243,7 +244,11 @@ Instituições, cartões/faturas, transferências, tags, recorrências, orçamen
 
 ### 6.3 Comandos atuais
 
-`manage.py migrate`, `collectstatic`, `runserver`, `test`, `check`, `makemigrations --check`, `createsuperuser`, `backup_sqlite`, `audit_household_integrity`, `coverage` e `ruff`. Os scripts de QA foram neutralizados no HEAD; a credencial histórica foi rotacionada pelo proprietário no EasyPanel em 2026-08-12.
+`manage.py migrate`, `collectstatic`, `runserver`, `test`, `check`,
+`makemigrations --check`, `createsuperuser`, `backup_sqlite`, `backup_to_r2`,
+`run_backup_scheduler`, `audit_household_integrity`, `coverage` e `ruff`. Os
+scripts de QA foram neutralizados no HEAD; a credencial histórica foi rotacionada
+pelo proprietário no EasyPanel em 2026-08-12.
 
 ## 7. Integrações backend e externas
 
@@ -277,7 +282,7 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 | Resolvido | volume SQLite antes apontava para caminho de arquivo | persistência/boot não confiáveis | Sprint 1 passou a montar `/app/data`; validar no EasyPanel real |
 | Resolvido no código | flags e headers de segurança de produção | exposição em produção | settings por ambiente e `check --deploy --fail-level WARNING`; validação real do proxy continua bloqueada |
 | Resolvido operacionalmente | ausência de backup real fora do servidor | perda do único disco/host impediria recuperação | SQLite real enviado a bucket R2 privado e restaurado com hash, migrations, auditoria e integridade em 2026-08-12 |
-| Alto | job nativo do EasyPanel incompatível com o volume Docker legado | backup R2 ainda não é automático | automatizar `backup_sqlite` + upload S3 ou migrar volume/banco em tarefa própria |
+| Resolvido no código; ativação aberta | job nativo do EasyPanel incompatível com o volume Docker legado | a nova automação ainda não foi executada em produção | scheduler supervisionado usa a API do SQLite, confirma o objeto no R2 e aplica retenção `14/8/12`; ativar e restaurar em tarefa operacional separada |
 | Alto | SQLite com múltiplos clientes e sincronização futura | concorrência, lock e backup frágil | PostgreSQL incremental |
 | Resolvido no backend | API privada v1 e OpenAPI 1.0.0 entregues | Flutter ainda inexistente | manter testes de contrato e compatibilidade |
 | Alto | modelo mistura cartão e conta | saldos/faturas incorretos | separar agregados antes da importação completa |
@@ -302,7 +307,13 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-Na conclusão da Sprint 2, 277 testes Django passaram com 98% de cobertura (5.473 statements, 96 não cobertos). Ruff, warnings/deprecations, Django check, migrations check e deploy check estrito também passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI, observabilidade e migrations fresh/legadas/rollback/replay.
+No candidato do backup automático, 370 testes Django passaram com 98% de
+cobertura (6.929 statements, 108 não cobertos). Ruff com a configuração oficial,
+warnings/deprecations, Django check, migrations check e deploy check estrito também
+passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de
+refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI,
+observabilidade, migrations fresh/legadas/rollback/replay, backup consistente,
+gateway R2, retenção, scheduler, concorrência e logs sanitizados.
 
 Sem cobertura comprovada:
 
@@ -311,6 +322,8 @@ Sem cobertura comprovada:
 - importações, deduplicação, cartões, faturas, offline e Flutter, pois não existem;
 - armazenamento seguro e ciclo de tokens em um cliente mobile/desktop real;
 - testes end-to-end reais no EasyPanel.
+- ativação, restart, download e restauração reais do objeto criado pela nova
+  automação R2.
 
 Novos recursos seguirão TDD: teste falha, implementação mínima, refatoração e suíte completa.
 
@@ -406,7 +419,9 @@ Offline-first:
 O roteiro completo, dependências, riscos e critérios de aceite estão em [ROADMAP.md](docs/ROADMAP.md). Ordem resumida:
 
 - [x] Sprint 1: acesso por Lar, responsáveis, backfill e integridade do ledger legado.
-- [ ] Fundação operacional restante: backup real externo e rotação concluídos; ainda faltam deploy, restart, proxy, rate limit e smoke checks no EasyPanel real.
+- [ ] Fundação operacional restante: backup real externo, rotação e código do
+  backup R2 automático concluídos; ainda faltam ativar/provar a automação e
+  validar deploy, restart, proxy, rate limit e smoke checks no EasyPanel real.
 - [x] Sprint 2: API v1, autenticação e contrato de sincronização — concluída após revisão independente final sem achados.
 - [ ] Sprint 3: importação OFX/CSV, deduplicação e conciliação.
 - [ ] Sprint 4: cartões, faturas, limites e parcelamentos.
@@ -423,11 +438,16 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
 
 ## 18. Quick wins
 
-Concluídos: remoção de PII do HEAD, secret scanning, correção do volume SQLite, remoção de signup/landing, criação do Lar e responsáveis, backup consistente, auditoria de integridade, rotação externa da credencial histórica e restauração real off-host em R2.
+Concluídos: remoção de PII do HEAD, secret scanning, correção do volume
+SQLite, remoção de signup/landing, criação do Lar e responsáveis, backup
+consistente, auditoria de integridade, rotação externa da credencial histórica,
+restauração real off-host em R2 e implementação testada do backup diário R2 com
+retenção `14/8/12`.
 
 Pendentes:
 
-- Automatizar o backup consistente no R2 e definir retenção; o job nativo não suporta o volume Docker legado atual.
+- Ativar o backup automático no EasyPanel e provar objeto, restart, idempotência e
+  restauração descartável sem tocar no banco real.
 - Adicionar hash idempotente e `ImportBatch` antes do primeiro importador.
 - Separar “cartão” de “conta” antes de calcular saldos.
 - Exibir “não informado” em vez de `R$ 0,00` para dados ausentes.
@@ -481,6 +501,11 @@ Pendentes:
 - Branches remotas `final-sprints`, `finapy-pwa` e `fix/easytunnel-deploy` foram auditadas por diff em 2026-08-12. Nenhuma deve ser mesclada ou receber cherry-pick no estado atual; evidências e ideias preserváveis estão em `docs/audits/2026-08-12-remote-branches.md`.
 - O SQLite real do EasyPanel foi enviado a bucket R2 privado e restaurado em cópia descartável em 2026-08-12; hash, migrations, auditoria e integridade passaram. Evidência: `docs/audits/2026-08-12-production-backup-restore.md`.
 - A Sprint 1 registrou 151 testes; a Sprint 2 foi concluída com 277 testes e 98% de cobertura.
-- Ruff, warnings, Django check, migrations check e deploy check passaram localmente; a CI mantém esses gates e secret scan.
+- O candidato `codex/task-automatic-r2-backup` passou 370 testes e 98% de cobertura;
+  o runbook registra a matriz local. Isso não é evidência de ativação no
+  EasyPanel nem de uso do R2 real pela nova automação.
+- Ruff com `pyproject.toml`, warnings, Django check, migrations check e deploy
+  check passaram localmente; a CI mantém esses gates e secret scan. O Ruff sem
+  `--config` ainda encontra dívida legada sob `ruff.toml`.
 - Cadastro público e landing foram removidos; login e fallback web privado permanecem.
 - O servidor EasyPanel e a base real não foram alterados durante as Sprints 1 e 2.

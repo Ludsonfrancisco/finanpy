@@ -28,10 +28,11 @@ Não reproduzir os valores em tickets, docs ou logs.
 O Compose monta `/app/data` e usa `SQLITE_PATH=/app/data/db.sqlite3`, com uma
 réplica e um worker. O mecanismo passou por ensaio sintético e, em 2026-08-12,
 um backup real foi enviado a um bucket R2 privado e restaurado com hash, migrations,
-auditoria e integridade aprovados. O agendamento ainda não está automatizado porque
-o volume real usa o layout Docker legado incompatível com o job nativo do
-EasyPanel `v2.32.2`. PostgreSQL permanece a direção futura, não uma mudança
-autorizada nesta sprint.
+auditoria e integridade aprovados. O repositório agora inclui um scheduler
+supervisionado que cria o backup pela API do SQLite e o confirma no R2, sem depender
+do job nativo incompatível com o volume Docker legado do EasyPanel `v2.32.2`.
+Essa automação ainda não foi ativada nem comprovada em produção. PostgreSQL
+permanece a direção futura, não uma mudança autorizada nesta sprint.
 
 ## Controles de autenticação
 
@@ -96,15 +97,26 @@ nulo e o mesmo request ID, sem expor o texto da exceção.
 
 - cópia primária no volume SQLite atual; adaptar a rotina quando a migração
   futura para PostgreSQL for autorizada `[INVESTIGAR]`;
-- backup automatizado local separado do volume `[INVESTIGAR implementação]`;
+- cópia temporária consistente criada sob `/app/data/backups` e removida ao fim;
+  ela é apenas etapa do upload e não conta como segunda cópia persistente;
 - cópia real fora do servidor/casa em bucket R2 privado, com criptografia gerenciada
   pelo provedor e restauração provada em 2026-08-12;
-- retenção diária/semanal/mensal a definir;
+- automação R2 codificada com 14 backups diários, 8 domingos semanais e 12
+  primeiros dias mensais; objetos desconhecidos e o último backup válido são
+  preservados;
 - teste automatizado de integridade;
 - restauração ensaiada periodicamente em ambiente isolado;
 - RPO/RTO iniciais `[INVESTIGAR]` após entender tolerância do usuário.
 
-Backup só é considerado válido após restauração testada.
+Backup só é considerado válido após restauração testada. A prova de
+2026-08-12 validou o mecanismo manual anterior, não o objeto criado pela nova
+automação; ativação, download e restauração reais continuam abertos.
+
+O token operacional R2 deve ter somente Object Read & Write, limitado ao bucket
+privado de backup. Isso cobre listar, ler, criar e excluir objetos sem conceder
+acesso a outros buckets. Access key e secret ficam apenas no secret store do
+EasyPanel. O runbook reproduzível está em
+`docs/sprints/automatic-r2-backup.md`.
 
 ## Observabilidade
 
@@ -126,6 +138,11 @@ e deriva `authenticated`/`device_uuid` somente de uma `DeviceSession` em
 O evento não inclui query string, corpo ou headers e não inclui email, CPF,
 token, saldo, valor, descrição, arquivo ou payload de provedor. Retenção,
 coleta centralizada, métricas e alertas ainda não foram implantados.
+
+O processo de backup emite um evento JSON sanitizado em stdout com horário,
+serviço, evento, status, etapa, chave lógica, tamanho, prefixo do SHA-256, duração,
+quantidade excluída e código de erro. Credenciais e conteúdo financeiro não são
+campos do evento. Alertas externos para esses eventos continuam pendentes.
 
 Os loggers `django`, `django.request` e `django.security` usam stdout JSON seguro
 com timestamp, nível, nome do logger, status e request ID. Esse formatter não

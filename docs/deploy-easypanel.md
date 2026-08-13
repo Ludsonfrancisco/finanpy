@@ -15,6 +15,10 @@ seja concluído e registrado sem segredos:
   descartável em 2026-08-12, com SHA-256, migrations, auditoria e integridade
   aprovados. Consulte
   `docs/audits/2026-08-12-production-backup-restore.md`.
+- [x] Automação diária R2, idempotência, retenção `14/8/12`, scheduler e
+  isolamento do processo web implementados e cobertos por testes locais.
+- [ ] Cadastrar as variáveis R2, ativar a imagem e provar execução, restart,
+  objeto remoto e restauração descartável da nova automação no EasyPanel real.
 - [ ] Concluir o restante deste runbook na instalação real: implantar a imagem
   atual, aplicar migrations controladas, validar persistência após restart, proxy,
   rate limit e smoke checks, e guardar versão da imagem e resultado.
@@ -27,6 +31,8 @@ O SQLite exige que esta aplicação opere com uma única instância gravadora:
 
 - exatamente **1 réplica** do serviço web no EasyPanel;
 - Gunicorn com exatamente **1 worker**;
+- Supervisor inicia Gunicorn e um único `run_backup_scheduler`; não crie um
+  segundo cron/job para o mesmo comando;
 - volume persistente montado em `/app/data`;
 - `SQLITE_PATH=/app/data/db.sqlite3`;
 - se houver uploads, volume persistente adicional montado em `/app/media`.
@@ -69,6 +75,26 @@ SECURE_HSTS_SECONDS=<valor aprovado após validar TLS>
 SECURE_HSTS_INCLUDE_SUBDOMAINS=<True somente se todos os subdomínios usarem HTTPS>
 SECURE_HSTS_PRELOAD=<True somente após decisão explícita de preload>
 ```
+
+Para o backup automático, cadastre também as sete variáveis abaixo. Preencha os
+dois valores secretos somente no secret store; nunca os copie para terminal, Git,
+logs, tickets ou relatórios.
+
+```text
+R2_BACKUP_ENDPOINT_URL=https://<account-id>.r2.cloudflarestorage.com
+R2_BACKUP_BUCKET=lar-finance-backups
+R2_BACKUP_PREFIX=production
+R2_BACKUP_TIME=03:00
+R2_BACKUP_TIME_ZONE=America/Sao_Paulo
+```
+
+Cadastre `R2_BACKUP_ACCESS_KEY_ID` e `R2_BACKUP_SECRET_ACCESS_KEY` como campos
+secretos separados, sem expor os valores na visualização ou nos logs do deploy.
+
+Use token Cloudflare R2 com permissão **Object Read & Write** limitada apenas ao
+bucket privado `lar-finance-backups`. Ela é necessária para listar, ler, criar e
+excluir objetos gerenciados. Não conceda acesso a outros buckets nem acesso
+administrativo à conta.
 
 `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` aceitam múltiplos valores separados por
 vírgula; na implementação atual, não coloque espaços depois das vírgulas. Nunca
@@ -166,8 +192,18 @@ EasyPanel limitado ao bucket `lar-finance-backups` e nunca registre suas chaves.
 Na instalação `v2.32.2`, o job nativo de `Volume Backups` não lê o volume Docker
 legado `financeiro_sqlite_data`: ele procura um diretório do layout novo sob
 `/etc/easypanel/projects/.../volumes/sqlite_data`. Não recrie esse job até migrar
-o volume ou implementar um runner que execute `backup_sqlite` antes do upload.
-`[INVESTIGAR]` Definir retenção e automatização em tarefa própria.
+o volume. A imagem candidata contorna essa limitação com um scheduler no próprio
+container: ele usa a API de backup do SQLite antes do upload, confirma o objeto com
+`HeadObject` e só então aplica retenção. Operação manual:
+
+```sh
+python manage.py backup_to_r2
+```
+
+Não execute esse comando para ativação real antes de concluir o preflight e a
+autorização operacional. Configuração, resultados, download descartável e rollback
+estão no [runbook do backup automático](sprints/automatic-r2-backup.md). O estado
+atual é: **código e testes concluídos; produção ainda não ativada**.
 
 ## Ensaio obrigatório em restauração descartável
 
@@ -250,6 +286,10 @@ Registre apenas status e identificadores técnicos, nunca conteúdo financeiro:
 Qualquer falha de persistência, isolamento por Lar, autenticação, auditoria ou TLS é
 critério de rollback.
 
+Depois da ativação específica do backup, os smoke checks também devem confirmar
+os dois processos do Supervisor, um resultado `created` ou `already_exists`, a
+chave única do dia e um restart idempotente sem indisponibilizar o web.
+
 ## Rollback
 
 O caminho prioritário é **parar escritas, voltar para a imagem anterior compatível
@@ -269,6 +309,12 @@ Django ou Gunicorn estiver aberto.
    smoke checks antes de liberar tráfego.
 7. Registre motivo, horários, imagens, hash do backup e resultados, sem dados
    pessoais ou segredos.
+
+Se o rollback for motivado apenas pela automação de backup e o schema continuar
+compatível, volte para a imagem anterior imutável que inicia somente o Gunicorn.
+Não apague nenhum objeto R2 durante o rollback. As variáveis podem permanecer no
+secret store sem consumidor ou ser removidas depois de preservar evidência; nunca
+revogue uma credencial antes de confirmar que não há outro consumidor autorizado.
 
 Downgrade com `python manage.py migrate <app> <migration>` só é aceitável se o grafo
 exato, a imagem anterior e o mesmo estado de dados tiverem passado por ida e volta
@@ -290,7 +336,9 @@ Ao concluir uma execução real, registre em local operacional seguro:
 - mount paths, número de réplicas e workers;
 - hash e localização lógica do backup externo, sem credenciais de acesso;
 - resultados do preflight, ensaio, migrations, auditoria, persistência após restart,
-  rate limit, smoke checks e eventual rollback.
+  rate limit, smoke checks e eventual rollback;
+- status do backup automático, chave lógica, tamanho, SHA-256, idempotência,
+  restart e restauração da cópia descartável, sem credenciais.
 
 Enquanto esse registro não existir, o status correto continua sendo: **procedimento
 documentado, deploy real no EasyPanel ainda não validado**.
