@@ -6,6 +6,8 @@ from typing import Literal
 from xml.etree import ElementTree
 
 MAX_OFX_BYTES = 10 * 1024 * 1024
+MAX_NORMALIZED_TEXT_LENGTH = 255
+MAX_NORMALIZED_AMOUNT = Decimal('9999999999.99')
 OFX_DATE_PATTERN = re.compile(
     r'(?P<date>\d{8})(?:'
     r'(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})'
@@ -47,7 +49,7 @@ class ParsedNubankOfx:
 
 
 def parse_nubank_ofx(content: bytes) -> ParsedNubankOfx:
-    """Parse a supported Nubank account or credit-card OFX statement from bytes."""
+    """Parse a BRL OFX statement structurally compatible with the Nubank pilot."""
     if len(content) > MAX_OFX_BYTES:
         raise OversizedOfxError('OFX content exceeds the maximum accepted size.')
 
@@ -65,7 +67,15 @@ def parse_nubank_ofx(content: bytes) -> ParsedNubankOfx:
         product_type = 'credit_card'
         account = card_account
 
-    account_id = _required_text(account, 'ACCTID', UnsupportedOfxError)
+    currency = _required_text(root, './/CURDEF', UnsupportedOfxError).upper()
+    if currency != 'BRL':
+        raise UnsupportedOfxError('OFX statement currency is unsupported.')
+
+    account_id = _limited_text(
+        _required_text(account, 'ACCTID', UnsupportedOfxError),
+        'ACCTID',
+        UnsupportedOfxError,
+    )
     transaction_list = root.find('.//BANKTRANLIST')
     if transaction_list is None:
         raise OfxParseError('OFX statement is missing its transaction list.')
@@ -177,10 +187,13 @@ def _parse_transaction(item: ElementTree.Element) -> ParsedOfxTransaction:
     transaction_type: Literal['income', 'expense']
     transaction_type = 'expense' if amount < 0 else 'income'
     return ParsedOfxTransaction(
-        external_id=_optional_text(item, 'FITID'),
+        external_id=_limited_optional_text(item, 'FITID'),
         posted_on=_parse_date(_required_text(item, 'DTPOSTED')),
         amount=amount,
-        description=_required_text(item, 'MEMO'),
+        description=_limited_text(
+            ' '.join(_required_text(item, 'MEMO').split()),
+            'MEMO',
+        ),
         transaction_type=transaction_type,
     )
 
@@ -204,6 +217,24 @@ def _optional_text(element: ElementTree.Element | None, tag: str) -> str | None:
         return None
     value = child.text.strip()
     return value or None
+
+
+def _limited_optional_text(
+    element: ElementTree.Element | None,
+    tag: str,
+) -> str | None:
+    value = _optional_text(element, tag)
+    return _limited_text(value, tag) if value is not None else None
+
+
+def _limited_text(
+    value: str,
+    tag: str,
+    error_type: type[OfxParseError] = OfxParseError,
+) -> str:
+    if len(value) > MAX_NORMALIZED_TEXT_LENGTH:
+        raise error_type(f'OFX {tag} data exceeds the accepted length.')
+    return value
 
 
 def _parse_date(value: str) -> date:
@@ -232,6 +263,10 @@ def _parse_amount(value: str) -> Decimal:
         raise OfxParseError('OFX amount is invalid.') from error
     if not amount.is_finite():
         raise OfxParseError('OFX amount is invalid.')
+    if abs(amount) > MAX_NORMALIZED_AMOUNT:
+        raise OfxParseError('OFX amount exceeds the accepted range.')
+    if amount.as_tuple().exponent < -2:
+        raise OfxParseError('OFX amount has unsupported precision.')
     if amount.is_zero():
         return Decimal('0.00')
     return amount

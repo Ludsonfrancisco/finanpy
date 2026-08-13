@@ -6,11 +6,16 @@ O Lar Finance começa com exportação/importação manual porque é a alternati
 
 ## Implementação atual: piloto OFX Nubank
 
-O backend já aceita OFX sintético compatível com Nubank para extrato de conta e
-cartão (`bank_account` e `credit_card`). O limite é 10 MiB. O servidor calcula
+O backend aceita OFX BRL estruturalmente compatível com o perfil Nubank testado
+para extrato de conta e cartão (`bank_account` e `credit_card`). O limite é 10 MiB. O servidor calcula
 SHA-256, analisa e armazena somente os dados normalizados da prévia; o OFX bruto
-é descartado. A prévia expira em até 24 horas e nunca altera o ledger antes da
+é descartado. A prévia deixa de ser acionável em 24 horas e nunca altera o ledger antes da
 confirmação explícita.
+
+Os arquivos cobertos não oferecem um marcador institucional confiável. Assim,
+o rótulo interno `nubank` indica o perfil de compatibilidade, não autentica a
+origem. O parser exige `CURDEF=BRL`, estrutura conta/cartão e limites que cabem
+nos models; outro banco com estrutura idêntica pode ser aceito.
 
 A conta é encontrada pelo identificador OFX vinculado. Sem vínculo, a prévia
 fica aguardando que o usuário selecione uma conta do mesmo Lar; o responsável
@@ -23,6 +28,14 @@ aviso por fingerprint. Arquivo/FITID repetido é ignorado; fingerprint semelhant
 é só aviso e requer confirmação. A API privada oferece criar prévia, consultar,
 vincular conta, confirmar e cancelar; seus payloads resumidos não trazem linhas
 ou dados financeiros. O contrato está em `docs/openapi-v1.yaml`.
+
+Cancelar remove imediatamente as linhas normalizadas, mantendo apenas o recibo
+técnico do lote. Linhas de previews expirados são removidas no início de
+criação/consulta de importação, pelo comando idempotente
+`python manage.py purge_import_previews` e pelo processo independente
+`run_import_preview_purge_scheduler`, executado pelo Supervisor imediatamente no
+start e novamente na expiração mais próxima, com espera limitada a uma hora.
+Esse processo não depende do backup/R2.
 
 Fora deste piloto: CSV, outros bancos, Open Finance, limite, fatura futura,
 parcelas, empréstimos, categorização inteligente e Flutter. Campos ausentes não

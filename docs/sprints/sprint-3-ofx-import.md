@@ -3,7 +3,8 @@
 ## Resultado
 
 O piloto privado de importação manual está disponível no backend. Ele aceita
-somente OFX sintético compatível com Nubank, nos produtos `bank_account` e
+OFX BRL estruturalmente compatível com os arquivos Nubank cobertos pelos testes,
+nos produtos `bank_account` e
 `credit_card`. O arquivo é enviado, analisado em prévia e só altera o ledger
 depois da confirmação explícita.
 
@@ -11,8 +12,9 @@ depois da confirmação explícita.
 
 - modelos `ImportBatch`, `ImportRecord`, `ImportAccountLink` e
   `SourceReference`, com limites de Lar também protegidos por triggers SQLite;
-- parser OFX Nubank que aceita os formatos OFX 1.x SGML e XML esperados pelo
-  piloto, normaliza datas e valores e rejeita campos estruturais inválidos;
+- parser do perfil OFX que aceita os formatos OFX 1.x SGML e XML esperados pelo
+  piloto, exige `CURDEF=BRL` e rejeita texto, valor, precisão ou campos
+  estruturais que não cabem no modelo persistido;
 - arquivo limitado a 10 MiB, hash SHA-256 por Lar, prévia válida por até 24h e
   descarte do conteúdo OFX bruto após o parse;
 - associação automática por identificador OFX já vinculado ou parada para
@@ -28,6 +30,11 @@ depois da confirmação explícita.
 - ensaio de migration SQLite que instala o schema `imports`, verifica
   constraints/triggers e faz rollback completo do app sem remover `Account` ou
   `Transaction` existentes.
+- cancelamento remove imediatamente as linhas normalizadas e conserva o recibo
+  técnico do lote. Expirados são limpos de modo idempotente ao criar/consultar
+  importações, pelo comando `python manage.py purge_import_previews` e pelo
+  processo independente do Supervisor, que acorda na próxima expiração com
+  intervalo limitado a uma hora.
 
 ## Limites conscientes
 
@@ -48,8 +55,14 @@ confirmados: use o procedimento financeiro de correção/auditoria a definir.
 
 ## Riscos restantes
 
-- O escopo é deliberadamente restrito ao formato Nubank coberto por fixtures
-  sintéticas; mudanças no arquivo real exigem nova versão do parser e testes.
+- Os OFX cobertos não trazem identificador de instituição confiável. Portanto,
+  `provider=nubank` identifica o perfil selecionado, não prova a origem do
+  arquivo. O parser valida BRL e compatibilidade estrutural; outro banco com a
+  mesma estrutura pode ser aceito. Origem verificável exige marcador futuro.
+- A garantia operacional de retenção depende do processo Supervisor
+  `import-preview-purge`, que executa imediatamente no start, acorda para a
+  expiração mais próxima e limita qualquer espera a uma hora. O deploy mantém
+  uma réplica, um worker web e os schedulers independentes.
 - SQLite continua limitado a uma réplica e um worker; concorrência além dessa
   topologia não foi homologada.
 - O OFX não fornece de modo confiável limite, faturas futuras ou parcelas; esses
@@ -65,11 +78,26 @@ confirmados: use o procedimento financeiro de correção/auditoria a definir.
 - Task 6: teste de migration, documentos e matriz final registrados no commit
   desta entrega.
 
+## Correções da revisão final
+
+- contagens do recibo são recalculadas após avisos virarem lançamentos criados;
+- cancelamento relê e bloqueia o lote em transação atômica, sem sobrescrever
+  preview já vinculado ou confirmado;
+- conta OFX nunca é vinculada a `Account.CREDIT`, enquanto cartão exige esse tipo;
+- `ACCTID`, `FITID`, `MEMO`, moeda, escala e precisão do valor são validados antes
+  de qualquer persistência e retornam erros OFX sanitizados;
+- linhas normalizadas canceladas são removidas imediatamente. Expiradas são
+  removidas até o prazo pelo scheduler Supervisor, que acorda para a expiração
+  mais próxima e limita a espera a uma hora; o recibo técnico do batch permanece;
+- OpenAPI registra 10 MiB, códigos estáveis, `expires_at` e a limitação de que o
+  perfil estrutural não autentica a instituição de origem.
+
 ## Matriz final da Task 6
 
-- `python -Wd manage.py test`: 436 testes aprovados.
-- `coverage run manage.py test` + `coverage report --fail-under=90`: 436 testes,
-  98% (8.430 statements, 161 não cobertos), gate aprovado.
+- `python -Wd manage.py test` focado nas alterações: 84 testes aprovados sem
+  `DeprecationWarning`.
+- `coverage run manage.py test` + `coverage report --fail-under=90`: 447 testes,
+  98% (8.620 statements, 163 não cobertos), gate aprovado.
 - Ruff, `manage.py check`, migration drift e `git diff --check`: aprovados.
 - `check --deploy --fail-level WARNING` foi aprovado com variáveis de produção
   sintéticas. Com as variáveis efêmeras obrigatórias de teste (`DEBUG=True` e

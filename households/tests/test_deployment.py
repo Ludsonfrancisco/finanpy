@@ -9,11 +9,14 @@ from core.settings import BASE_DIR
 
 
 class SQLiteDeploymentConfigurationTest(SimpleTestCase):
-    def test_supervisor_runs_one_web_worker_and_backup_scheduler(self):
+    def test_supervisor_runs_one_web_worker_and_independent_schedulers(self):
         supervisor = self._supervisor_config()
         web_command = shlex.split(supervisor['program:web']['command'])
         scheduler_command = shlex.split(
             supervisor['program:backup-scheduler']['command']
+        )
+        purge_command = shlex.split(
+            supervisor['program:import-preview-purge']['command']
         )
 
         self.assertEqual(
@@ -30,6 +33,10 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
         self.assertEqual(
             scheduler_command,
             ['python', 'manage.py', 'run_backup_scheduler'],
+        )
+        self.assertEqual(
+            purge_command,
+            ['python', 'manage.py', 'run_import_preview_purge_scheduler'],
         )
 
     def test_supervisor_keeps_both_processes_running_and_forwards_signals(self):
@@ -49,7 +56,11 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
         }
 
         self.assertTrue(supervisor.getboolean('supervisord', 'nodaemon'))
-        for section_name in ('program:web', 'program:backup-scheduler'):
+        for section_name in (
+            'program:web',
+            'program:backup-scheduler',
+            'program:import-preview-purge',
+        ):
             with self.subTest(section=section_name):
                 self.assertEqual(
                     dict(supervisor[section_name]),

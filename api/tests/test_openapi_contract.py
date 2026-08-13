@@ -240,3 +240,24 @@ class OpenApiContractTest(SimpleTestCase):
             for operation in self.contract['paths'][path].values():
                 if isinstance(operation, dict) and 'operationId' in operation:
                     self.assertEqual(operation['security'], [{'opaqueBearer': []}])
+
+        preview = self.contract['paths']['/imports/ofx/preview/']['post']
+        self.assertIn(
+            'does not verify institutional origin',
+            preview['description'],
+        )
+        upload = preview['requestBody']['content']['multipart/form-data']['schema'][
+            'properties'
+        ]['file']
+        self.assertEqual(upload['maxLength'], 10 * 1024 * 1024)
+        self.assertEqual(
+            set(preview['responses']['400']['x-error-codes']),
+            {'invalid_ofx', 'unsupported_ofx', 'file_too_large', 'invalid_import_state'},
+        )
+
+        batch_schema = self.contract['components']['schemas']['ImportBatch']
+        self.assertIn('expires_at', batch_schema['required'])
+        self.assertEqual(
+            batch_schema['properties']['expires_at'],
+            {'type': 'string', 'format': 'date-time'},
+        )

@@ -124,6 +124,37 @@ class ParseNubankOfxTest(SimpleTestCase):
         with self.assertRaises(UnsupportedOfxError):
             parse_nubank_ofx(content)
 
+    def test_rejects_non_brl_statement(self):
+        content = self._fixture_bytes('nubank-account.ofx').replace(
+            b'<CURDEF>BRL', b'<CURDEF>USD'
+        )
+
+        with self.assertRaises(UnsupportedOfxError):
+            parse_nubank_ofx(content)
+
+    def test_rejects_values_that_do_not_fit_normalized_models(self):
+        fixture = self._fixture_bytes('nubank-account.ofx')
+        invalid_replacements = (
+            (
+                b'<ACCTID>synthetic-account-001',
+                b'<ACCTID>' + b'a' * 256,
+            ),
+            (
+                b'<FITID>synthetic-fitid-001',
+                b'<FITID>' + b'f' * 256,
+            ),
+            (
+                b'<MEMO>Synthetic market purchase',
+                b'<MEMO>' + b'm' * 256,
+            ),
+            (b'<TRNAMT>-42.50', b'<TRNAMT>12345678901.00'),
+            (b'<TRNAMT>-42.50', b'<TRNAMT>1.001'),
+            (b'<TRNAMT>-42.50', b'<TRNAMT>1.000'),
+        )
+        for old, new in invalid_replacements:
+            with self.subTest(new=new[:32]), self.assertRaises(OfxParseError):
+                parse_nubank_ofx(fixture.replace(old, new))
+
     def test_rejects_content_larger_than_ten_mebibytes(self):
         with self.assertRaises(OversizedOfxError):
             parse_nubank_ofx(b'x' * (10 * 1024 * 1024 + 1))

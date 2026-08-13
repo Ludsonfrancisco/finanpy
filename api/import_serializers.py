@@ -21,6 +21,7 @@ def serialize_import_batch(batch):
         'product_type': batch.product_type,
         'statement_start': batch.statement_start.isoformat(),
         'statement_end': batch.statement_end.isoformat(),
+        'expires_at': batch.expires_at.isoformat().replace('+00:00', 'Z'),
         'account_uuid': str(batch.account.uuid) if batch.account_id else None,
         'financial_owner_uuid': (
             str(batch.financial_owner.uuid) if batch.financial_owner_id else None

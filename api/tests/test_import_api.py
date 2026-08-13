@@ -56,6 +56,7 @@ class ImportApiTest(TestCase):
                 'product_type',
                 'statement_start',
                 'statement_end',
+                'expires_at',
                 'account_uuid',
                 'financial_owner_uuid',
                 'created_count',
@@ -65,6 +66,7 @@ class ImportApiTest(TestCase):
             },
         )
         self.assertEqual(body['status'], ImportBatch.NEEDS_ACCOUNT_LINK)
+        self.assertTrue(body['expires_at'].endswith('Z'))
         self.assertIsNone(body['account_uuid'])
         serialized = repr(body)
         for forbidden in (
@@ -97,7 +99,10 @@ class ImportApiTest(TestCase):
         self.assertEqual(confirmed.status_code, 200)
         self.assertEqual(confirmed.json()['status'], ImportBatch.COMPLETED)
 
-        cancelled_batch_uuid = self._preview(content=self.content + b'\n').json()['uuid']
+        unknown_content = self.content.replace(
+            b'synthetic-account-001', b'synthetic-account-cancel'
+        )
+        cancelled_batch_uuid = self._preview(content=unknown_content).json()['uuid']
         cancelled = self.client.post(
             self._cancel_url(cancelled_batch_uuid),
             {},
@@ -166,6 +171,17 @@ class ImportApiTest(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()['error']['code'], 'unsupported_ofx')
+
+    def test_unpersistable_normalized_field_returns_safe_invalid_ofx(self):
+        content = self.content.replace(
+            b'<MEMO>Synthetic market purchase',
+            b'<MEMO>' + b'x' * 256,
+        )
+
+        response = self._preview(content=content)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['error']['code'], 'invalid_ofx')
 
     def test_oversized_upload_is_rejected_before_reading_its_content(self):
         class OversizedUpload:

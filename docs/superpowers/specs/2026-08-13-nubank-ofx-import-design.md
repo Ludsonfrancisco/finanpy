@@ -21,8 +21,9 @@ testes usam somente fixtures sintéticas e anonimizadas.
 ## 2. Decisões aprovadas
 
 - O início é por exportação/importação manual, sem provedor pago de Open Finance.
-- O primeiro formato é OFX do Nubank; conta e cartão são detectados pela estrutura
-  do arquivo.
+- O primeiro perfil é OFX BRL estruturalmente compatível com os exemplos Nubank;
+  conta e cartão são detectados pela estrutura do arquivo. Como o formato coberto
+  não traz marcador institucional confiável, o perfil não autentica a origem.
 - Todo arquivo passa por prévia e exige o botão **Confirmar importação**. Não há
   importação automática, mesmo para conta conhecida.
 - A conta é identificada pelo identificador estável informado no OFX. Quando ela
@@ -63,7 +64,8 @@ flowchart LR
 
 ### 4.1 Analisador OFX Nubank
 
-Lê o arquivo sem persistir lançamentos. Valida a estrutura OFX, identifica se o
+Lê o arquivo sem persistir lançamentos. Exige moeda BRL, valida os limites dos
+campos persistidos e a estrutura OFX, identifica se o
 bloco é de conta (`BANKACCT`) ou cartão (`CCACCT`), extrai período, identificador
 de conta, saldo quando disponível e movimentos. Cada movimento normalizado contém
 data, valor, descrição, tipo e identificador externo (`FITID`) quando fornecido.
@@ -75,13 +77,17 @@ log.
 ### 4.2 Lote de importação e prévia
 
 Um lote temporário mantém somente o resultado normalizado necessário para a
-prévia, seu hash SHA-256 e avisos por até 24 horas. Ele não recebe o arquivo
+prévia, seu hash SHA-256 e avisos enquanto é acionável por até 24 horas. Ele não recebe o arquivo
 bruto. Arquivos acima de 10 MiB são recusados antes do parse. A prévia mostra
 quantidades de lançamentos novos, ignorados e que exigem atenção, além de conta,
 tipo do OFX e período detectados.
 
 Confirmar um lote é uma única transação: todos os lançamentos válidos entram no
-ledger ou nenhum entra. Cancelar ou falhar descarta o lote sem alterar o ledger.
+ledger ou nenhum entra. Cancelar remove as linhas normalizadas e preserva o
+recibo técnico sem alterar o ledger. Expirados são limpos nos serviços de
+importação, pelo comando idempotente e por um processo Supervisor independente
+que executa imediatamente no start e na expiração mais próxima, com espera
+limitada a uma hora.
 
 ### 4.3 Idempotência e duplicidade
 
@@ -109,15 +115,15 @@ uma tela Flutter.
 - Não existirão valores padrão para dados ausentes.
 - Nome original, caminho local, conteúdo, valores e descrições do OFX não podem
   aparecer nos logs técnicos.
-- O arquivo bruto não é persistido em nenhum estado; o lote de prévia expira em
-  24 horas e o tamanho máximo do arquivo é 10 MiB.
+- O arquivo bruto não é persistido em nenhum estado; o lote de prévia deixa de
+  ser acionável em 24 horas e o tamanho máximo do arquivo é 10 MiB.
 
 ## 6. Erros esperados
 
 | Situação | Resultado |
 | --- | --- |
 | Arquivo não é OFX válido | erro de prévia; ledger inalterado |
-| Estrutura OFX não é Nubank suportada | erro claro; ledger inalterado |
+| Estrutura/moeda OFX não é compatível com o perfil | erro claro; ledger inalterado |
 | Conta não identificada | prévia bloqueada até vínculo manual; ledger inalterado |
 | Mesmo arquivo | prévia/recibo indica reimportação; zero novos lançamentos |
 | Mesmo `FITID` | linha ignorada e explicada |

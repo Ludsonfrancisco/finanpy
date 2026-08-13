@@ -1,4 +1,4 @@
-"""Preview-only services for synthetic-free, in-memory Nubank OFX imports."""
+"""Secure lifecycle services for normalized OFX previews and ledger confirmation."""
 
 import hashlib
 from datetime import timedelta
@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import Account
@@ -36,6 +37,7 @@ class ImportConflictError(ImportStateError):
 
 def create_preview(*, household, device_session, content: bytes) -> ImportBatch:
     """Parse bytes in memory and store only a normalized, non-ledger preview."""
+    purge_preview_records()
     if device_session.household_id != household.id:
         raise ImportAccessError('Device session is not available for this household.')
 
@@ -56,11 +58,7 @@ def create_preview(*, household, device_session, content: bytes) -> ImportBatch:
         file_sha256=file_sha256,
         status=ImportBatch.COMPLETED,
     ).exists()
-    if (
-        link
-        and parsed.product_type == 'credit_card'
-        and link.account.type != Account.CREDIT
-    ):
+    if link and not _account_is_compatible(parsed.product_type, link.account):
         raise ImportStateError(
             'The selected account is incompatible with this preview.'
         )
@@ -109,7 +107,7 @@ def bind_preview_account(*, batch: ImportBatch, account: Account) -> ImportBatch
         if account.household_id != batch.household_id:
             raise ImportAccessError('Account is not available for this household.')
         _require_actionable(batch)
-        if batch.product_type == 'credit_card' and account.type != Account.CREDIT:
+        if not _account_is_compatible(batch.product_type, account):
             raise ImportStateError(
                 'The selected account is incompatible with this preview.'
             )
@@ -156,10 +154,15 @@ def bind_preview_account(*, batch: ImportBatch, account: Account) -> ImportBatch
 
 def cancel_preview(*, batch: ImportBatch) -> ImportBatch:
     """Cancel an actionable preview without deleting its audit receipt."""
-    _require_actionable(batch)
-    batch.status = ImportBatch.CANCELLED
-    _save(batch)
-    return batch
+    with transaction.atomic():
+        batch = ImportBatch.objects.select_for_update().get(pk=batch.pk)
+        _require_actionable(batch)
+        if batch.account_id is not None:
+            raise ImportStateError('A linked import preview cannot be cancelled.')
+        batch.status = ImportBatch.CANCELLED
+        _save(batch)
+        batch.records.filter(transaction__isnull=True).delete()
+        return batch
 
 
 def confirm_preview(*, batch: ImportBatch, device_session) -> ImportBatch:
@@ -245,18 +248,68 @@ def confirm_preview(*, batch: ImportBatch, device_session) -> ImportBatch:
             _save(record)
 
         batch.status = ImportBatch.COMPLETED
-        _save(batch)
+        _update_counts(batch)
         return batch
 
 
 def get_batch_for_household(*, household, batch_uuid) -> ImportBatch:
     """Return a batch only when it belongs to the requested household."""
+    purge_preview_records()
     try:
         return ImportBatch.objects.get(uuid=batch_uuid, household=household)
     except ImportBatch.DoesNotExist as error:
         raise ImportAccessError(
             'Import batch is not available for this household.'
         ) from error
+
+
+def purge_preview_records(*, now=None) -> int:
+    """Discard private normalized rows while preserving minimal batch receipts."""
+    cutoff = now or timezone.now()
+    actionable_statuses = (
+        ImportBatch.PREVIEW_READY,
+        ImportBatch.NEEDS_ACCOUNT_LINK,
+    )
+    with transaction.atomic():
+        batches = list(
+            ImportBatch.objects.select_for_update()
+            .filter(
+                Q(status=ImportBatch.CANCELLED)
+                | Q(status__in=actionable_statuses, expires_at__lte=cutoff)
+            )
+            .order_by('pk')
+        )
+        if not batches:
+            return 0
+        expired = [batch for batch in batches if batch.status in actionable_statuses]
+        for batch in expired:
+            batch.status = ImportBatch.FAILED
+            _save(batch)
+        deleted, _ = ImportRecord.objects.filter(
+            batch_id__in=[batch.pk for batch in batches],
+            transaction__isnull=True,
+        ).delete()
+        return deleted
+
+
+def next_preview_purge_delay(*, max_delay_seconds: int, now=None) -> float:
+    """Return a bounded wait that wakes no later than the nearest preview expiry."""
+    cutoff = now or timezone.now()
+    nearest_expiry = (
+        ImportBatch.objects.filter(
+            status__in=(
+                ImportBatch.PREVIEW_READY,
+                ImportBatch.NEEDS_ACCOUNT_LINK,
+            )
+        )
+        .order_by('expires_at')
+        .values_list('expires_at', flat=True)
+        .first()
+    )
+    if nearest_expiry is None:
+        return float(max_delay_seconds)
+    until_expiry = max(0.0, (nearest_expiry - cutoff).total_seconds())
+    return min(float(max_delay_seconds), until_expiry)
 
 
 def _record_from_parsed(*, batch, line_number, item):
@@ -296,9 +349,22 @@ def _classify_record(record, account):
         record.outcome = ImportRecord.PENDING
 
 
+def _account_is_compatible(product_type, account):
+    if product_type == 'credit_card':
+        return account.type == Account.CREDIT
+    if product_type == 'bank_account':
+        return account.type != Account.CREDIT
+    return False
+
+
 def _update_counts(batch):
     outcomes = list(batch.records.values_list('outcome', flat=True))
-    batch.created_count = outcomes.count(ImportRecord.PENDING)
+    created_outcome = (
+        ImportRecord.CREATED
+        if batch.status == ImportBatch.COMPLETED
+        else ImportRecord.PENDING
+    )
+    batch.created_count = outcomes.count(created_outcome)
     batch.duplicate_count = outcomes.count(ImportRecord.DUPLICATE)
     batch.warning_count = outcomes.count(ImportRecord.WARNING)
     _save(batch)

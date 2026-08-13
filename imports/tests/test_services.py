@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
@@ -26,6 +27,7 @@ from imports.services import (
     confirm_preview,
     create_preview,
     get_batch_for_household,
+    next_preview_purge_delay,
 )
 from sync.models import SyncChange
 from transactions.models import Transaction
@@ -189,6 +191,30 @@ class ImportPreviewServiceTest(TestCase):
                     ImportBatch.objects.get(pk=batch.pk).status,
                     status,
                 )
+
+    def test_cancel_reloads_batch_and_rejects_stale_linked_or_completed_state(self):
+        stale_unlinked = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+        linked = bind_preview_account(batch=stale_unlinked, account=self.account)
+
+        with self.assertRaises(ImportStateError):
+            cancel_preview(batch=stale_unlinked)
+        self.assertEqual(
+            ImportBatch.objects.get(pk=linked.pk).status,
+            ImportBatch.PREVIEW_READY,
+        )
+
+        stale_linked = ImportBatch.objects.get(pk=linked.pk)
+        confirm_preview(batch=linked, device_session=self.device)
+        with self.assertRaises(ImportStateError):
+            cancel_preview(batch=stale_linked)
+        self.assertEqual(
+            ImportBatch.objects.get(pk=linked.pk).status,
+            ImportBatch.COMPLETED,
+        )
 
     def test_account_link_unique_race_returns_domain_error_not_integrity_error(self):
         batch = create_preview(
@@ -561,7 +587,7 @@ class ImportPreviewServiceTest(TestCase):
         warning.full_clean()
         warning.save(update_fields=['outcome'])
 
-        confirm_preview(batch=batch, device_session=self.device)
+        confirmed = confirm_preview(batch=batch, device_session=self.device)
 
         self.assertEqual(
             Transaction.objects.filter(household=self.household).count(), 1
@@ -573,6 +599,153 @@ class ImportPreviewServiceTest(TestCase):
         self.assertEqual(
             ImportRecord.objects.get(pk=warning.pk).outcome,
             ImportRecord.CREATED,
+        )
+        self.assertEqual(confirmed.created_count, 1)
+        self.assertEqual(confirmed.duplicate_count, 1)
+        self.assertEqual(confirmed.warning_count, 0)
+
+    def test_bank_preview_rejects_credit_account_for_auto_link_and_manual_bind(self):
+        credit_account = Account.objects.create(
+            user=self.user,
+            household=self.household,
+            financial_owner=self.owner,
+            name='Synthetic credit card',
+            type=Account.CREDIT,
+        )
+        ImportAccountLink.objects.create(
+            household=self.household,
+            account=credit_account,
+            provider='nubank',
+            product_type='bank_account',
+            external_account_id='synthetic-account-001',
+        )
+        with self.assertRaises(ImportStateError):
+            create_preview(
+                household=self.household,
+                device_session=self.device,
+                content=self.content,
+            )
+
+        ImportAccountLink.objects.all().delete()
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+        with self.assertRaises(ImportStateError):
+            bind_preview_account(batch=batch, account=credit_account)
+
+    def test_purge_removes_only_normalized_preview_records_and_keeps_receipts(self):
+        now = timezone.now()
+        expired = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+        cancelled = create_preview(
+            household=self.other_household,
+            device_session=self.other_device,
+            content=self.content,
+        )
+        ImportBatch.objects.filter(pk=expired.pk).update(
+            expires_at=now - timedelta(seconds=1)
+        )
+        ImportBatch.objects.filter(pk=cancelled.pk).update(
+            status=ImportBatch.CANCELLED
+        )
+        cancelled.refresh_from_db()
+        completed = self._completed_batch()
+        ImportRecord.objects.create(
+            batch=completed,
+            line_number=1,
+            posted_on=date(2026, 1, 1),
+            amount=Decimal('1.00'),
+            description='Synthetic completed receipt',
+            transaction_type='income',
+            fingerprint='a' * 64,
+            outcome=ImportRecord.CREATED,
+        )
+        preview_record_count = expired.records.count() + cancelled.records.count()
+
+        deleted = services.purge_preview_records(now=now)
+
+        self.assertEqual(deleted, preview_record_count)
+        self.assertFalse(ImportRecord.objects.filter(batch=expired).exists())
+        self.assertFalse(ImportRecord.objects.filter(batch=cancelled).exists())
+        self.assertTrue(ImportRecord.objects.filter(batch=completed).exists())
+        self.assertEqual(
+            ImportBatch.objects.get(pk=expired.pk).status,
+            ImportBatch.FAILED,
+        )
+        self.assertEqual(
+            ImportBatch.objects.get(pk=cancelled.pk).status,
+            ImportBatch.CANCELLED,
+        )
+        self.assertTrue(ImportBatch.objects.filter(pk=completed.pk).exists())
+
+    def test_cancel_immediately_removes_normalized_records_but_keeps_batch_counts(self):
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+        counts = (batch.created_count, batch.duplicate_count, batch.warning_count)
+
+        cancelled = cancel_preview(batch=batch)
+
+        self.assertEqual(cancelled.status, ImportBatch.CANCELLED)
+        self.assertEqual(
+            (
+                cancelled.created_count,
+                cancelled.duplicate_count,
+                cancelled.warning_count,
+            ),
+            counts,
+        )
+        self.assertFalse(cancelled.records.exists())
+
+    def test_unlinked_repeated_file_receipt_can_be_cancelled(self):
+        completed = self._completed_batch()
+        completed.file_sha256 = self._sha256(self.content)
+        completed.save(update_fields=['file_sha256'])
+        repeated = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+        self.assertEqual(repeated.status, ImportBatch.PREVIEW_READY)
+        self.assertIsNone(repeated.account_id)
+
+        cancelled = cancel_preview(batch=repeated)
+
+        self.assertEqual(cancelled.status, ImportBatch.CANCELLED)
+
+    @patch('imports.management.commands.purge_import_previews.purge_preview_records')
+    def test_purge_management_command_is_idempotent_entry_point(self, purge):
+        purge.return_value = 3
+
+        call_command('purge_import_previews')
+
+        purge.assert_called_once_with()
+
+    def test_next_purge_delay_uses_nearest_expiry_with_hourly_cap(self):
+        now = timezone.now()
+        self.assertEqual(
+            next_preview_purge_delay(max_delay_seconds=3600, now=now),
+            3600.0,
+        )
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+        ImportBatch.objects.filter(pk=batch.pk).update(
+            expires_at=now + timedelta(minutes=15)
+        )
+
+        self.assertEqual(
+            next_preview_purge_delay(max_delay_seconds=3600, now=now),
+            900.0,
         )
 
     def _setup_household(self, email):
