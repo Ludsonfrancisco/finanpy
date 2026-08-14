@@ -13,6 +13,7 @@ import 'design_system/lar_theme.dart';
 import 'features/auth/application/auth_controller.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/secure_token_store.dart';
+import 'features/auth/domain/session.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,14 +21,17 @@ Future<void> main() async {
   config.validate();
   final database = AppDatabase(driftDatabase(name: 'lar_finance'));
   final tokenStore = SecureTokenStore(const FlutterSecureStorage());
+  final sessionAuthority = SessionAuthority.forStore(tokenStore);
   final transport = DioTransport(baseUrl: config.normalizedApiBaseUrl);
   final repository = AuthRepository(
     publicTransport: transport,
     sessionTransport: SessionTransport(
       transport: transport,
       tokenStore: tokenStore,
+      sessionAuthority: sessionAuthority,
     ),
     tokenStore: tokenStore,
+    sessionAuthority: sessionAuthority,
     database: database,
   );
   final controller = AuthController(repository);

@@ -18,7 +18,7 @@ GoRouter createAppRouter(AppConfig config, AuthController authController) {
     redirect: (context, state) {
       final path = state.uri.path;
       return switch (authController.state.phase) {
-        AuthPhase.checking => null,
+        AuthPhase.checking => path == '/login' ? null : '/login',
         AuthPhase.signedOut => path == '/login' ? null : '/login',
         AuthPhase.choosingOwner =>
           path == '/device-owner' ? null : '/device-owner',

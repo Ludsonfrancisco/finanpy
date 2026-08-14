@@ -51,6 +51,40 @@ void main() {
       },
     );
 
+    test('reuses a completed refresh for a delayed old-token 401', () async {
+      final secondInitialRequestStarted = Completer<void>();
+      final releaseSecond401 = Completer<void>();
+      final fake = _FakeApiTransport((request) async {
+        if (request.path == '/auth/refresh/') {
+          return ApiResponse(statusCode: 200, data: _tokenPayload());
+        }
+        if (request.path == '/second/' && request.bearerToken == 'access-old') {
+          secondInitialRequestStarted.complete();
+          await releaseSecond401.future;
+          return const ApiResponse(statusCode: 401, data: <String, Object?>{});
+        }
+        if (request.bearerToken == 'access-old') {
+          return const ApiResponse(statusCode: 401, data: <String, Object?>{});
+        }
+        return ApiResponse(
+          statusCode: 200,
+          data: <String, Object?>{'path': request.path},
+        );
+      });
+      final store = _FakeTokenStore(_tokens());
+      final client = SessionTransport(transport: fake, tokenStore: store);
+
+      final delayed = client.getObject('/second/');
+      await secondInitialRequestStarted.future;
+      final first = client.getObject('/first/');
+      await _eventually(() => fake.refreshCalls == 1);
+      expect(await first, <String, Object?>{'path': '/first/'});
+
+      releaseSecond401.complete();
+      expect(await delayed, <String, Object?>{'path': '/second/'});
+      expect(fake.refreshCalls, 1);
+    });
+
     test('refresh 401 clears tokens and expires the session', () async {
       final fake = _FakeApiTransport(
         (request) async => ApiResponse(
@@ -107,6 +141,117 @@ void main() {
           throwsA(isA<OfflineFailure>()),
         );
 
+        expect(await store.read(), same(original));
+      },
+    );
+
+    for (final status in <int>[429, 500]) {
+      test(
+        'refresh $status preserves tokens and remains recoverable',
+        () async {
+          final fake = _FakeApiTransport((request) async {
+            if (request.path == '/auth/refresh/') {
+              return ApiResponse(
+                statusCode: status,
+                data: const <String, Object?>{},
+              );
+            }
+            return const ApiResponse(
+              statusCode: 401,
+              data: <String, Object?>{},
+            );
+          });
+          final original = _tokens();
+          final store = _FakeTokenStore(original);
+          final client = SessionTransport(transport: fake, tokenStore: store);
+
+          await expectLater(
+            client.getObject('/bootstrap/'),
+            throwsA(isA<RequestFailure>()),
+          );
+
+          expect(await store.read(), same(original));
+        },
+      );
+    }
+
+    test('restoring an expired refresh clears the local session', () async {
+      final now = DateTime.utc(2030, 1, 10);
+      final store = _FakeTokenStore(
+        _tokensWith(
+          accessExpiresAt: now.add(const Duration(days: 1)),
+          refreshExpiresAt: now.subtract(const Duration(seconds: 1)),
+        ),
+      );
+      final client = SessionTransport(
+        transport: _FakeApiTransport((_) async => throw StateError('network')),
+        tokenStore: store,
+        now: () => now,
+      );
+
+      expect(await client.restoreSession(), isNull);
+      expect(await store.read(), isNull);
+    });
+
+    test(
+      'restoring an expired access refreshes before returning a session',
+      () async {
+        final now = DateTime.utc(2030, 1, 10);
+        final fake = _FakeApiTransport((request) async {
+          if (request.path == '/auth/refresh/') {
+            return ApiResponse(
+              statusCode: 200,
+              data: _tokenPayloadWithExpiries(
+                accessExpiresAt: now.add(const Duration(days: 1)),
+                refreshExpiresAt: now.add(const Duration(days: 30)),
+              ),
+            );
+          }
+          throw StateError('Unexpected request.');
+        });
+        final store = _FakeTokenStore(
+          _tokensWith(
+            accessExpiresAt: now.subtract(const Duration(seconds: 1)),
+            refreshExpiresAt: now.add(const Duration(days: 1)),
+          ),
+        );
+        final client = SessionTransport(
+          transport: fake,
+          tokenStore: store,
+          now: () => now,
+        );
+
+        final restored = await client.restoreSession();
+
+        expect(restored?.accessToken, 'access-new');
+        expect(restored?.accessExpiresAt.isAfter(now), isTrue);
+        expect(fake.refreshCalls, 1);
+        expect((await store.read())?.accessToken, 'access-new');
+      },
+    );
+
+    test(
+      'expired access stays signed out safely when refresh is offline',
+      () async {
+        final now = DateTime.utc(2030, 1, 10);
+        final original = _tokensWith(
+          accessExpiresAt: now.subtract(const Duration(seconds: 1)),
+          refreshExpiresAt: now.add(const Duration(days: 1)),
+        );
+        final store = _FakeTokenStore(original);
+        final client = SessionTransport(
+          transport: _FakeApiTransport((request) async {
+            if (request.path == '/auth/refresh/') throw const OfflineFailure();
+            throw StateError('Unexpected request.');
+          }),
+          tokenStore: store,
+          now: () => now,
+        );
+
+        await expectLater(
+          client.restoreSession(),
+          throwsA(isA<OfflineFailure>()),
+        );
         expect(await store.read(), same(original));
       },
     );
@@ -189,11 +334,38 @@ StoredTokens _tokens() => StoredTokens(
   deviceUuid: '11111111-1111-4111-8111-111111111111',
 );
 
+StoredTokens _tokensWith({
+  required DateTime accessExpiresAt,
+  required DateTime refreshExpiresAt,
+}) => StoredTokens(
+  accessToken: 'access-old',
+  accessExpiresAt: accessExpiresAt,
+  refreshToken: 'refresh-old',
+  refreshExpiresAt: refreshExpiresAt,
+  deviceUuid: '11111111-1111-4111-8111-111111111111',
+);
+
 Map<String, Object?> _tokenPayload() => <String, Object?>{
   'access_token': 'access-new',
   'access_expires_at': '2030-01-02T00:00:00Z',
   'refresh_token': 'refresh-new',
   'refresh_expires_at': '2030-02-02T00:00:00Z',
+  'device': <String, Object?>{
+    'uuid': '11111111-1111-4111-8111-111111111111',
+    'name': 'Lar Finance no Windows',
+    'platform': 'windows',
+    'default_owner_uuid': '22222222-2222-4222-8222-222222222222',
+  },
+};
+
+Map<String, Object?> _tokenPayloadWithExpiries({
+  required DateTime accessExpiresAt,
+  required DateTime refreshExpiresAt,
+}) => <String, Object?>{
+  'access_token': 'access-new',
+  'access_expires_at': accessExpiresAt.toIso8601String(),
+  'refresh_token': 'refresh-new',
+  'refresh_expires_at': refreshExpiresAt.toIso8601String(),
   'device': <String, Object?>{
     'uuid': '11111111-1111-4111-8111-111111111111',
     'name': 'Lar Finance no Windows',

@@ -158,6 +158,70 @@ void main() {
       expect(gateway.logoutCalls, 1);
     },
   );
+
+  test(
+    'a failed expired-session refresh remains signed out without a logout race',
+    () async {
+      final gateway = _FakeAuthGateway(
+        readSessionError: const OfflineFailure(),
+      );
+      final controller = AuthController(gateway);
+
+      await controller.initialize();
+
+      expect(controller.state.phase, AuthPhase.signedOut);
+      expect(controller.state.message, const OfflineFailure().message);
+      expect(gateway.logoutCalls, 0);
+    },
+  );
+
+  test(
+    'an empty owner result cannot leave the controller in a dead-end flow',
+    () async {
+      final controller = AuthController(
+        _FakeAuthGateway(
+          loginResult: LoginResult(
+            session: _sessionFor(_deviceUuid),
+            owners: const <DeviceOwnerOption>[],
+          ),
+        ),
+      );
+
+      await controller.login(email: 'ana@example.com', password: 'secret');
+
+      expect(controller.state.phase, AuthPhase.signedOut);
+      expect(controller.state.message, const RequestFailure().message);
+    },
+  );
+
+  testWidgets(
+    'checking never exposes a guarded deep link or redirects in a loop',
+    (tester) async {
+      final controller = AuthController(_FakeAuthGateway());
+      final router = createAppRouter(
+        const AppConfig(apiBaseUrl: 'https://example.test/api/v1'),
+        controller,
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(
+              (ref) => controller,
+              disposeNotifier: false,
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+
+      router.go('/home');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Entre no Lar Finance'), findsOneWidget);
+      expect(find.text('CASA DE VALORES'), findsNothing);
+    },
+  );
 }
 
 Widget _screenApp(AuthController controller, Widget child) => ProviderScope(
@@ -205,6 +269,8 @@ final class _FakeAuthGateway implements AuthGateway {
     this.selectedOwnerUuid,
     this.syncedDeviceUuid,
     this.loadOwnersError,
+    this.readSessionError,
+    this.loginResult,
   });
 
   final bool logoutThrows;
@@ -212,6 +278,8 @@ final class _FakeAuthGateway implements AuthGateway {
   final String? selectedOwnerUuid;
   final String? syncedDeviceUuid;
   final Object? loadOwnersError;
+  final Object? readSessionError;
+  final LoginResult? loginResult;
   int logoutCalls = 0;
   String? selectedUuid;
 
@@ -219,7 +287,7 @@ final class _FakeAuthGateway implements AuthGateway {
   Future<LoginResult> login({
     required String email,
     required String password,
-  }) async => _loginResult();
+  }) async => loginResult ?? _loginResult();
 
   @override
   Future<List<DeviceOwnerOption>> loadOwners() {
@@ -245,7 +313,12 @@ final class _FakeAuthGateway implements AuthGateway {
   Future<String?> readSelectedOwnerUuid() async => selectedOwnerUuid;
 
   @override
-  Future<StoredTokens?> readSession() async => restoredSession;
+  Future<StoredTokens?> readSession() {
+    if (readSessionError case final error?) {
+      return Future<StoredTokens?>.error(error);
+    }
+    return Future<StoredTokens?>.value(restoredSession);
+  }
 
   @override
   Future<String?> readSyncedDeviceUuid() async => syncedDeviceUuid;

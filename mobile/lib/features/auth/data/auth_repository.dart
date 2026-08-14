@@ -42,12 +42,14 @@ final class AuthRepository implements AuthGateway {
     required ApiTransport publicTransport,
     required SessionTransport sessionTransport,
     required TokenStore tokenStore,
+    SessionAuthority? sessionAuthority,
     required AppDatabase database,
     String? platformName,
     String? deviceName,
   }) : _publicTransport = publicTransport,
        _sessionTransport = sessionTransport,
-       _tokenStore = tokenStore,
+       _sessionAuthority =
+           sessionAuthority ?? SessionAuthority.forStore(tokenStore),
        _database = database,
        _platformName = platformName ?? _currentPlatformName(),
        _deviceName = deviceName ?? _currentDeviceName();
@@ -57,7 +59,7 @@ final class AuthRepository implements AuthGateway {
 
   final ApiTransport _publicTransport;
   final SessionTransport _sessionTransport;
-  final TokenStore _tokenStore;
+  final SessionAuthority _sessionAuthority;
   final AppDatabase _database;
   final String _platformName;
   final String _deviceName;
@@ -87,7 +89,7 @@ final class AuthRepository implements AuthGateway {
 
     final session = _parseSession(response.data);
     try {
-      await _tokenStore.write(session);
+      await _sessionAuthority.write(session);
       await _writeSetting(deviceNameSettingKey, _deviceName);
       final owners = await loadOwners();
       return LoginResult(session: session, owners: owners);
@@ -124,6 +126,10 @@ final class AuthRepository implements AuthGateway {
       }
     }
     _eligibleOwnerUuids = owners.map((owner) => owner.uuid).toSet();
+    if (owners.isEmpty) {
+      await _clearTokensSafely();
+      throw const RequestFailure();
+    }
     return List<DeviceOwnerOption>.unmodifiable(owners);
   }
 
@@ -140,12 +146,17 @@ final class AuthRepository implements AuthGateway {
 
   @override
   Future<void> logout() async {
+    StoredTokens? session;
     try {
-      await _sessionTransport.postEmpty('/auth/logout/');
+      session = await _sessionAuthority.clearAndRead();
+    } catch (_) {
+      // Settings cleanup and the signed-out UI still proceed on vault failure.
+    }
+    try {
+      await _sessionTransport.postEmptyWithSession('/auth/logout/', session);
     } catch (_) {
       // Local logout is authoritative even when the server is unreachable.
     } finally {
-      await _clearTokensSafely();
       await (_database.delete(
         _database.localSettings,
       )..where((row) => row.key.equals(selectedOwnerSettingKey))).go();
@@ -180,7 +191,11 @@ final class AuthRepository implements AuthGateway {
   @override
   Future<StoredTokens?> readSession() async {
     try {
-      return await _tokenStore.read();
+      return await _sessionTransport.restoreSession();
+    } on SessionExpired {
+      return null;
+    } on ApiError {
+      rethrow;
     } catch (_) {
       await _clearTokensSafely();
       return null;
@@ -226,7 +241,7 @@ final class AuthRepository implements AuthGateway {
 
   Future<void> _clearTokensSafely() async {
     try {
-      await _tokenStore.clear();
+      await _sessionAuthority.clear();
     } catch (_) {
       // The caller still transitions to signed out and exposes no credentials.
     }

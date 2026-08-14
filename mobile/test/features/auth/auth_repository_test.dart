@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -107,6 +109,21 @@ void main() {
     });
 
     test(
+      'login clears the session when no eligible device owner is returned',
+      () async {
+        final transport = _AuthApiTransport(ownersOnlyShared: true);
+        final repository = _repository(database, tokenStore, transport);
+
+        await expectLater(
+          repository.login(email: 'ana@example.com', password: 'secret'),
+          throwsA(isA<RequestFailure>()),
+        );
+
+        expect(await tokenStore.read(), isNull);
+      },
+    );
+
+    test(
       'selectDeviceOwner patches an eligible UUID and stores it locally',
       () async {
         final transport = _AuthApiTransport();
@@ -169,6 +186,68 @@ void main() {
         expect(await database.select(database.households).get(), hasLength(1));
       },
     );
+
+    test(
+      'logout cannot be undone by a refresh that was already in flight',
+      () async {
+        final releaseRefresh = Completer<void>();
+        final transport = _AuthApiTransport(refreshRelease: releaseRefresh);
+        final sessionTransport = SessionTransport(
+          transport: transport,
+          tokenStore: tokenStore,
+        );
+        final repository = AuthRepository(
+          publicTransport: transport,
+          sessionTransport: sessionTransport,
+          tokenStore: tokenStore,
+          database: database,
+          platformName: 'windows',
+          deviceName: 'Lar Finance no Windows',
+        );
+        await repository.login(email: 'ana@example.com', password: 'secret');
+
+        final pendingRequest = sessionTransport.getObject('/bootstrap/');
+        await _eventually(() => transport.refreshCalls == 1);
+
+        await repository.logout();
+        expect(await tokenStore.read(), isNull);
+
+        releaseRefresh.complete();
+        await expectLater(pendingRequest, throwsA(isA<RequestFailure>()));
+        expect(await tokenStore.read(), isNull);
+      },
+    );
+
+    test('a stale refresh cannot overwrite a new login after logout', () async {
+      final releaseRefresh = Completer<void>();
+      final transport = _AuthApiTransport(
+        refreshRelease: releaseRefresh,
+        rotateSecondLogin: true,
+      );
+      final sessionTransport = SessionTransport(
+        transport: transport,
+        tokenStore: tokenStore,
+      );
+      final repository = AuthRepository(
+        publicTransport: transport,
+        sessionTransport: sessionTransport,
+        tokenStore: tokenStore,
+        database: database,
+        platformName: 'windows',
+        deviceName: 'Lar Finance no Windows',
+      );
+      await repository.login(email: 'ana@example.com', password: 'secret');
+
+      final pendingRequest = sessionTransport.getObject('/bootstrap/');
+      await _eventually(() => transport.refreshCalls == 1);
+      await repository.logout();
+      await repository.login(email: 'ana@example.com', password: 'new-secret');
+      expect((await tokenStore.read())?.accessToken, 'access-new-login');
+
+      releaseRefresh.complete();
+      await expectLater(pendingRequest, throwsA(isA<RequestFailure>()));
+      expect((await tokenStore.read())?.accessToken, 'access-new-login');
+    });
   });
 }
 
@@ -217,6 +296,32 @@ Map<String, Object?> _tokenPayload() => <String, Object?>{
   },
 };
 
+Map<String, Object?> _newLoginTokenPayload() => <String, Object?>{
+  'access_token': 'access-new-login',
+  'access_expires_at': '2030-01-03T00:00:00Z',
+  'refresh_token': 'refresh-new-login',
+  'refresh_expires_at': '2030-02-03T00:00:00Z',
+  'device': <String, Object?>{
+    'uuid': _deviceUuid,
+    'name': 'Lar Finance no Windows',
+    'platform': 'windows',
+    'default_owner_uuid': _selfUuid,
+  },
+};
+
+Map<String, Object?> _refreshedTokenPayload() => <String, Object?>{
+  'access_token': 'access-refreshed-old',
+  'access_expires_at': '2030-01-04T00:00:00Z',
+  'refresh_token': 'refresh-refreshed-old',
+  'refresh_expires_at': '2030-02-04T00:00:00Z',
+  'device': <String, Object?>{
+    'uuid': _deviceUuid,
+    'name': 'Lar Finance no Windows',
+    'platform': 'windows',
+    'default_owner_uuid': _selfUuid,
+  },
+};
+
 List<Object?> _ownersPayload() => <Object?>[
   <String, Object?>{'uuid': _selfUuid, 'type': 'self', 'name': 'Ana'},
   <String, Object?>{'uuid': _spouseUuid, 'type': 'spouse', 'name': 'Beto'},
@@ -242,12 +347,20 @@ final class _AuthApiTransport implements ApiTransport {
     this.loginStatus = 200,
     this.logoutOffline = false,
     this.ownersOffline = false,
+    this.refreshRelease,
+    this.rotateSecondLogin = false,
+    this.ownersOnlyShared = false,
   });
 
   final int loginStatus;
   final bool logoutOffline;
   final bool ownersOffline;
+  final Completer<void>? refreshRelease;
+  final bool rotateSecondLogin;
+  final bool ownersOnlyShared;
   final List<_RequestRecord> requests = <_RequestRecord>[];
+  int loginCalls = 0;
+  int refreshCalls = 0;
 
   @override
   Future<ApiResponse> request(
@@ -265,13 +378,44 @@ final class _AuthApiTransport implements ApiTransport {
       ),
     );
     if (path == '/auth/login/') {
-      return ApiResponse(statusCode: loginStatus, data: _tokenPayload());
+      loginCalls++;
+      return ApiResponse(
+        statusCode: loginStatus,
+        data: rotateSecondLogin && loginCalls > 1
+            ? _newLoginTokenPayload()
+            : _tokenPayload(),
+      );
+    }
+    if (path == '/auth/refresh/') {
+      refreshCalls++;
+      await refreshRelease?.future;
+      return ApiResponse(statusCode: 200, data: _refreshedTokenPayload());
+    }
+    if (path == '/bootstrap/') {
+      if (bearerToken == 'access-secret') {
+        return const ApiResponse(statusCode: 401, data: <String, Object?>{});
+      }
+      return const ApiResponse(
+        statusCode: 200,
+        data: <String, Object?>{'status': 'ok'},
+      );
     }
     if (path == '/owners/') {
       if (ownersOffline) {
         throw const OfflineFailure();
       }
-      return ApiResponse(statusCode: 200, data: _ownersPayload());
+      return ApiResponse(
+        statusCode: 200,
+        data: ownersOnlyShared
+            ? <Object?>[
+                <String, Object?>{
+                  'uuid': _sharedUuid,
+                  'type': 'shared',
+                  'name': 'Casa',
+                },
+              ]
+            : _ownersPayload(),
+      );
     }
     if (path == '/devices/current/') {
       return ApiResponse(
@@ -308,4 +452,11 @@ final class _FakeTokenStore implements TokenStore {
 
   @override
   Future<void> write(StoredTokens tokens) async => value = tokens;
+}
+
+Future<void> _eventually(bool Function() condition) async {
+  for (var attempt = 0; attempt < 100 && !condition(); attempt++) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  expect(condition(), isTrue);
 }

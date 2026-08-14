@@ -45,9 +45,9 @@ final class AuthController extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
-      final session = await _repository.readSession();
       final deviceName = await _repository.readDeviceName();
       final lastSyncAt = await _repository.readLastSyncAt();
+      final session = await _repository.readSession();
       if (session == null) {
         _emit(
           AuthState(
@@ -61,7 +61,21 @@ final class AuthController extends ChangeNotifier {
 
       final selectedOwner = await _repository.readSelectedOwnerUuid();
       if (selectedOwner == null) {
-        final owners = await _repository.loadOwners();
+        late List<DeviceOwnerOption> owners;
+        try {
+          owners = await _repository.loadOwners();
+        } on OfflineFailure catch (error) {
+          await _logoutUnownedSession();
+          _emit(
+            AuthState(
+              phase: AuthPhase.signedOut,
+              message: error.message,
+              deviceName: deviceName,
+              lastSyncAt: lastSyncAt,
+            ),
+          );
+          return;
+        }
         _emit(
           AuthState(
             phase: AuthPhase.choosingOwner,
@@ -86,11 +100,6 @@ final class AuthController extends ChangeNotifier {
     } on SessionExpired {
       _emit(const AuthState(phase: AuthPhase.signedOut));
     } on OfflineFailure catch (error) {
-      try {
-        await _repository.logout();
-      } catch (_) {
-        // A local signed-out state is still safer than an unusable owner flow.
-      }
       _emit(AuthState(phase: AuthPhase.signedOut, message: error.message));
     } catch (_) {
       _emit(const AuthState(phase: AuthPhase.signedOut));
@@ -109,6 +118,7 @@ final class AuthController extends ChangeNotifier {
     );
     try {
       final result = await _repository.login(email: email, password: password);
+      if (result.owners.isEmpty) throw const RequestFailure();
       final deviceName = await _repository.readDeviceName();
       final lastSyncAt = await _repository.readLastSyncAt();
       _emit(
@@ -211,6 +221,14 @@ final class AuthController extends ChangeNotifier {
       List<DeviceOwnerOption>.unmodifiable(
         owners.where((owner) => owner.type == 'self' || owner.type == 'spouse'),
       );
+
+  Future<void> _logoutUnownedSession() async {
+    try {
+      await _repository.logout();
+    } catch (_) {
+      // A local signed-out state is still safer than an unusable owner flow.
+    }
+  }
 
   void _emit(AuthState value) {
     if (_disposed) return;
