@@ -124,14 +124,7 @@ final class _HomeScreenState extends State<HomeScreen> {
                   syncData: syncData,
                   hidden: hidden,
                   privacyFocusNode: _privacyFocusNode,
-                  onToggleHidden: () {
-                    final visibility = widget.visibilityController;
-                    if (visibility != null) {
-                      unawaited(visibility.toggle());
-                    } else {
-                      setState(() => _valuesHidden = !_valuesHidden);
-                    }
-                  },
+                  onToggleHidden: () => unawaited(_toggleValues()),
                 ),
               ),
               const SizedBox(height: LarSpacing.xl),
@@ -187,6 +180,27 @@ final class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _toggleValues() async {
+    final visibility = widget.visibilityController;
+    if (visibility == null) {
+      setState(() => _valuesHidden = !_valuesHidden);
+      return;
+    }
+    try {
+      await visibility.toggle();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text('Não foi possível atualizar a privacidade'),
+        ),
+        snackBarAnimationStyle: MediaQuery.disableAnimationsOf(context)
+            ? AnimationStyle.noAnimation
+            : null,
+      );
+    }
   }
 }
 

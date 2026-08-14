@@ -46,3 +46,15 @@
 - GREEN focado: `flutter test test/app test/accessibility test/features/home` — passou (48 testes); `flutter analyze` — passou.
 - O teste iOS é estático e verifica a SceneDelegate/remoção do AppDelegate neste Windows. Build e runtime iOS seguem explicitamente pendentes de macOS/Xcode.
 - Fechamento da onda: `flutter test` — passou (168 testes); `dart format --output=none --set-exit-if-changed lib test` e `git diff --check` — passaram. Builds reais `flutter build windows --debug` e `flutter build apk --debug` — passaram.
+
+## Onda final de acessibilidade e falha de persistência
+
+- RED observado: uma falha de `values.hidden` disparada pela Home não tinha feedback seguro. GREEN: a Home aguarda o toggle, preserva o estado já consistente do controller e anuncia somente `Não foi possível atualizar a privacidade`; detalhes de storage e da exceção não são exibidos.
+- A matriz de widgets exerce Windows em 1366×768: Tab chega, em ordem, a privacidade, seletor, retry e `NavigationRail`; Space/Enter ativam privacidade, seletor, retry e navegação. O teclado ativa `FocusHighlightMode.traditional` no foco Material e o `MouseRegion` real do controle de privacidade recebe hover.
+- A matriz mede alvos reais: Android ≥48 logical px para privacidade, seletor e retry; iOS ≥44 logical px para privacidade e seletor, dentro de `SafeArea`. A prova em 320 logical px / escala 2.0 permanece no teste da Home.
+- Com `MediaQuery.disableAnimations=true`, o feedback novo de falha usa `AnimationStyle.noAnimation`; o teste verifica que a animação do `SnackBar` já está concluída.
+
+### Evidência final
+
+- `flutter test test/app test/accessibility test/features/home` — passou (52 testes).
+- `flutter test` — passou (172 testes); `flutter analyze` — passou, sem issues; format e `git diff --check` — passaram.

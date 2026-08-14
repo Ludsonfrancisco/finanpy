@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:lar_finance/app/value_visibility_controller.dart';
 import 'package:lar_finance/core/sync/sync_models.dart' show SyncResult;
 import 'package:lar_finance/core/sync/sync_state.dart';
 import 'package:lar_finance/design_system/components/financial_amount.dart';
+import 'package:lar_finance/design_system/components/owner_selector.dart';
 import 'package:lar_finance/design_system/lar_colors.dart';
 import 'package:lar_finance/design_system/lar_theme.dart';
 import 'package:lar_finance/features/home/application/home_controller.dart';
@@ -237,6 +239,43 @@ void main() {
     },
   );
 
+  testWidgets(
+    'falha ao persistir privacidade mantém estado e mostra feedback seguro',
+    (tester) async {
+      final repository = _FakeHomeRepository(
+        streams: {OwnerScopeKind.household: Stream.value(_snapshot())},
+      );
+      final controller = _controller(repository);
+      final visibility = ValueVisibilityController(
+        _FailingVisibilityRepository(),
+      );
+      addTearDown(controller.dispose);
+      addTearDown(visibility.dispose);
+
+      await _pumpHome(
+        tester,
+        controller,
+        visibilityController: visibility,
+        disableAnimations: true,
+        withAdaptiveShell: true,
+      );
+      await tester.tap(find.byTooltip('Ocultar valores'));
+      await tester.pump();
+
+      expect(visibility.hidden, isFalse);
+      expect(
+        find.text('Não foi possível atualizar a privacidade'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('storage failure'), findsNothing);
+      expect(
+        tester.widget<SnackBar>(find.byType(SnackBar)).animation?.value,
+        1,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('200% de texto em 320px mantém ordem, sem overflow ou exceção', (
     tester,
   ) async {
@@ -290,6 +329,10 @@ void main() {
         _isFocused(tester, find.byKey(const Key('privacy-toggle'))),
         isTrue,
       );
+      expect(
+        FocusManager.instance.highlightMode,
+        FocusHighlightMode.traditional,
+      );
 
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pump();
@@ -317,6 +360,132 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'Windows desktop preserves keyboard order, visible focus, and hover controls',
+    (tester) async {
+      var retries = 0;
+      final navigation = <int>[];
+      final repository = _FakeHomeRepository(
+        streams: {
+          OwnerScopeKind.household: Stream.value(_snapshot()),
+          OwnerScopeKind.selfOwner: Stream.value(
+            _snapshot(scope: const OwnerScope.self(_selfUuid)),
+          ),
+        },
+      );
+      final syncState = SyncState(
+        retry: () async {
+          retries += 1;
+          return SyncResult.current;
+        },
+      )..markFailed(_syncedAt);
+      final controller = _controller(repository, syncState: syncState);
+      addTearDown(controller.dispose);
+
+      await _pumpHome(
+        tester,
+        controller,
+        platform: TargetPlatform.windows,
+        viewportSize: const Size(1366, 768),
+        withAdaptiveShell: true,
+        onNavigate: navigation.add,
+      );
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(const Key('privacy-toggle'))).height,
+        greaterThanOrEqualTo(48),
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(
+        _isFocused(tester, find.byKey(const Key('privacy-toggle'))),
+        isTrue,
+      );
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(
+        location: tester.getCenter(find.byKey(const Key('privacy-toggle'))),
+      );
+      await tester.pump();
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('privacy-toggle')),
+          matching: find.byType(MouseRegion),
+        ),
+        findsWidgets,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(find.byTooltip('Mostrar valores'), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(_focusIsWithinOwnerSelector(), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(controller.state.selectedKind, OwnerScopeKind.selfOwner);
+
+      for (var index = 0; index < 2; index++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+      }
+      expect(_isFocused(tester, find.byKey(const Key('sync-retry'))), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(retries, 1);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(_focusIsWithinNavigationRail(), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(navigation, isNotEmpty);
+    },
+  );
+
+  testWidgets('iOS respeita safe area e alvos mínimos reais', (tester) async {
+    final repository = _FakeHomeRepository(
+      streams: {OwnerScopeKind.household: Stream.value(_snapshot())},
+    );
+    final controller = _controller(repository);
+    addTearDown(controller.dispose);
+
+    await _pumpHome(tester, controller, platform: TargetPlatform.iOS);
+
+    expect(find.byType(SafeArea), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('privacy-toggle'))).height,
+      greaterThanOrEqualTo(44),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('owner-selector'))).height,
+      greaterThanOrEqualTo(44),
+    );
+  });
+
+  testWidgets('Android expõe alvos reais de pelo menos 48dp', (tester) async {
+    final repository = _FakeHomeRepository(
+      streams: {OwnerScopeKind.household: Stream.value(_snapshot())},
+    );
+    final controller = _controller(
+      repository,
+      syncState: _syncState()..markFailed(_syncedAt),
+    );
+    addTearDown(controller.dispose);
+
+    await _pumpHome(tester, controller);
+
+    for (final finder in <Finder>[
+      find.byKey(const Key('privacy-toggle')),
+      find.byKey(const Key('owner-selector')),
+      find.byKey(const Key('sync-retry')),
+    ]) {
+      expect(tester.getSize(finder).height, greaterThanOrEqualTo(48));
+    }
+  });
 
   test('recria a projeção na próxima meia-noite local', () async {
     var now = DateTime(2026, 8, 14, 23, 59, 30);
@@ -502,6 +671,8 @@ Future<void> _pumpHome(
   ValueVisibilityController? visibilityController,
   Size viewportSize = const Size(390, 1200),
   bool withAdaptiveShell = false,
+  bool disableAnimations = false,
+  ValueChanged<int>? onNavigate,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = viewportSize;
@@ -511,6 +682,7 @@ Future<void> _pumpHome(
     data: MediaQueryData(
       size: viewportSize,
       textScaler: TextScaler.linear(textScale),
+      disableAnimations: disableAnimations,
     ),
     child: HomeScreen(
       controller: controller,
@@ -521,7 +693,11 @@ Future<void> _pumpHome(
     home = AppResumeScope(notifier: resumeSignal, child: home);
   }
   if (withAdaptiveShell) {
-    home = AdaptiveShell(selectedIndex: 0, onSelect: (_) {}, child: home);
+    home = AdaptiveShell(
+      selectedIndex: 0,
+      onSelect: onNavigate ?? (_) {},
+      child: home,
+    );
   }
   await tester.pumpWidget(
     MaterialApp(
@@ -542,12 +718,31 @@ bool _isFocused(WidgetTester tester, Finder finder) {
   };
 }
 
+bool _focusIsWithinOwnerSelector() =>
+    FocusManager.instance.primaryFocus?.context
+        ?.findAncestorWidgetOfExactType<OwnerSelector>() !=
+    null;
+
+bool _focusIsWithinNavigationRail() =>
+    FocusManager.instance.primaryFocus?.context
+        ?.findAncestorWidgetOfExactType<NavigationRail>() !=
+    null;
+
 final class _MemoryVisibilityRepository implements ValueVisibilityRepository {
   @override
   Future<bool?> readValuesHidden() async => null;
 
   @override
   Future<void> writeValuesHidden(bool hidden) async {}
+}
+
+final class _FailingVisibilityRepository implements ValueVisibilityRepository {
+  @override
+  Future<bool?> readValuesHidden() async => null;
+
+  @override
+  Future<void> writeValuesHidden(bool hidden) =>
+      Future<void>.error(StateError('storage failure'));
 }
 
 HomeSnapshot _snapshot({
