@@ -1,0 +1,53 @@
+{
+  "changes": [
+    {
+      "entity_type": "transaction",
+      "entity_uuid": "50000000-0000-4000-8000-000000000004",
+      "entity_version": 1,
+      "operation": "create",
+      "payload": {
+        "uuid": "50000000-0000-4000-8000-000000000004",
+        "version": 1,
+        "created_at": "2026-08-14T13:00:00Z",
+        "updated_at": "2026-08-14T13:00:00Z",
+        "household_uuid": "10000000-0000-4000-8000-000000000001",
+        "financial_owner_uuid": "20000000-0000-4000-8000-000000000001",
+        "account_uuid": "30000000-0000-4000-8000-000000000001",
+        "category_uuid": "40000000-0000-4000-8000-000000000001",
+        "description": "Manutenção sintética",
+        "amount": "75.00",
+        "date": "2026-08-14",
+        "type": "expense"
+      }
+    },
+    {
+      "entity_type": "account",
+      "entity_uuid": "30000000-0000-4000-8000-000000000001",
+      "entity_version": 2,
+      "operation": "update",
+      "payload": {
+        "uuid": "30000000-0000-4000-8000-000000000001",
+        "version": 2,
+        "created_at": "2026-08-01T09:05:00Z",
+        "updated_at": "2026-08-14T13:05:00Z",
+        "household_uuid": "10000000-0000-4000-8000-000000000001",
+        "financial_owner_uuid": "20000000-0000-4000-8000-000000000001",
+        "name": "Conta Horizonte Atualizada",
+        "type": "checking",
+        "initial_balance": "1300.00",
+        "currency": "BRL"
+      }
+    },
+    {
+      "entity_type": "category",
+      "entity_uuid": "40000000-0000-4000-8000-000000000002",
+      "entity_version": 2,
+      "operation": "delete",
+      "payload": {
+        "uuid": "40000000-0000-4000-8000-000000000002",
+        "deleted": true
+      }
+    }
+  ],
+  "cursor": "cursor-delta-synthetic-002"
+}

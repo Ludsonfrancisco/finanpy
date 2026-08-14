@@ -1,0 +1,125 @@
+{
+  "household": {
+    "uuid": "10000000-0000-4000-8000-000000000001",
+    "name": "Casa Horizonte",
+    "created_at": "2026-08-01T09:00:00Z",
+    "updated_at": "2026-08-14T12:00:00Z"
+  },
+  "owners": [
+    {
+      "uuid": "20000000-0000-4000-8000-000000000001",
+      "type": "self",
+      "name": "Alex"
+    },
+    {
+      "uuid": "20000000-0000-4000-8000-000000000002",
+      "type": "spouse",
+      "name": "Rui"
+    },
+    {
+      "uuid": "20000000-0000-4000-8000-000000000003",
+      "type": "shared",
+      "name": "Casa"
+    }
+  ],
+  "accounts": [
+    {
+      "uuid": "30000000-0000-4000-8000-000000000001",
+      "version": 1,
+      "created_at": "2026-08-01T09:05:00Z",
+      "updated_at": "2026-08-10T10:00:00Z",
+      "household_uuid": "10000000-0000-4000-8000-000000000001",
+      "financial_owner_uuid": "20000000-0000-4000-8000-000000000001",
+      "name": "Conta Horizonte",
+      "type": "checking",
+      "initial_balance": "1250.00",
+      "currency": "BRL"
+    },
+    {
+      "uuid": "30000000-0000-4000-8000-000000000002",
+      "version": 1,
+      "created_at": "2026-08-01T09:10:00Z",
+      "updated_at": "2026-08-11T10:00:00Z",
+      "household_uuid": "10000000-0000-4000-8000-000000000001",
+      "financial_owner_uuid": "20000000-0000-4000-8000-000000000003",
+      "name": "Reserva da Casa",
+      "type": "savings",
+      "initial_balance": "5000.00",
+      "currency": "BRL"
+    }
+  ],
+  "categories": [
+    {
+      "uuid": "40000000-0000-4000-8000-000000000001",
+      "version": 1,
+      "created_at": "2026-08-01T09:15:00Z",
+      "updated_at": "2026-08-12T10:00:00Z",
+      "household_uuid": "10000000-0000-4000-8000-000000000001",
+      "name": "Moradia",
+      "type": "expense",
+      "color": "#8B6F47",
+      "icon": "home"
+    },
+    {
+      "uuid": "40000000-0000-4000-8000-000000000002",
+      "version": 1,
+      "created_at": "2026-08-01T09:20:00Z",
+      "updated_at": "2026-08-12T10:05:00Z",
+      "household_uuid": "10000000-0000-4000-8000-000000000001",
+      "name": "Receitas",
+      "type": "income",
+      "color": "#2E7D5B",
+      "icon": null
+    }
+  ],
+  "transactions": [
+    {
+      "uuid": "50000000-0000-4000-8000-000000000001",
+      "version": 1,
+      "created_at": "2026-08-05T08:00:00Z",
+      "updated_at": "2026-08-05T08:00:00Z",
+      "household_uuid": "10000000-0000-4000-8000-000000000001",
+      "financial_owner_uuid": "20000000-0000-4000-8000-000000000001",
+      "account_uuid": "30000000-0000-4000-8000-000000000001",
+      "category_uuid": "40000000-0000-4000-8000-000000000001",
+      "description": "Despesa planejada sintética",
+      "amount": "4200.00",
+      "date": "2026-08-05",
+      "type": "expense"
+    },
+    {
+      "uuid": "50000000-0000-4000-8000-000000000002",
+      "version": 1,
+      "created_at": "2026-08-07T13:00:00Z",
+      "updated_at": "2026-08-07T13:00:00Z",
+      "household_uuid": "10000000-0000-4000-8000-000000000001",
+      "financial_owner_uuid": "20000000-0000-4000-8000-000000000003",
+      "account_uuid": "30000000-0000-4000-8000-000000000002",
+      "category_uuid": "40000000-0000-4000-8000-000000000001",
+      "description": "Despesa residencial sintética",
+      "amount": "850.00",
+      "date": "2026-08-07",
+      "type": "expense"
+    },
+    {
+      "uuid": "50000000-0000-4000-8000-000000000003",
+      "version": 1,
+      "created_at": "2026-08-09T18:30:00Z",
+      "updated_at": "2026-08-09T18:30:00Z",
+      "household_uuid": "10000000-0000-4000-8000-000000000001",
+      "financial_owner_uuid": "20000000-0000-4000-8000-000000000002",
+      "account_uuid": "30000000-0000-4000-8000-000000000001",
+      "category_uuid": "40000000-0000-4000-8000-000000000001",
+      "description": "Reparo doméstico sintético",
+      "amount": "120.00",
+      "date": "2026-08-09",
+      "type": "expense"
+    }
+  ],
+  "summary": {
+    "total_balance": "1080.00",
+    "monthly_income": "0.00",
+    "monthly_expenses": "5170.00"
+  },
+  "cursor": "cursor-bootstrap-synthetic-001"
+}

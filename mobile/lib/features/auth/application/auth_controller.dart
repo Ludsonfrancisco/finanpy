@@ -198,6 +198,17 @@ final class AuthController extends ChangeNotifier {
     }
   }
 
+  void completeInitialSync(DateTime? lastSuccessAt) {
+    if (_state.phase != AuthPhase.initialSync) return;
+    _emit(
+      AuthState(
+        phase: AuthPhase.authenticated,
+        deviceName: _state.deviceName,
+        lastSyncAt: lastSuccessAt ?? _state.lastSyncAt,
+      ),
+    );
+  }
+
   Future<void> logout() async {
     if (_state.isSubmitting) return;
     _emit(

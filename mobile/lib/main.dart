@@ -3,12 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'app/app_config.dart';
+import 'app/app_lifecycle.dart';
 import 'app/router.dart';
 import 'core/network/dio_transport.dart';
 import 'core/network/session_transport.dart';
 import 'core/storage/app_database.dart';
+import 'core/storage/local_ledger.dart';
+import 'core/sync/sync_api.dart';
+import 'core/sync/sync_coordinator.dart';
 import 'design_system/lar_theme.dart';
 import 'features/auth/application/auth_controller.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -17,55 +22,85 @@ import 'features/auth/domain/session.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('pt_BR');
   final config = AppConfig.fromEnvironment();
   config.validate();
   final database = AppDatabase(driftDatabase(name: 'lar_finance'));
   final tokenStore = SecureTokenStore(const FlutterSecureStorage());
   final sessionAuthority = SessionAuthority.forStore(tokenStore);
   final transport = DioTransport(baseUrl: config.normalizedApiBaseUrl);
+  final sessionTransport = SessionTransport(
+    transport: transport,
+    tokenStore: tokenStore,
+    sessionAuthority: sessionAuthority,
+  );
   final repository = AuthRepository(
     publicTransport: transport,
-    sessionTransport: SessionTransport(
-      transport: transport,
-      tokenStore: tokenStore,
-      sessionAuthority: sessionAuthority,
-    ),
+    sessionTransport: sessionTransport,
     tokenStore: tokenStore,
     sessionAuthority: sessionAuthority,
     database: database,
   );
   final controller = AuthController(repository);
   await controller.initialize();
-  runApp(MyApp(appConfig: config, authController: controller));
+  final syncCoordinator = LedgerSyncCoordinator(
+    api: DjangoSyncApi(sessionTransport),
+    ledger: DriftLocalLedger(database),
+    activeDeviceUuid: () async => (await sessionAuthority.read())?.deviceUuid,
+  );
+  runApp(
+    MyApp(
+      appConfig: config,
+      authController: controller,
+      syncCoordinator: syncCoordinator,
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key, required this.authController, AppConfig? appConfig})
-    : appConfig = appConfig ?? AppConfig.fromEnvironment(),
-      router = createAppRouter(
-        appConfig ?? AppConfig.fromEnvironment(),
-        authController,
-      );
+  MyApp({
+    super.key,
+    required this.authController,
+    this.syncCoordinator,
+    AppConfig? appConfig,
+  }) : appConfig = appConfig ?? AppConfig.fromEnvironment(),
+       router = createAppRouter(
+         appConfig ?? AppConfig.fromEnvironment(),
+         authController,
+         syncCoordinator: syncCoordinator,
+       );
 
   final AppConfig appConfig;
   final AuthController authController;
+  final LedgerSyncCoordinator? syncCoordinator;
   final GoRouter router;
 
   @override
-  Widget build(BuildContext context) => ProviderScope(
-    overrides: [
-      authControllerProvider.overrideWith(
-        (ref) => authController,
-        disposeNotifier: false,
-      ),
-    ],
-    child: MaterialApp.router(
+  Widget build(BuildContext context) {
+    final app = MaterialApp.router(
       title: 'Lar Finance',
       theme: LarTheme.light,
       darkTheme: LarTheme.dark,
       themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,
       routerConfig: router,
-    ),
-  );
+    );
+    final coordinator = syncCoordinator;
+    return ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          (ref) => authController,
+          disposeNotifier: false,
+        ),
+      ],
+      child: coordinator == null
+          ? app
+          : AppSyncLifecycle(
+              coordinator: coordinator,
+              isAuthenticated: () =>
+                  authController.state.phase == AuthPhase.authenticated,
+              child: app,
+            ),
+    );
+  }
 }
