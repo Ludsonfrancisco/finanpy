@@ -47,6 +47,8 @@ final class HomeSnapshot {
   final bool hasAccountData;
 }
 
+enum HomeTransactionType { income, expense }
+
 final class HomeTransaction {
   const HomeTransaction({
     required this.uuid,
@@ -54,6 +56,7 @@ final class HomeTransaction {
     required this.categoryName,
     required this.ownerName,
     required this.date,
+    required this.type,
     required this.signedAmountMinor,
   });
 
@@ -62,5 +65,6 @@ final class HomeTransaction {
   final String categoryName;
   final String ownerName;
   final DateTime date;
+  final HomeTransactionType type;
   final int signedAmountMinor;
 }

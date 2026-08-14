@@ -7,10 +7,13 @@
 
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/adaptive_shell.dart';
+import '../../../app/app_lifecycle.dart';
 import '../../../core/sync/sync_state.dart';
 import '../../../design_system/components/owner_selector.dart';
 import '../../../design_system/components/sync_status.dart';
@@ -33,12 +36,23 @@ final class HomeScreen extends StatefulWidget {
 
 final class _HomeScreenState extends State<HomeScreen> {
   bool _valuesHidden = false;
+  ValueListenable<int>? _resumeListenable;
 
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_refresh);
     unawaited(widget.controller.start());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final next = AppResumeScope.listenableOf(context);
+    if (identical(next, _resumeListenable)) return;
+    _resumeListenable?.removeListener(_handleAppResume);
+    _resumeListenable = next;
+    _resumeListenable?.addListener(_handleAppResume);
   }
 
   @override
@@ -52,9 +66,12 @@ final class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _resumeListenable?.removeListener(_handleAppResume);
     widget.controller.removeListener(_refresh);
     super.dispose();
   }
+
+  void _handleAppResume() => unawaited(widget.controller.refreshProjection());
 
   void _refresh() {
     if (mounted) setState(() {});
@@ -70,55 +87,72 @@ final class _HomeScreenState extends State<HomeScreen> {
       state: _syncVisualState(controller.syncPhase),
       lastSuccessAt: snapshot?.lastSyncedAt ?? controller.syncTimestamp,
     );
-    final content = SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1120),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: desktop ? LarSpacing.xxl : LarSpacing.lg,
-              vertical: desktop ? LarSpacing.xxl : LarSpacing.lg,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                _StatusAndPrivacy(
-                  syncData: syncData,
+    final ios = Theme.of(context).platform == TargetPlatform.iOS;
+    final body = Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1120),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: desktop ? LarSpacing.xxl : LarSpacing.lg,
+            vertical: desktop ? LarSpacing.xxl : LarSpacing.lg,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _StatusAndPrivacy(
+                syncData: syncData,
+                hidden: _valuesHidden,
+                onToggleHidden: () =>
+                    setState(() => _valuesHidden = !_valuesHidden),
+              ),
+              const SizedBox(height: LarSpacing.xl),
+              OwnerSelector(
+                selected: _scopeIndex(state.selectedKind),
+                onSelected: controller.select,
+              ),
+              const SizedBox(height: LarSpacing.xxl),
+              if (state.isLoading && snapshot == null)
+                const _LoadingState()
+              else
+                _SnapshotContent(
+                  snapshot: snapshot,
+                  error: state.error,
+                  syncPhase: controller.syncPhase,
                   hidden: _valuesHidden,
-                  onToggleHidden: () =>
-                      setState(() => _valuesHidden = !_valuesHidden),
+                  monthLabel: DateFormat(
+                    'MMMM',
+                    'pt_BR',
+                  ).format(controller.now).toLowerCase(),
+                  desktop: desktop,
+                  onRetry: controller.retrySync,
                 ),
-                const SizedBox(height: LarSpacing.xl),
-                OwnerSelector(
-                  selected: _scopeIndex(state.selectedKind),
-                  onSelected: controller.select,
-                ),
-                const SizedBox(height: LarSpacing.xxl),
-                if (state.isLoading && snapshot == null)
-                  const _LoadingState()
-                else
-                  _SnapshotContent(
-                    snapshot: snapshot,
-                    error: state.error,
-                    syncPhase: controller.syncPhase,
-                    hidden: _valuesHidden,
-                    monthLabel: DateFormat(
-                      'MMMM',
-                      'pt_BR',
-                    ).format(controller.now).toLowerCase(),
-                    desktop: desktop,
-                    onRetry: controller.retrySync,
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
       ),
     );
+    if (ios) {
+      return SafeArea(
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          slivers: <Widget>[
+            CupertinoSliverRefreshControl(onRefresh: controller.retrySync),
+            SliverToBoxAdapter(child: body),
+          ],
+        ),
+      );
+    }
     return SafeArea(
-      child: RefreshIndicator(onRefresh: controller.retrySync, child: content),
+      child: RefreshIndicator(
+        onRefresh: controller.retrySync,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: body,
+        ),
+      ),
     );
   }
 }

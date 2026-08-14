@@ -80,6 +80,43 @@ void main() {
     },
   );
 
+  test('recentes preservam o tipo explícito para valores zero', () async {
+    final createdAt = DateTime.utc(2026, 9, 2, 10);
+    for (final transaction in <(String, String)>[
+      ('50000000-0000-4000-8000-000000000010', 'income'),
+      ('50000000-0000-4000-8000-000000000011', 'expense'),
+    ]) {
+      await database
+          .into(database.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              uuid: transaction.$1,
+              householdUuid: _householdUuid,
+              financialOwnerUuid: _selfUuid,
+              accountUuid: _selfAccountUuid,
+              categoryUuid: transaction.$2 == 'expense'
+                  ? _expenseCategoryUuid
+                  : _incomeCategoryUuid,
+              description: '${transaction.$2} zero',
+              amountMinor: 0,
+              date: createdAt,
+              type: transaction.$2,
+              version: 1,
+              createdAt: createdAt,
+              updatedAt: createdAt,
+            ),
+          );
+    }
+
+    final snapshot = await repository
+        .watchSnapshot(const OwnerScope.household(), DateTime(2026, 9, 2, 12))
+        .first;
+
+    expect(snapshot.recentTransactions[0].type, HomeTransactionType.expense);
+    expect(snapshot.recentTransactions[1].type, HomeTransactionType.income);
+    expect(snapshot.recentTransactions.take(2), everyElement(isZeroAmount));
+  });
+
   test(
     'cache sem contas preserva a ausência em vez de presumir saldo zero',
     () async {
@@ -105,6 +142,12 @@ void main() {
     expect(scopes.spouseScope.ownerUuid, _spouseUuid);
   });
 }
+
+final isZeroAmount = isA<HomeTransaction>().having(
+  (transaction) => transaction.signedAmountMinor,
+  'signedAmountMinor',
+  0,
+);
 
 const _householdUuid = '10000000-0000-4000-8000-000000000001';
 const _selfUuid = '20000000-0000-4000-8000-000000000001';

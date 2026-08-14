@@ -1,10 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:lar_finance/app/app_lifecycle.dart';
 import 'package:lar_finance/core/sync/sync_models.dart' show SyncResult;
 import 'package:lar_finance/core/sync/sync_state.dart';
+import 'package:lar_finance/design_system/components/financial_amount.dart';
+import 'package:lar_finance/design_system/lar_colors.dart';
 import 'package:lar_finance/design_system/lar_theme.dart';
 import 'package:lar_finance/features/home/application/home_controller.dart';
 import 'package:lar_finance/features/home/data/home_repository.dart';
@@ -222,6 +226,166 @@ void main() {
         .toList();
     expect(tops, orderedEquals(tops.toList()..sort()));
   });
+
+  test('recria a projeção na próxima meia-noite local', () async {
+    var now = DateTime(2026, 8, 14, 23, 59, 30);
+    final repository = _RecordingHomeRepository();
+    final timers = <_ManualTimer>[];
+    final controller = HomeController(
+      repository: repository,
+      syncState: _syncState(),
+      now: () => now,
+      timerFactory: (duration, callback) {
+        final timer = _ManualTimer(duration, callback);
+        timers.add(timer);
+        return timer;
+      },
+    );
+    addTearDown(controller.dispose);
+
+    await controller.start();
+    await Future<void>.delayed(Duration.zero);
+    expect(repository.requestedTimes, <DateTime>[now]);
+    expect(timers.single.duration, const Duration(seconds: 30));
+
+    now = DateTime(2026, 8, 15);
+    timers.single.fire();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(repository.requestedTimes, <DateTime>[
+      DateTime(2026, 8, 14, 23, 59, 30),
+      DateTime(2026, 8, 15),
+    ]);
+    expect(timers.last.duration, const Duration(days: 1));
+  });
+
+  testWidgets('resume após virada de mês refaz agregados e label', (
+    tester,
+  ) async {
+    var now = DateTime(2026, 8, 31, 23, 59);
+    final resumeSignal = ValueNotifier<int>(0);
+    addTearDown(resumeSignal.dispose);
+    final repository = _RecordingHomeRepository();
+    final controller = HomeController(
+      repository: repository,
+      syncState: _syncState()..markCurrent(_syncedAt),
+      now: () => now,
+      timerFactory: (duration, callback) => _ManualTimer(duration, callback),
+    );
+    addTearDown(controller.dispose);
+
+    await _pumpHome(tester, controller, resumeSignal: resumeSignal);
+    expect(find.text('Gasto em agosto'), findsOneWidget);
+    expect(find.text('R\$\u00a08,00'), findsOneWidget);
+
+    now = DateTime(2026, 9, 1, 8);
+    resumeSignal.value += 1;
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 20));
+
+    expect(repository.requestedTimes.last, now);
+    expect(find.text('Gasto em setembro'), findsOneWidget);
+    expect(find.text('R\$\u00a09,00'), findsOneWidget);
+    expect(find.text('R\$\u00a08,00'), findsNothing);
+  });
+
+  testWidgets('iOS usa pull-to-refresh Cupertino e executa retry', (
+    tester,
+  ) async {
+    var retries = 0;
+    final repository = _FakeHomeRepository(
+      streams: {OwnerScopeKind.household: Stream.value(_snapshot())},
+    );
+    final controller = HomeController(
+      repository: repository,
+      syncState: SyncState(
+        retry: () async {
+          retries += 1;
+          return SyncResult.current;
+        },
+      ),
+      now: () => DateTime(2026, 8, 14, 12),
+      timerFactory: (duration, callback) => _ManualTimer(duration, callback),
+    );
+    addTearDown(controller.dispose);
+
+    await _pumpHome(tester, controller, platform: TargetPlatform.iOS);
+
+    expect(
+      Theme.of(tester.element(find.byType(HomeScreen))).platform,
+      TargetPlatform.iOS,
+    );
+    final scroll = tester.widget<CustomScrollView>(
+      find.byType(CustomScrollView),
+    );
+    expect(scroll.slivers.first, isA<CupertinoSliverRefreshControl>());
+    expect(find.byType(RefreshIndicator), findsNothing);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, 300));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(retries, 1);
+  });
+
+  testWidgets('tipo explícito distingue receita e despesa de valor zero', (
+    tester,
+  ) async {
+    final repository = _FakeHomeRepository(
+      streams: {
+        OwnerScopeKind.household: Stream.value(
+          _snapshot(
+            transactions: <HomeTransaction>[
+              HomeTransaction(
+                uuid: '50000000-0000-4000-8000-000000000010',
+                description: 'Ajuste positivo',
+                categoryName: 'Receita',
+                ownerName: 'Eu',
+                date: DateTime(2026, 8, 14),
+                type: HomeTransactionType.income,
+                signedAmountMinor: 0,
+              ),
+              HomeTransaction(
+                uuid: '50000000-0000-4000-8000-000000000011',
+                description: 'Ajuste negativo',
+                categoryName: 'Casa',
+                ownerName: 'Eu',
+                date: DateTime(2026, 8, 14),
+                type: HomeTransactionType.expense,
+                signedAmountMinor: 0,
+              ),
+            ],
+          ),
+        ),
+      },
+    );
+    final controller = _controller(
+      repository,
+      syncState: _syncState()..markCurrent(_syncedAt),
+    );
+    addTearDown(controller.dispose);
+
+    await _pumpHome(tester, controller);
+
+    expect(
+      find.bySemanticsLabel(RegExp(r'Ajuste positivo.*Receita.*R\$.*0,00')),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(RegExp(r'Ajuste negativo.*Despesa.*R\$.*0,00')),
+      findsOneWidget,
+    );
+    final zeroAmountColors = tester
+        .widgetList<FinancialAmount>(find.byType(FinancialAmount))
+        .where((amount) => amount.minorUnits == 0)
+        .map((amount) => amount.style?.color)
+        .toList();
+    expect(
+      zeroAmountColors,
+      containsAll(<Color>[
+        LarColors.mineral,
+        LarTheme.light.colorScheme.onSurface,
+      ]),
+    );
+  });
 }
 
 const _selfUuid = '20000000-0000-4000-8000-000000000001';
@@ -235,27 +399,34 @@ HomeController _controller(HomeRepository repository, {SyncState? syncState}) =>
       repository: repository,
       syncState: syncState ?? _syncState(),
       now: () => DateTime(2026, 8, 14, 12),
+      timerFactory: (duration, callback) => _ManualTimer(duration, callback),
     );
 
 Future<void> _pumpHome(
   WidgetTester tester,
   HomeController controller, {
   double textScale = 1,
+  TargetPlatform platform = TargetPlatform.android,
+  ValueNotifier<int>? resumeSignal,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(390, 1200);
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
+  Widget home = MediaQuery(
+    data: MediaQueryData(
+      size: const Size(390, 1200),
+      textScaler: TextScaler.linear(textScale),
+    ),
+    child: HomeScreen(controller: controller),
+  );
+  if (resumeSignal != null) {
+    home = AppResumeScope(notifier: resumeSignal, child: home);
+  }
   await tester.pumpWidget(
     MaterialApp(
-      theme: LarTheme.light,
-      home: MediaQuery(
-        data: MediaQueryData(
-          size: const Size(390, 1200),
-          textScaler: TextScaler.linear(textScale),
-        ),
-        child: HomeScreen(controller: controller),
-      ),
+      theme: LarTheme.light.copyWith(platform: platform),
+      home: home,
     ),
   );
   await tester.pump();
@@ -285,6 +456,7 @@ HomeSnapshot _snapshot({
           categoryName: 'Alimentação',
           ownerName: 'Conjunto',
           date: DateTime(2026, 8, 14),
+          type: HomeTransactionType.expense,
           signedAmountMinor: -28640,
         ),
         HomeTransaction(
@@ -293,6 +465,7 @@ HomeSnapshot _snapshot({
           categoryName: 'Receita',
           ownerName: 'Eu',
           date: DateTime(2026, 8, 13),
+          type: HomeTransactionType.income,
           signedAmountMinor: 780000,
         ),
       ],
@@ -317,4 +490,45 @@ final class _FakeHomeRepository implements HomeRepository {
     requestedKinds.add(scope.kind);
     return streams[scope.kind] ?? const Stream<HomeSnapshot>.empty();
   }
+}
+
+final class _RecordingHomeRepository implements HomeRepository {
+  final List<DateTime> requestedTimes = <DateTime>[];
+
+  @override
+  Future<HomeOwnerScopes> readOwnerScopes() async => const HomeOwnerScopes(
+    selfScope: OwnerScope.self(_selfUuid),
+    spouseScope: OwnerScope.spouse(_spouseUuid),
+  );
+
+  @override
+  Stream<HomeSnapshot> watchSnapshot(OwnerScope scope, DateTime now) {
+    requestedTimes.add(now);
+    return Stream<HomeSnapshot>.value(
+      _snapshot(scope: scope, monthExpenseMinor: now.month * 100),
+    );
+  }
+}
+
+final class _ManualTimer implements Timer {
+  _ManualTimer(this.duration, this._callback);
+
+  final Duration duration;
+  final VoidCallback _callback;
+  bool _active = true;
+
+  void fire() {
+    if (!_active) return;
+    _active = false;
+    _callback();
+  }
+
+  @override
+  bool get isActive => _active;
+
+  @override
+  int get tick => _active ? 0 : 1;
+
+  @override
+  void cancel() => _active = false;
 }

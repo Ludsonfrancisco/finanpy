@@ -37,7 +37,7 @@ final class SyncStatusView extends StatelessWidget {
   Widget build(BuildContext context) {
     final detail = data.lastSuccessAt == null
         ? null
-        : 'Última sincronização ${DateFormat('dd/MM, HH:mm', 'pt_BR').format(data.lastSuccessAt!)}';
+        : 'Última sincronização ${DateFormat('dd/MM, HH:mm', 'pt_BR').format(data.lastSuccessAt!.toLocal())}';
     return Semantics(
       label: detail == null ? _label : '$_label. $detail',
       child: ExcludeSemantics(

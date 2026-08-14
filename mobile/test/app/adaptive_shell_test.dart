@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,6 +41,32 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationRail), findsNothing);
+  });
+
+  testWidgets('iOS usa tab bar Cupertino e mantém interação nativa', (
+    tester,
+  ) async {
+    var selected = 0;
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: LarTheme.light.copyWith(platform: TargetPlatform.iOS),
+        home: AdaptiveShell(
+          selectedIndex: selected,
+          onSelect: (value) => selected = value,
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+
+    expect(find.byType(CupertinoTabBar), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    await tester.tap(find.text('Mais'));
+    await tester.pump();
+    expect(selected, 1);
   });
 
   testWidgets('1366 by 768 uses desktop sidebar without bottom navigation', (

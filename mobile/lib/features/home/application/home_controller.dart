@@ -6,6 +6,9 @@ import '../../../core/sync/sync_state.dart';
 import '../data/home_repository.dart';
 import '../domain/home_snapshot.dart';
 
+typedef HomeTimerFactory =
+    Timer Function(Duration duration, void Function() callback);
+
 final class HomeViewState {
   const HomeViewState({
     required this.selectedKind,
@@ -39,21 +42,26 @@ final class HomeController extends ChangeNotifier {
     required HomeRepository repository,
     required SyncState syncState,
     DateTime Function()? now,
+    HomeTimerFactory? timerFactory,
   }) : _repository = repository,
        _syncState = syncState,
-       _now = now ?? DateTime.now {
+       _now = now ?? DateTime.now,
+       _timerFactory = timerFactory ?? Timer.new {
     _syncState.addListener(_handleSyncStateChanged);
   }
 
   final HomeRepository _repository;
   final SyncState _syncState;
   final DateTime Function() _now;
+  final HomeTimerFactory _timerFactory;
   HomeViewState _state = const HomeViewState(
     selectedKind: OwnerScopeKind.household,
     isLoading: true,
   );
   HomeOwnerScopes? _ownerScopes;
   StreamSubscription<HomeSnapshot>? _subscription;
+  Timer? _midnightTimer;
+  OwnerScope? _activeScope;
   bool _started = false;
   bool _disposed = false;
   int _watchGeneration = 0;
@@ -70,6 +78,7 @@ final class HomeController extends ChangeNotifier {
       _ownerScopes = await _repository.readOwnerScopes();
       if (_disposed) return;
       await _watch(const OwnerScope.household());
+      _scheduleMidnightRefresh();
     } catch (error) {
       if (_disposed) return;
       _state = _state.copyWith(isLoading: false, error: error);
@@ -94,7 +103,15 @@ final class HomeController extends ChangeNotifier {
     await _syncState.retry();
   }
 
+  Future<void> refreshProjection() async {
+    final scope = _activeScope;
+    if (_disposed || scope == null) return;
+    await _watch(scope);
+    _scheduleMidnightRefresh();
+  }
+
   Future<void> _watch(OwnerScope scope) async {
+    _activeScope = scope;
     final generation = ++_watchGeneration;
     final previous = _subscription;
     _subscription = null;
@@ -130,10 +147,27 @@ final class HomeController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
+  void _scheduleMidnightRefresh() {
+    _midnightTimer?.cancel();
+    if (_disposed || _activeScope == null) return;
+    final localNow = _now().toLocal();
+    final nextMidnight = DateTime(
+      localNow.year,
+      localNow.month,
+      localNow.day + 1,
+    );
+    final delay = nextMidnight.difference(localNow);
+    _midnightTimer = _timerFactory(delay, () {
+      _midnightTimer = null;
+      unawaited(refreshProjection());
+    });
+  }
+
   @override
   void dispose() {
     _disposed = true;
     _syncState.removeListener(_handleSyncStateChanged);
+    _midnightTimer?.cancel();
     unawaited(_subscription?.cancel());
     super.dispose();
   }

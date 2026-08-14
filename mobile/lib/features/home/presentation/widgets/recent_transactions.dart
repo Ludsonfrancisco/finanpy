@@ -47,7 +47,7 @@ final class _TransactionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final income = transaction.signedAmountMinor >= 0;
+    final income = transaction.type == HomeTransactionType.income;
     final typeLabel = income ? 'Receita' : 'Despesa';
     final amountColor = income
         ? Theme.of(context).brightness == Brightness.dark

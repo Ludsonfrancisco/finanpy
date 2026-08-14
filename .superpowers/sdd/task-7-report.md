@@ -183,3 +183,67 @@ Não foi alegado build iOS: esta máquina é Windows e não dispõe de Xcode/sim
 - A validação iOS real continua dependente de macOS/Xcode, conforme a spec.
 - Persistência da preferência de ocultação e proteção no app switcher não foram implementadas deliberadamente; são Task 8.
 - Nenhum concern funcional, financeiro, visual ou de acessibilidade permanece aberto para a Task 7.
+
+---
+
+## Onda consolidada de correções de review — 14/08/2026
+
+### Findings verificados antes da edição
+
+Os cinco achados foram confirmados no HEAD `3f8cc204a6f35aba680e9992a6265b23de803734` antes de alterar a implementação:
+
+1. `HomeController` passava `_now()` uma única vez a `watchSnapshot`, congelando os limites civis usados pela consulta até uma troca manual de owner.
+2. O SQL lia `t.type`, mas `HomeTransaction` conservava somente o valor assinado; a UI inferia tipo por `signedAmountMinor >= 0`, classificando despesa zero como receita.
+3. `SyncStatusView` formatava diretamente o instante recebido, inclusive quando UTC.
+4. O chrome compacto usava `NavigationBar` e `RefreshIndicator` Material também em iOS.
+5. O thumb iOS escuro usava `#2F756A` sob texto `#E8E3D8`, com contraste calculado em aproximadamente 4,24:1.
+
+### RED → GREEN
+
+- **Virada civil:** RED de compilação por ausência de `timerFactory`; GREEN injeta relógio/timer determinísticos, agenda a próxima meia-noite local, cancela no `dispose`, recria a assinatura e reagenda. Um RED/GREEN complementar integrou a Home ao `AppSyncLifecycle` existente: ele publica uma geração de resume por `AppResumeScope`, e a Home refaz a projeção no foreground sem registrar um segundo observer, serviço ou background. Um teste cruza 14→15/08 e verifica atraso de 30 segundos e novo agendamento de 24 horas; outro cruza 31/08→01/09 no sinal de resume e comprova nova data de consulta, label `setembro` e agregado mensal alterado de `R$ 8,00` para `R$ 9,00`. O teste de lifecycle comprova que cada `AppLifecycleState.resumed` incrementa exatamente uma geração, independentemente do limiar de sync.
+- **Tipo explícito:** RED por ausência de `HomeTransactionType`/`type`; GREEN converte `t.type` do SQLite para o enum de domínio e usa esse enum para rótulo, semântica e cor. Receita zero e despesa zero permanecem distintas com `signedAmountMinor == 0`; o teste de tela comprova rótulos e as cores mineral/on-surface corretas.
+- **Horário local:** RED de widget para um instante UTC; GREEN aplica `lastSuccessAt.toLocal()` antes de `DateFormat`.
+- **Chrome iOS:** RED encontrou zero `CupertinoTabBar` e manteve o refresh Material; GREEN usa `CupertinoTabBar` com símbolos do pacote oficial `cupertino_icons` e `CupertinoSliverRefreshControl` em um único `CustomScrollView`. Android/Windows continuam com `NavigationBar` e `RefreshIndicator`. Testes exercitam tap em `Mais` e gesto de pull-to-refresh.
+- **Contraste:** RED mediu 4,236:1; GREEN usa o thumb champanhe profundo `#4B4027`, com contraste superior a 4,5:1 sob o texto de 13 px, coberto por teste automatizado.
+
+### Goldens e revisão Impeccable/native
+
+- RED visual: `home_ios_light.png` e `home_ios_dark.png` não existiam; os quatro baselines Android/Windows passaram sem diferença.
+- GREEN visual: seis goldens passam com tamanho `390×844` para Android/iOS e `1366×768` para Windows, DPR 1 e fontes fixas. O harness carrega Material Icons, Cupertino Icons e fonte de texto determinística.
+- Uma inspeção batched comparou referência aprovada + Android claro/escuro + iOS claro/escuro + Windows claro/escuro. A única lacuna material encontrada foram rótulos Ahem no tab bar iOS do harness; a correção consolidada aplicou `CupertinoTextThemeData` com a fonte golden. A única confirmação visual verificou os dois PNGs iOS corrigidos; nenhum polish loop adicional foi feito.
+- Capturas anteriores preservadas: `.impeccable/review/mobile-light.png`, `mobile-dark.png`, `windows-light.png`, `windows-dark.png`.
+- Capturas novas: `.impeccable/review/ios-light.png` e `.impeccable/review/ios-dark.png`.
+- Resultado da auto-revisão: hierarquia e densidade preservadas; sem affordance falsa, roxo, glass, alerta inventado ou AI slop. Touch targets/controles permanecem adaptativos, 200% de texto continua coberto e o contraste do estado selecionado iOS está acima de AA.
+- As capturas iOS são goldens determinísticos de Flutter em Windows, não screenshots de Simulator. Validação em Simulator/hardware continua indisponível nesta máquina e não foi alegada.
+
+### Gates finais desta onda
+
+| Gate | Resultado |
+| --- | --- |
+| RED focado inicial | FAIL esperado — domínio/timer ausentes; tab bar/contraste falharam |
+| GREEN funcional focado | PASS — 32 testes |
+| `flutter test test/features/home/home_goldens_test.dart` | PASS — 6 goldens |
+| suíte focada Home/app/design system/storage/sync | PASS — 106 testes |
+| `flutter test` | PASS — 154 testes |
+| `flutter analyze` | PASS — nenhum issue |
+| `dart format --output=none --set-exit-if-changed lib test` | PASS — 61 arquivos, 0 alterações |
+| `git diff --check` | PASS — sem erro de whitespace; apenas avisos LF/CRLF do Git no Windows |
+| varreduras `double`, rede na Home e roxo | PASS — nenhuma ocorrência |
+| `flutter build windows --debug` | PASS — `build/windows/x64/runner/Debug/lar_finance.exe` |
+| `flutter build apk --debug` | PASS — `build/app/outputs/flutter-apk/app-debug.apk` |
+
+### Arquivos desta onda
+
+- Lifecycle/período: `mobile/lib/app/app_lifecycle.dart`, `mobile/lib/features/home/application/home_controller.dart`, `mobile/lib/features/home/presentation/home_screen.dart`.
+- Tipo explícito: `mobile/lib/features/home/domain/home_snapshot.dart`, `mobile/lib/features/home/data/home_repository.dart`, `mobile/lib/features/home/presentation/widgets/recent_transactions.dart`.
+- iOS/contraste/freshness: `mobile/lib/app/lar_bottom_navigation.dart`, `mobile/lib/design_system/components/owner_selector.dart`, `mobile/lib/design_system/components/sync_status.dart`, `mobile/lib/design_system/lar_colors.dart`.
+- Dependência nativa: `mobile/pubspec.yaml`, `mobile/pubspec.lock` (`cupertino_icons 1.0.9`).
+- Testes: `mobile/test/features/home/home_repository_test.dart`, `home_screen_test.dart`, `home_goldens_test.dart`, `mobile/test/design_system/financial_amount_test.dart`, `mobile/test/app/adaptive_shell_test.dart`, `mobile/test/core/sync/sync_lifecycle_test.dart`.
+- Novos baselines: `mobile/test/goldens/home_ios_light.png`, `mobile/test/goldens/home_ios_dark.png`.
+
+### Concerns após review
+
+- O APK passou com o mesmo aviso não bloqueante de native access futuro do Gradle/JVM.
+- Build, Simulator e hardware iOS continuam dependentes de macOS/Xcode; somente o comportamento adaptativo e os goldens iOS determinísticos foram validados no Windows.
+- Persistência de privacidade e proteção do app switcher continuam explicitamente fora desta onda e pertencem à Task 8.
+- Nenhum finding material desta revisão permanece aberto.

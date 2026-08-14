@@ -187,15 +187,18 @@ void main() {
       );
       await tester.pump();
       authenticated = true;
+      expect(AppResumeScope.generationOf(tester.element(find.text('Home'))), 0);
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pump();
       expect(api.changeCalls, 0);
+      expect(AppResumeScope.generationOf(tester.element(find.text('Home'))), 1);
 
       now = DateTime.utc(2026, 8, 14, 12, 5, 1);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpAndSettle();
       expect(api.changeCalls, 1);
+      expect(AppResumeScope.generationOf(tester.element(find.text('Home'))), 2);
     },
   );
 

@@ -1,11 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:lar_finance/design_system/components/financial_amount.dart';
 import 'package:lar_finance/design_system/components/owner_selector.dart';
 import 'package:lar_finance/design_system/components/sync_status.dart';
+import 'package:lar_finance/design_system/lar_theme.dart';
 
 void main() {
+  setUpAll(() => initializeDateFormatting('pt_BR'));
+
   testWidgets('financial amount uses tabular figures and hides only digits', (
     tester,
   ) async {
@@ -55,6 +59,23 @@ void main() {
     expect(find.byType(SegmentedButton<int>), findsNothing);
   });
 
+  testWidgets('iOS dark selected owner mantém contraste AA', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: LarTheme.dark.copyWith(platform: TargetPlatform.iOS),
+        home: OwnerSelector(selected: 0, onSelected: (_) {}),
+      ),
+    );
+
+    final selector = tester.widget<CupertinoSlidingSegmentedControl<int>>(
+      find.byType(CupertinoSlidingSegmentedControl<int>),
+    );
+    expect(
+      _contrastRatio(selector.thumbColor, LarTheme.dark.colorScheme.onSurface),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
   testWidgets(
     'financial amount formats signed minor units without losing cents',
     (tester) async {
@@ -99,4 +120,37 @@ void main() {
     expect(find.text('Offline'), findsOneWidget);
     expect(tester.getSemantics(find.byType(SyncStatusView)).label, 'Offline');
   });
+
+  testWidgets('sync status apresenta instante UTC no horário local', (
+    tester,
+  ) async {
+    final instant = DateTime.utc(2026, 8, 14, 15, 30);
+    final local = instant.toLocal();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SyncStatusView(
+          data: SyncStatusData(
+            state: SyncVisualState.current,
+            lastSuccessAt: instant,
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.textContaining(
+        '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}, '
+        '${local.hour.toString().padLeft(2, '0')}:30',
+      ),
+      findsOneWidget,
+    );
+  });
+}
+
+double _contrastRatio(Color a, Color b) {
+  final lighter = a.computeLuminance() > b.computeLuminance() ? a : b;
+  final darker = identical(lighter, a) ? b : a;
+  return (lighter.computeLuminance() + 0.05) /
+      (darker.computeLuminance() + 0.05);
 }

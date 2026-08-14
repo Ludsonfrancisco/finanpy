@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +22,7 @@ void main() {
     await initializeDateFormatting('pt_BR');
     await _loadFixedGoldenFont();
     await _loadMaterialIcons();
+    await _loadCupertinoIcons();
   });
 
   for (final fixture in <_GoldenFixture>[
@@ -36,6 +39,20 @@ void main() {
       brightness: Brightness.dark,
       platform: TargetPlatform.android,
       file: '../../goldens/home_mobile_dark.png',
+    ),
+    const _GoldenFixture(
+      name: 'iOS claro',
+      size: Size(390, 844),
+      brightness: Brightness.light,
+      platform: TargetPlatform.iOS,
+      file: '../../goldens/home_ios_light.png',
+    ),
+    const _GoldenFixture(
+      name: 'iOS escuro',
+      size: Size(390, 844),
+      brightness: Brightness.dark,
+      platform: TargetPlatform.iOS,
+      file: '../../goldens/home_ios_dark.png',
     ),
     const _GoldenFixture(
       name: 'Windows claro',
@@ -64,6 +81,7 @@ void main() {
         repository: repository,
         syncState: syncState,
         now: () => DateTime(2026, 8, 14, 12),
+        timerFactory: (duration, callback) => _GoldenTimer(),
       );
       addTearDown(controller.dispose);
       final base = fixture.brightness == Brightness.dark
@@ -71,6 +89,17 @@ void main() {
           : LarTheme.light;
       final theme = base.copyWith(
         platform: fixture.platform,
+        cupertinoOverrideTheme: CupertinoThemeData(
+          brightness: fixture.brightness,
+          primaryColor: base.colorScheme.primary,
+          textTheme: const CupertinoTextThemeData(
+            textStyle: TextStyle(fontFamily: _goldenFontFamily),
+            tabLabelTextStyle: TextStyle(
+              fontFamily: _goldenFontFamily,
+              fontSize: 10,
+            ),
+          ),
+        ),
         textTheme: base.textTheme.apply(fontFamily: _goldenFontFamily),
         primaryTextTheme: base.primaryTextTheme.apply(
           fontFamily: _goldenFontFamily,
@@ -132,6 +161,24 @@ Future<void> _loadMaterialIcons() async {
   await loader.load();
 }
 
+Future<void> _loadCupertinoIcons() async {
+  final pubCache = Platform.environment['LOCALAPPDATA'];
+  if (pubCache == null) {
+    throw StateError('LOCALAPPDATA is required for the golden font fixture.');
+  }
+  final file = File(
+    '$pubCache${Platform.pathSeparator}Pub${Platform.pathSeparator}Cache${Platform.pathSeparator}hosted${Platform.pathSeparator}pub.dev${Platform.pathSeparator}cupertino_icons-1.0.9${Platform.pathSeparator}assets${Platform.pathSeparator}CupertinoIcons.ttf',
+  );
+  final bytes = Uint8List.fromList(file.readAsBytesSync());
+  final effectiveFamily = const TextStyle(
+    fontFamily: CupertinoIcons.iconFont,
+    package: CupertinoIcons.iconFontPackage,
+  ).fontFamily!;
+  final loader = FontLoader(effectiveFamily)
+    ..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
+  await loader.load();
+}
+
 final class _GoldenFixture {
   const _GoldenFixture({
     required this.name,
@@ -170,6 +217,7 @@ final class _GoldenHomeRepository implements HomeRepository {
               categoryName: 'Alimentação',
               ownerName: 'Conjunto',
               date: DateTime(2026, 8, 14),
+              type: HomeTransactionType.expense,
               signedAmountMinor: -28640,
             ),
             HomeTransaction(
@@ -178,6 +226,7 @@ final class _GoldenHomeRepository implements HomeRepository {
               categoryName: 'Receita',
               ownerName: 'Eu',
               date: DateTime(2026, 8, 13),
+              type: HomeTransactionType.income,
               signedAmountMinor: 780000,
             ),
             HomeTransaction(
@@ -186,6 +235,7 @@ final class _GoldenHomeRepository implements HomeRepository {
               categoryName: 'Moradia',
               ownerName: 'Esposa',
               date: DateTime(2026, 8, 12),
+              type: HomeTransactionType.expense,
               signedAmountMinor: -21490,
             ),
           ],
@@ -193,4 +243,15 @@ final class _GoldenHomeRepository implements HomeRepository {
           hasAccountData: true,
         ),
       );
+}
+
+final class _GoldenTimer implements Timer {
+  @override
+  bool get isActive => true;
+
+  @override
+  int get tick => 0;
+
+  @override
+  void cancel() {}
 }

@@ -163,13 +163,21 @@ SELECT t.uuid, t.description, c.name AS category_name, o.name AS owner_name,
         recentTransactions: recentRows
             .map((row) {
               final amount = row.read<int>('amount_minor');
+              final type = switch (row.read<String>('type')) {
+                'income' => HomeTransactionType.income,
+                'expense' => HomeTransactionType.expense,
+                final value => throw StateError(
+                  'Unknown local transaction type: $value',
+                ),
+              };
               return HomeTransaction(
                 uuid: row.read<String>('uuid'),
                 description: row.read<String>('description'),
                 categoryName: row.read<String>('category_name'),
                 ownerName: row.read<String>('owner_name'),
                 date: DateTime.parse(row.read<String>('date')),
-                signedAmountMinor: row.read<String>('type') == 'expense'
+                type: type,
+                signedAmountMinor: type == HomeTransactionType.expense
                     ? -amount
                     : amount,
               );

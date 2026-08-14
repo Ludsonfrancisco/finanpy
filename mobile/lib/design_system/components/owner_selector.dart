@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../lar_colors.dart';
+
 final class OwnerSelector extends StatelessWidget {
   const OwnerSelector({
     required this.selected,
@@ -20,7 +22,9 @@ final class OwnerSelector extends StatelessWidget {
             ? CupertinoSlidingSegmentedControl<int>(
                 groupValue: selected,
                 proportionalWidth: true,
-                thumbColor: Theme.of(context).colorScheme.secondary,
+                thumbColor: Theme.of(context).brightness == Brightness.dark
+                    ? LarColors.champagneSelectedDark
+                    : Theme.of(context).colorScheme.secondary,
                 children: const <int, Widget>{
                   0: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12),
@@ -52,7 +56,7 @@ final class OwnerSelector extends StatelessWidget {
                   backgroundColor: WidgetStateProperty.resolveWith((states) {
                     if (!states.contains(WidgetState.selected)) return null;
                     return Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFF4B4027)
+                        ? LarColors.champagneSelectedDark
                         : const Color(0xFFD1B16C);
                   }),
                   foregroundColor: WidgetStateProperty.resolveWith((states) {
