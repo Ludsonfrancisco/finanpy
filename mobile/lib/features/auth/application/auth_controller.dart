@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/network/api_error.dart';
 import '../data/auth_repository.dart';
+import '../domain/session.dart';
 
 enum AuthPhase {
   checking,
@@ -35,11 +36,14 @@ final authControllerProvider = ChangeNotifierProvider<AuthController>((ref) {
 });
 
 final class AuthController extends ChangeNotifier {
-  AuthController(this._repository);
+  AuthController(this._repository, {SessionAuthority? sessionAuthority})
+    : _sessionAuthority = sessionAuthority;
 
   final AuthGateway _repository;
+  final SessionAuthority? _sessionAuthority;
   AuthState _state = const AuthState(phase: AuthPhase.checking);
   bool _disposed = false;
+  bool _logoutInFlight = false;
 
   AuthState get state => _state;
 
@@ -198,8 +202,17 @@ final class AuthController extends ChangeNotifier {
     }
   }
 
-  void completeInitialSync(DateTime? lastSuccessAt) {
-    if (_state.phase != AuthPhase.initialSync) return;
+  Future<bool> completeInitialSync(
+    SessionSnapshot expectedSession,
+    DateTime? lastSuccessAt,
+  ) async {
+    final authority = _sessionAuthority;
+    if (_state.phase != AuthPhase.initialSync ||
+        authority == null ||
+        !await authority.isCurrent(expectedSession) ||
+        _state.phase != AuthPhase.initialSync) {
+      return false;
+    }
     _emit(
       AuthState(
         phase: AuthPhase.authenticated,
@@ -207,25 +220,20 @@ final class AuthController extends ChangeNotifier {
         lastSyncAt: lastSuccessAt ?? _state.lastSyncAt,
       ),
     );
+    return true;
   }
 
   Future<void> logout() async {
-    if (_state.isSubmitting) return;
-    _emit(
-      AuthState(
-        phase: _state.phase,
-        owners: _state.owners,
-        isSubmitting: true,
-        deviceName: _state.deviceName,
-        lastSyncAt: _state.lastSyncAt,
-      ),
-    );
+    if (_logoutInFlight) return;
+    _logoutInFlight = true;
+    _emit(const AuthState(phase: AuthPhase.signedOut));
     try {
       await _repository.logout();
     } catch (_) {
       // A local logout remains authoritative.
+    } finally {
+      _logoutInFlight = false;
     }
-    _emit(const AuthState(phase: AuthPhase.signedOut));
   }
 
   List<DeviceOwnerOption> _deviceOwners(List<DeviceOwnerOption> owners) =>

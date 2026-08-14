@@ -11,6 +11,7 @@ import 'package:lar_finance/core/storage/local_ledger.dart';
 import 'package:lar_finance/core/sync/sync_api.dart';
 import 'package:lar_finance/core/sync/sync_coordinator.dart';
 import 'package:lar_finance/core/sync/sync_models.dart';
+import 'package:lar_finance/core/sync/sync_state.dart';
 import 'package:lar_finance/features/auth/application/auth_controller.dart';
 import 'package:lar_finance/features/auth/data/auth_repository.dart';
 import 'package:lar_finance/features/auth/domain/session.dart';
@@ -36,7 +37,10 @@ void main() {
         _app(
           InitialSyncScreen(
             coordinator: coordinator,
-            onReady: (_) => readyCalls++,
+            onReady: (_, _) async {
+              readyCalls++;
+              return true;
+            },
           ),
         ),
       );
@@ -69,7 +73,10 @@ void main() {
       _app(
         InitialSyncScreen(
           coordinator: coordinator,
-          onReady: (_) => readyCalls++,
+          onReady: (_, _) async {
+            readyCalls++;
+            return true;
+          },
         ),
       ),
     );
@@ -101,7 +108,12 @@ void main() {
       ),
     );
     await tester.pumpWidget(
-      _app(InitialSyncScreen(coordinator: coordinator, onReady: (_) {})),
+      _app(
+        InitialSyncScreen(
+          coordinator: coordinator,
+          onReady: (_, _) async => true,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -189,13 +201,18 @@ void main() {
   testWidgets('a valid initial snapshot unlocks the guarded Home route', (
     tester,
   ) async {
-    final auth = AuthController(_TestAuthGateway());
+    final authority = SessionAuthority.forStore(_MemoryTokenStore(_session()));
+    final auth = AuthController(
+      _TestAuthGateway(),
+      sessionAuthority: authority,
+    );
     await auth.login(email: 'synthetic@example.test', password: 'synthetic');
     await auth.selectDeviceOwner('20000000-0000-4000-8000-000000000001');
     expect(auth.state.phase, AuthPhase.initialSync);
     final coordinator = _coordinator(
       _MemoryLedger(),
       _SequenceSyncApi(bootstrapOutcomes: <Object>[_bootstrap()]),
+      sessionAuthority: authority,
     );
     final router = createAppRouter(
       const AppConfig(apiBaseUrl: 'https://example.test/api/v1'),
@@ -262,6 +279,88 @@ void main() {
     await Future.wait(<Future<void>>[first, second]);
     expect((await ledger.readSyncMetadata())?.cursor, 'cursor-refresh');
   });
+
+  testWidgets(
+    'stale bootstrap cannot release Home after same-value session replacement',
+    (tester) async {
+      final store = _MemoryTokenStore(_session());
+      final authority = SessionAuthority.forStore(store);
+      final expectedSession = await authority.snapshot();
+      final release = Completer<BootstrapPayload>();
+      final ledger = _MemoryLedger();
+      final api = _SequenceSyncApi(bootstrapFuture: release.future);
+      final coordinator = _coordinator(
+        ledger,
+        api,
+        sessionAuthority: authority,
+      );
+      var readyCalls = 0;
+      await tester.pumpWidget(
+        _app(
+          InitialSyncScreen(
+            coordinator: coordinator,
+            onReady: (_, _) async {
+              readyCalls++;
+              return true;
+            },
+          ),
+        ),
+      );
+      await _pumpUntil(tester, () => api.bootstrapCalls == 1);
+
+      await authority.clear();
+      final replacement = _session();
+      await authority.write(replacement);
+      expect(
+        (await authority.snapshot())?.generation,
+        greaterThan(expectedSession!.generation),
+      );
+      release.complete(_bootstrap());
+      await _pumpUntil(
+        tester,
+        () => coordinator.state.phase != SyncPhase.syncing,
+      );
+      await tester.pump();
+
+      expect(readyCalls, 0);
+      expect(ledger.metadata, isNull);
+      expect(await store.read(), same(replacement));
+      expect(
+        find.text('Não foi possível sincronizar seus dados. Tente novamente.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  test(
+    'completeInitialSync accepts only the expected session generation',
+    () async {
+      final store = _MemoryTokenStore(_session());
+      final authority = SessionAuthority.forStore(store);
+      final auth = AuthController(
+        _TestAuthGateway(),
+        sessionAuthority: authority,
+      );
+      await auth.login(email: 'synthetic@example.test', password: 'synthetic');
+      await auth.selectDeviceOwner('20000000-0000-4000-8000-000000000001');
+      final stale = await authority.snapshot();
+      await authority.clear();
+      await authority.write(_session());
+
+      expect(
+        await auth.completeInitialSync(stale!, DateTime.utc(2026, 8, 14, 14)),
+        isFalse,
+      );
+      expect(auth.state.phase, AuthPhase.initialSync);
+
+      final current = await authority.snapshot();
+      expect(
+        await auth.completeInitialSync(current!, DateTime.utc(2026, 8, 14, 14)),
+        isTrue,
+      );
+      expect(auth.state.phase, AuthPhase.authenticated);
+    },
+  );
 }
 
 Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
@@ -277,11 +376,14 @@ LedgerSyncCoordinator _coordinator(
   LocalLedger ledger,
   SyncApi api, {
   DateTime Function()? now,
+  SessionAuthority? sessionAuthority,
 }) {
   return LedgerSyncCoordinator(
     api: api,
     ledger: ledger,
-    activeDeviceUuid: () async => _deviceUuid,
+    sessionAuthority:
+        sessionAuthority ??
+        SessionAuthority.forStore(_MemoryTokenStore(_session())),
     now: now ?? () => DateTime.utc(2026, 8, 14, 14),
   );
 }
@@ -299,6 +401,7 @@ SyncMetadata _metadata(DateTime timestamp) => SyncMetadata(
   cursor: 'cursor-cache',
   householdUuid: '10000000-0000-4000-8000-000000000001',
   sessionDeviceUuid: _deviceUuid,
+  sessionGeneration: 0,
   lastSuccessAt: timestamp,
 );
 
@@ -308,12 +411,36 @@ final class _MemoryLedger implements LocalLedger {
   SyncMetadata? metadata;
 
   @override
-  Future<void> applyDelta(SyncPage page, DateTime syncedAt) async {
+  Future<void> applyDelta(
+    SyncPage page,
+    DateTime syncedAt, {
+    int sessionGeneration = 0,
+    bool Function()? isSessionCurrent,
+  }) async {
+    await applyDeltaChain(
+      <SyncPage>[page],
+      syncedAt,
+      sessionGeneration: sessionGeneration,
+      isSessionCurrent: isSessionCurrent,
+    );
+  }
+
+  @override
+  Future<void> applyDeltaChain(
+    List<SyncPage> pages,
+    DateTime syncedAt, {
+    int sessionGeneration = 0,
+    bool Function()? isSessionCurrent,
+  }) async {
+    if (isSessionCurrent != null && !isSessionCurrent()) {
+      throw StateError('stale session');
+    }
     final current = metadata!;
     metadata = SyncMetadata(
-      cursor: page.cursor,
+      cursor: pages.last.cursor,
       householdUuid: current.householdUuid,
       sessionDeviceUuid: current.sessionDeviceUuid,
+      sessionGeneration: sessionGeneration,
       lastSuccessAt: syncedAt,
     );
   }
@@ -325,12 +452,18 @@ final class _MemoryLedger implements LocalLedger {
   Future<void> replaceBootstrap(
     BootstrapPayload payload,
     DateTime syncedAt,
-    String sessionDeviceUuid,
-  ) async {
+    String sessionDeviceUuid, {
+    int sessionGeneration = 0,
+    bool Function()? isSessionCurrent,
+  }) async {
+    if (isSessionCurrent != null && !isSessionCurrent()) {
+      throw StateError('stale session');
+    }
     metadata = SyncMetadata(
       cursor: payload.cursor,
       householdUuid: payload.household['uuid']! as String,
       sessionDeviceUuid: sessionDeviceUuid,
+      sessionGeneration: sessionGeneration,
       lastSuccessAt: syncedAt,
     );
   }
@@ -438,4 +571,19 @@ final class _TestAuthGateway implements AuthGateway {
 
   @override
   Future<void> selectDeviceOwner(String uuid) async {}
+}
+
+final class _MemoryTokenStore implements TokenStore {
+  _MemoryTokenStore(this.value);
+
+  StoredTokens? value;
+
+  @override
+  Future<void> clear() async => value = null;
+
+  @override
+  Future<StoredTokens?> read() async => value;
+
+  @override
+  Future<void> write(StoredTokens tokens) async => value = tokens;
 }

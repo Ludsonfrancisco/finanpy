@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -75,6 +77,29 @@ void main() {
     expect(gateway.logoutCalls, 1);
     expect(controller.state.phase, AuthPhase.signedOut);
   });
+
+  test(
+    'logout hides authenticated UI before remote or vault I/O completes',
+    () async {
+      final release = Completer<void>();
+      final gateway = _FakeAuthGateway(
+        restoredSession: _sessionFor(_deviceUuid),
+        selectedOwnerUuid: _selfUuid,
+        syncedDeviceUuid: _deviceUuid,
+        logoutRelease: release,
+      );
+      final controller = AuthController(gateway);
+      await controller.initialize();
+      expect(controller.state.phase, AuthPhase.authenticated);
+
+      final logout = controller.logout();
+
+      expect(gateway.logoutCalls, 1);
+      expect(controller.state.phase, AuthPhase.signedOut);
+      release.complete();
+      await logout;
+    },
+  );
 
   testWidgets('guarded routes move through login, owner, and initial sync', (
     tester,
@@ -271,6 +296,7 @@ final class _FakeAuthGateway implements AuthGateway {
     this.loadOwnersError,
     this.readSessionError,
     this.loginResult,
+    this.logoutRelease,
   });
 
   final bool logoutThrows;
@@ -280,6 +306,7 @@ final class _FakeAuthGateway implements AuthGateway {
   final Object? loadOwnersError;
   final Object? readSessionError;
   final LoginResult? loginResult;
+  final Completer<void>? logoutRelease;
   int logoutCalls = 0;
   String? selectedUuid;
 
@@ -300,6 +327,7 @@ final class _FakeAuthGateway implements AuthGateway {
   @override
   Future<void> logout() async {
     logoutCalls++;
+    await logoutRelease?.future;
     if (logoutThrows) throw StateError('offline');
   }
 

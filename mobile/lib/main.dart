@@ -41,12 +41,15 @@ Future<void> main() async {
     sessionAuthority: sessionAuthority,
     database: database,
   );
-  final controller = AuthController(repository);
+  final controller = AuthController(
+    repository,
+    sessionAuthority: sessionAuthority,
+  );
   await controller.initialize();
   final syncCoordinator = LedgerSyncCoordinator(
     api: DjangoSyncApi(sessionTransport),
     ledger: DriftLocalLedger(database),
-    activeDeviceUuid: () async => (await sessionAuthority.read())?.deviceUuid,
+    sessionAuthority: sessionAuthority,
   );
   runApp(
     MyApp(

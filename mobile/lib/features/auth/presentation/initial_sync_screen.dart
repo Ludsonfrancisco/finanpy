@@ -5,8 +5,13 @@ import 'package:flutter/material.dart';
 import '../../../core/sync/sync_coordinator.dart';
 import '../../../core/sync/sync_models.dart';
 import '../../../design_system/lar_spacing.dart';
+import '../domain/session.dart';
 
-typedef InitialSyncReady = void Function(DateTime? lastSuccessAt);
+typedef InitialSyncReady =
+    Future<bool> Function(
+      SessionSnapshot expectedSession,
+      DateTime? lastSuccessAt,
+    );
 
 final class InitialSyncScreen extends StatefulWidget {
   const InitialSyncScreen({
@@ -39,11 +44,18 @@ final class _InitialSyncScreenState extends State<InitialSyncScreen> {
     if (result == SyncResult.updated ||
         result == SyncResult.current ||
         result == SyncResult.offlineWithCache) {
-      if (await widget.coordinator.hasValidCache()) {
+      final expectedSession = widget.coordinator.lastSuccessfulSession;
+      if (expectedSession != null &&
+          await widget.coordinator.hasValidCacheFor(expectedSession)) {
         if (!mounted || _readyDelivered) return;
         _readyDelivered = true;
-        widget.onReady(widget.coordinator.state.timestamp);
-        return;
+        if (await widget.onReady(
+          expectedSession,
+          widget.coordinator.state.timestamp,
+        )) {
+          return;
+        }
+        _readyDelivered = false;
       }
     }
     if (mounted) setState(() => _result = result);

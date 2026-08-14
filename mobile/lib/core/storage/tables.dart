@@ -128,6 +128,8 @@ class SyncState extends Table {
     onDelete: KeyAction.cascade,
   )();
   TextColumn get sessionDeviceUuid => text()();
+  IntColumn get sessionGeneration =>
+      integer().withDefault(const Constant(-1))();
   DateTimeColumn get lastSuccessAt => dateTime().nullable()();
 
   @override

@@ -347,6 +347,75 @@ void main() {
     });
 
     test(
+      'rejects an empty terminal page that regresses to an older cursor',
+      () async {
+        await _seedBootstrap(ledger, bootstrap);
+        final before = await ledger.readSyncMetadata();
+        final api = _FakeSyncApi(
+          pages: <SyncPage>[
+            SyncPage(
+              changes: List<SyncChangePayload>.generate(
+                DjangoSyncApi.pageSize,
+                _transactionChange,
+              ),
+              cursor: 'cursor-page-b',
+            ),
+            SyncPage(
+              changes: const <SyncChangePayload>[],
+              cursor: bootstrap.cursor,
+            ),
+          ],
+        );
+
+        expect(
+          await _coordinator(ledger, api).synchronize(),
+          SyncResult.failed,
+        );
+        expect(api.changeCursors, <String>[bootstrap.cursor, 'cursor-page-b']);
+        expect(
+          await database.select(database.transactions).get(),
+          hasLength(3),
+        );
+        final after = await ledger.readSyncMetadata();
+        expect(after?.cursor, before?.cursor);
+        expect(after?.lastSuccessAt, before?.lastSuccessAt);
+      },
+    );
+
+    test(
+      'second-page offline failure leaves the whole chain untouched',
+      () async {
+        await _seedBootstrap(ledger, bootstrap);
+        final before = await ledger.readSyncMetadata();
+        final api = _FakeSyncApi(
+          pages: <SyncPage>[
+            SyncPage(
+              changes: List<SyncChangePayload>.generate(
+                DjangoSyncApi.pageSize,
+                _transactionChange,
+              ),
+              cursor: 'cursor-page-b',
+            ),
+          ],
+          changeErrors: const <int, Object>{1: OfflineFailure()},
+        );
+
+        expect(
+          await _coordinator(ledger, api).synchronize(),
+          SyncResult.offlineWithCache,
+        );
+        expect(api.changeCursors, <String>[bootstrap.cursor, 'cursor-page-b']);
+        expect(
+          await database.select(database.transactions).get(),
+          hasLength(3),
+        );
+        final after = await ledger.readSyncMetadata();
+        expect(after?.cursor, before?.cursor);
+        expect(after?.lastSuccessAt, before?.lastSuccessAt);
+      },
+    );
+
+    test(
       'uses cache only when its device UUID matches the active session',
       () async {
         await ledger.replaceBootstrap(
@@ -384,6 +453,157 @@ void main() {
       expect(coordinator.state.timestamp, before?.lastSuccessAt);
       expect(await coordinator.state.retry(), SyncResult.offlineWithCache);
     });
+
+    test(
+      'same-value session in a new generation cannot commit stale pull work',
+      () async {
+        await _seedBootstrap(ledger, bootstrap);
+        final before = await ledger.readSyncMetadata();
+        final store = _MemoryTokenStore(_tokens());
+        final authority = SessionAuthority.forStore(store);
+        final expectedSession = await authority.snapshot();
+        final release = Completer<void>();
+        final api = _FakeSyncApi(
+          pages: <SyncPage>[
+            SyncPage(
+              changes: <SyncChangePayload>[_transactionChange(500)],
+              cursor: 'cursor-stale-session',
+            ),
+          ],
+          changeRelease: release,
+        );
+        final coordinator = LedgerSyncCoordinator(
+          api: api,
+          ledger: ledger,
+          sessionAuthority: authority,
+          now: () => DateTime.utc(2026, 8, 14, 14),
+        );
+
+        final sync = coordinator.synchronize();
+        await _eventually(() => api.changeCursors.length == 1);
+        await authority.clear();
+        final replacement = _tokens();
+        await authority.write(replacement);
+        expect(
+          (await authority.snapshot())?.generation,
+          greaterThan(expectedSession!.generation),
+        );
+        release.complete();
+
+        expect(await sync, SyncResult.failed);
+        expect(
+          await database.select(database.transactions).get(),
+          hasLength(3),
+        );
+        final after = await ledger.readSyncMetadata();
+        expect(after?.cursor, before?.cursor);
+        expect(after?.lastSuccessAt, before?.lastSuccessAt);
+        expect(await coordinator.hasValidCache(), isFalse);
+        expect(await store.read(), same(replacement));
+      },
+    );
+
+    test(
+      'session replacement during a Drift commit rolls back stale bootstrap',
+      () async {
+        final enteredCommit = Completer<void>();
+        final releaseCommit = Completer<void>();
+        final pausedLedger = DriftLocalLedger(
+          database,
+          beforeTransactionCommit: () async {
+            enteredCommit.complete();
+            await releaseCommit.future;
+          },
+        );
+        final store = _MemoryTokenStore(_tokens());
+        final authority = SessionAuthority.forStore(store);
+        final expectedSession = await authority.snapshot();
+        final coordinator = LedgerSyncCoordinator(
+          api: _FakeSyncApi(bootstrap: bootstrap),
+          ledger: pausedLedger,
+          sessionAuthority: authority,
+          now: () => DateTime.utc(2026, 8, 14, 14),
+        );
+
+        final sync = coordinator.synchronize();
+        await enteredCommit.future;
+        await authority.clear();
+        final replacement = _tokens();
+        await authority.write(replacement);
+        expect(
+          (await authority.snapshot())?.generation,
+          greaterThan(expectedSession!.generation),
+        );
+        releaseCommit.complete();
+
+        expect(await sync, SyncResult.failed);
+        expect(await database.select(database.households).get(), isEmpty);
+        expect(await database.select(database.transactions).get(), isEmpty);
+        expect(await pausedLedger.readSyncMetadata(), isNull);
+        expect(await coordinator.hasValidCache(), isFalse);
+        expect(coordinator.lastSuccessfulSession, isNull);
+        expect(await store.read(), same(replacement));
+      },
+    );
+
+    test(
+      'session replacement during a Drift delta commit rolls back the chain',
+      () async {
+        await _seedBootstrap(ledger, bootstrap);
+        final before = await ledger.readSyncMetadata();
+        final enteredCommit = Completer<void>();
+        final releaseCommit = Completer<void>();
+        final pausedLedger = DriftLocalLedger(
+          database,
+          beforeTransactionCommit: () async {
+            enteredCommit.complete();
+            await releaseCommit.future;
+          },
+        );
+        final store = _MemoryTokenStore(_tokens());
+        final authority = SessionAuthority.forStore(store);
+        final coordinator = LedgerSyncCoordinator(
+          api: _FakeSyncApi(
+            pages: <SyncPage>[
+              SyncPage(
+                changes: <SyncChangePayload>[
+                  SyncChangePayload(
+                    entityType: 'account',
+                    entityUuid: '30000000-0000-4000-8000-000000000001',
+                    entityVersion: 2,
+                    operation: 'update',
+                    payload: _accountPayload(version: 2),
+                  ),
+                ],
+                cursor: 'cursor-stale-delta',
+              ),
+            ],
+          ),
+          ledger: pausedLedger,
+          sessionAuthority: authority,
+          now: () => DateTime.utc(2026, 8, 14, 14),
+        );
+
+        final sync = coordinator.synchronize();
+        await enteredCommit.future;
+        await authority.clear();
+        final replacement = _tokens();
+        await authority.write(replacement);
+        releaseCommit.complete();
+
+        expect(await sync, SyncResult.failed);
+        expect(
+          (await database.select(database.accounts).get()).first.version,
+          1,
+        );
+        final after = await pausedLedger.readSyncMetadata();
+        expect(after?.cursor, before?.cursor);
+        expect(after?.lastSuccessAt, before?.lastSuccessAt);
+        expect(await coordinator.hasValidCache(), isFalse);
+        expect(coordinator.lastSuccessfulSession, isNull);
+        expect(await store.read(), same(replacement));
+      },
+    );
   });
 
   group('DjangoSyncApi', () {
@@ -429,11 +649,17 @@ void main() {
   });
 }
 
-LedgerSyncCoordinator _coordinator(LocalLedger ledger, SyncApi api) {
+LedgerSyncCoordinator _coordinator(
+  LocalLedger ledger,
+  SyncApi api, {
+  SessionAuthority? sessionAuthority,
+}) {
   return LedgerSyncCoordinator(
     api: api,
     ledger: ledger,
-    activeDeviceUuid: () async => _deviceUuid,
+    sessionAuthority:
+        sessionAuthority ??
+        SessionAuthority.forStore(_MemoryTokenStore(_tokens())),
     now: () => DateTime.utc(2026, 8, 14, 14),
   );
 }
@@ -502,6 +728,7 @@ final class _FakeSyncApi implements SyncApi {
     this.bootstrapError,
     this.pages = const <SyncPage>[],
     this.changeError,
+    this.changeErrors = const <int, Object>{},
     this.bootstrapRelease,
     this.changeRelease,
   });
@@ -510,6 +737,7 @@ final class _FakeSyncApi implements SyncApi {
   final Object? bootstrapError;
   final List<SyncPage> pages;
   final Object? changeError;
+  final Map<int, Object> changeErrors;
   final Completer<void>? bootstrapRelease;
   final Completer<void>? changeRelease;
   final List<String> changeCursors = <String>[];
@@ -533,11 +761,13 @@ final class _FakeSyncApi implements SyncApi {
 
   @override
   Future<SyncPage> fetchChanges(String cursor) async {
+    final call = changeCursors.length;
     changeCursors.add(cursor);
     _beginChain();
     try {
       await changeRelease?.future;
       if (changeError case final error?) throw error;
+      if (changeErrors[call] case final error?) throw error;
       if (_nextPage >= pages.length) {
         throw StateError('No fake sync page was queued.');
       }
@@ -578,14 +808,14 @@ final class _RecordingTransport implements ApiTransport {
   }
 }
 
-TokenStore _tokenStore() => _MemoryTokenStore(
-  StoredTokens(
-    accessToken: 'synthetic-access',
-    accessExpiresAt: DateTime.utc(2030),
-    refreshToken: 'synthetic-refresh',
-    refreshExpiresAt: DateTime.utc(2031),
-    deviceUuid: _deviceUuid,
-  ),
+TokenStore _tokenStore() => _MemoryTokenStore(_tokens());
+
+StoredTokens _tokens() => StoredTokens(
+  accessToken: 'synthetic-access',
+  accessExpiresAt: DateTime.utc(2030),
+  refreshToken: 'synthetic-refresh',
+  refreshExpiresAt: DateTime.utc(2031),
+  deviceUuid: _deviceUuid,
 );
 
 final class _MemoryTokenStore implements TokenStore {

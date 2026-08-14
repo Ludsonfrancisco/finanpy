@@ -69,6 +69,14 @@ final class SessionAuthority {
         : SessionSnapshot(tokens: tokens, generation: _generation);
   });
 
+  Future<bool> isCurrent(SessionSnapshot expected) => _serialize(() async {
+    if (_generation != expected.generation) return false;
+    return await _tokenStore.read() != null;
+  });
+
+  bool isGenerationCurrent(SessionSnapshot expected) =>
+      _generation == expected.generation;
+
   Future<void> write(StoredTokens tokens) {
     _generation++;
     return _serialize(() => _tokenStore.write(tokens));

@@ -17,7 +17,7 @@ void main() {
     await db.close();
   });
 
-  test('schema v1 stores exact minor units with valid relations', () async {
+  test('schema v2 stores exact minor units with valid relations', () async {
     await _seedParents(db, now);
 
     await db
@@ -40,12 +40,12 @@ void main() {
         );
 
     final transaction = await db.select(db.transactions).getSingle();
-    expect(db.schemaVersion, 1);
+    expect(db.schemaVersion, 2);
     expect(transaction.amountMinor, 2486040);
     expect(transaction.version, 3);
   });
 
-  test('schema v1 rejects an invalid transaction relation', () async {
+  test('schema v2 rejects an invalid transaction relation', () async {
     await _seedParents(db, now);
 
     final insert = db
@@ -79,7 +79,7 @@ void main() {
     );
   });
 
-  test('schema v1 rejects an unknown owner type', () async {
+  test('schema v2 rejects an unknown owner type', () async {
     final insert = db
         .into(db.owners)
         .insert(
@@ -93,7 +93,7 @@ void main() {
     await expectLater(insert, throwsA(isA<Exception>()));
   });
 
-  test('schema v1 rejects a sync-state key other than ledger', () async {
+  test('schema v2 rejects a sync-state key other than ledger', () async {
     await db
         .into(db.households)
         .insert(
@@ -118,7 +118,7 @@ void main() {
     await expectLater(insert, throwsA(isA<Exception>()));
   });
 
-  test('schema v1 rejects a non-positive entity version', () async {
+  test('schema v2 rejects a non-positive entity version', () async {
     await db
         .into(db.households)
         .insert(
@@ -158,7 +158,7 @@ void main() {
     await expectLater(insert, throwsA(isA<Exception>()));
   });
 
-  test('schema v1 rejects a negative transaction magnitude', () async {
+  test('schema v2 rejects a negative transaction magnitude', () async {
     await _seedParents(db, now);
     final insert = db
         .into(db.transactions)

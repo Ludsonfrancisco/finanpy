@@ -9,18 +9,33 @@ abstract interface class LocalLedger {
   Future<void> replaceBootstrap(
     BootstrapPayload payload,
     DateTime syncedAt,
-    String sessionDeviceUuid,
-  );
-  Future<void> applyDelta(SyncPage page, DateTime syncedAt);
+    String sessionDeviceUuid, {
+    int sessionGeneration = 0,
+    bool Function()? isSessionCurrent,
+  });
+  Future<void> applyDelta(
+    SyncPage page,
+    DateTime syncedAt, {
+    int sessionGeneration = 0,
+    bool Function()? isSessionCurrent,
+  });
+  Future<void> applyDeltaChain(
+    List<SyncPage> pages,
+    DateTime syncedAt, {
+    int sessionGeneration = 0,
+    bool Function()? isSessionCurrent,
+  });
   Future<SyncMetadata?> readSyncMetadata();
 }
 
 final class DriftLocalLedger implements LocalLedger {
-  DriftLocalLedger(this._db);
+  DriftLocalLedger(this._db, {Future<void> Function()? beforeTransactionCommit})
+    : _beforeTransactionCommit = beforeTransactionCommit;
 
   static const _syncKey = 'ledger';
 
   final AppDatabase _db;
+  final Future<void> Function()? _beforeTransactionCommit;
 
   @override
   Stream<HomeSnapshot> watchHome(OwnerScope scope, DateTime now) {
@@ -43,8 +58,10 @@ final class DriftLocalLedger implements LocalLedger {
   Future<void> replaceBootstrap(
     BootstrapPayload payload,
     DateTime syncedAt,
-    String sessionDeviceUuid,
-  ) {
+    String sessionDeviceUuid, {
+    int sessionGeneration = 0,
+    bool Function()? isSessionCurrent,
+  }) {
     return _db.transaction(() async {
       final household = _householdFrom(payload.household);
       final owners = payload.owners.map(_ownerFrom).toList(growable: false);
@@ -90,14 +107,40 @@ final class DriftLocalLedger implements LocalLedger {
                 sessionDeviceUuid,
                 'sessionDeviceUuid',
               ),
+              sessionGeneration: Value(sessionGeneration),
               lastSuccessAt: Value(syncedAt),
             ),
           );
+      await _beforeTransactionCommit?.call();
+      _ensureSessionCurrent(isSessionCurrent);
     });
   }
 
   @override
-  Future<void> applyDelta(SyncPage page, DateTime syncedAt) {
+  Future<void> applyDelta(
+    SyncPage page,
+    DateTime syncedAt, {
+    int sessionGeneration = 0,
+    bool Function()? isSessionCurrent,
+  }) {
+    return applyDeltaChain(
+      <SyncPage>[page],
+      syncedAt,
+      sessionGeneration: sessionGeneration,
+      isSessionCurrent: isSessionCurrent,
+    );
+  }
+
+  @override
+  Future<void> applyDeltaChain(
+    List<SyncPage> pages,
+    DateTime syncedAt, {
+    int sessionGeneration = 0,
+    bool Function()? isSessionCurrent,
+  }) {
+    if (pages.isEmpty) {
+      throw ArgumentError.value(pages, 'pages', 'must not be empty');
+    }
     return _db.transaction(() async {
       final metadata = await (_db.select(
         _db.syncState,
@@ -106,18 +149,23 @@ final class DriftLocalLedger implements LocalLedger {
         throw StateError('A bootstrap is required before applying a delta.');
       }
 
-      for (final change in page.changes) {
-        await _applyChange(change);
+      for (final page in pages) {
+        for (final change in page.changes) {
+          await _applyChange(change);
+        }
       }
 
       await (_db.update(
         _db.syncState,
       )..where((row) => row.key.equals(_syncKey))).write(
         SyncStateCompanion(
-          cursor: Value(_nonEmpty(page.cursor, 'cursor')),
+          cursor: Value(_nonEmpty(pages.last.cursor, 'cursor')),
+          sessionGeneration: Value(sessionGeneration),
           lastSuccessAt: Value(syncedAt),
         ),
       );
+      await _beforeTransactionCommit?.call();
+      _ensureSessionCurrent(isSessionCurrent);
     });
   }
 
@@ -135,6 +183,7 @@ final class DriftLocalLedger implements LocalLedger {
       cursor: row.cursor,
       householdUuid: row.householdUuid,
       sessionDeviceUuid: row.sessionDeviceUuid,
+      sessionGeneration: row.sessionGeneration,
       lastSuccessAt: lastSuccessAt,
     );
   }
@@ -346,6 +395,12 @@ SELECT t.uuid, t.description, c.name AS category_name, o.name AS owner_name,
             : DateTime.parse(lastSuccessText).toUtc(),
       );
     });
+  }
+}
+
+void _ensureSessionCurrent(bool Function()? isSessionCurrent) {
+  if (isSessionCurrent != null && !isSessionCurrent()) {
+    throw StateError('The active session changed during the ledger commit.');
   }
 }
 
