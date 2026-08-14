@@ -5,7 +5,112 @@ import '../design_system/components/sync_status.dart';
 import '../design_system/lar_spacing.dart';
 import 'adaptive_shell.dart';
 import 'app_config.dart';
-GoRouter createAppRouter(AppConfig config) { config.validate(); return GoRouter(initialLocation: '/home', routes: <RouteBase>[GoRoute(path: '/login', builder: (context, state) => const _RouteNotice(title: 'Entrar no Lar')), GoRoute(path: '/device-owner', builder: (context, state) => const _RouteNotice(title: 'Este dispositivo')), GoRoute(path: '/initial-sync', builder: (context, state) => const _RouteNotice(title: 'Preparando dados')), ShellRoute(builder: (context, state, child) { final index = state.uri.path == '/more' ? 1 : 0; return AdaptiveShell(selectedIndex: index, onSelect: (value) => context.go(value == 0 ? '/home' : '/more'), child: child); }, routes: <RouteBase>[GoRoute(path: '/home', builder: (context, state) => const _HomeShell()), GoRoute(path: '/more', builder: (context, state) => const _RouteNotice(title: 'Mais'))])]); }
-final class _HomeShell extends StatefulWidget { const _HomeShell(); @override State<_HomeShell> createState() => _HomeShellState(); }
-final class _HomeShellState extends State<_HomeShell> { int owner = 0; @override Widget build(BuildContext context) { final text = Theme.of(context).textTheme; return SafeArea(child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1100), child: Padding(padding: const EdgeInsets.all(LarSpacing.xl), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[Text('CASA DE VALORES', style: text.labelLarge), const SizedBox(height: LarSpacing.xs), Text('Início', style: text.headlineMedium), const SizedBox(height: LarSpacing.lg), const SyncStatusView(data: SyncStatusData(state: SyncVisualState.offline, lastSuccessAt: null)), const SizedBox(height: LarSpacing.lg), OwnerSelector(selected: owner, onSelected: (value) => setState(() => owner = value)), const SizedBox(height: LarSpacing.xxl), Text('Dados ainda não sincronizados', style: text.titleLarge), const SizedBox(height: LarSpacing.sm), Text('Quando a primeira sincronização estiver disponível, a visão financeira aparecerá aqui.', style: text.bodyLarge)]))))); } }
-final class _RouteNotice extends StatelessWidget { const _RouteNotice({required this.title}); final String title; @override Widget build(BuildContext context) => SafeArea(child: Padding(padding: const EdgeInsets.all(LarSpacing.xl), child: Text(title, style: Theme.of(context).textTheme.headlineMedium))); }
+
+GoRouter createAppRouter(AppConfig config) {
+  config.validate();
+  return GoRouter(
+    initialLocation: '/home',
+    routes: <RouteBase>[
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const _RouteNotice(title: 'Entrar no Lar'),
+      ),
+      GoRoute(
+        path: '/device-owner',
+        builder: (context, state) =>
+            const _RouteNotice(title: 'Este dispositivo'),
+      ),
+      GoRoute(
+        path: '/initial-sync',
+        builder: (context, state) =>
+            const _RouteNotice(title: 'Preparando dados'),
+      ),
+      ShellRoute(
+        builder: (context, state, child) {
+          final index = state.uri.path == '/more' ? 1 : 0;
+          return AdaptiveShell(
+            selectedIndex: index,
+            onSelect: (value) => context.go(value == 0 ? '/home' : '/more'),
+            child: child,
+          );
+        },
+        routes: <RouteBase>[
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const _HomeShell(),
+          ),
+          GoRoute(
+            path: '/more',
+            builder: (context, state) => const _RouteNotice(title: 'Mais'),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+final class _HomeShell extends StatefulWidget {
+  const _HomeShell();
+  @override
+  State<_HomeShell> createState() => _HomeShellState();
+}
+
+final class _HomeShellState extends State<_HomeShell> {
+  int owner = 0;
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: Padding(
+              padding: const EdgeInsets.all(LarSpacing.xl),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('CASA DE VALORES', style: text.labelLarge),
+                  const SizedBox(height: LarSpacing.xs),
+                  Text('Início', style: text.headlineMedium),
+                  const SizedBox(height: LarSpacing.lg),
+                  const SyncStatusView(
+                    data: SyncStatusData(
+                      state: SyncVisualState.offline,
+                      lastSuccessAt: null,
+                    ),
+                  ),
+                  const SizedBox(height: LarSpacing.lg),
+                  OwnerSelector(
+                    selected: owner,
+                    onSelected: (value) => setState(() => owner = value),
+                  ),
+                  const SizedBox(height: LarSpacing.xxl),
+                  Text('Dados ainda não sincronizados', style: text.titleLarge),
+                  const SizedBox(height: LarSpacing.sm),
+                  Text(
+                    'Quando a primeira sincronização estiver disponível, a visão financeira aparecerá aqui.',
+                    style: text.bodyLarge,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+final class _RouteNotice extends StatelessWidget {
+  const _RouteNotice({required this.title});
+  final String title;
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.all(LarSpacing.xl),
+      child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
+    ),
+  );
+}

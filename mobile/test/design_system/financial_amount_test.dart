@@ -9,12 +9,16 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: FinancialAmount(minorUnits: 2486040, hidden: false)),
+      const MaterialApp(
+        home: FinancialAmount(minorUnits: 2486040, hidden: false),
+      ),
     );
     expect(find.text('R\$\u00a024.860,40'), findsOneWidget);
 
     await tester.pumpWidget(
-      const MaterialApp(home: FinancialAmount(minorUnits: 2486040, hidden: true)),
+      const MaterialApp(
+        home: FinancialAmount(minorUnits: 2486040, hidden: true),
+      ),
     );
     expect(find.text('R\$\u00a0••••••'), findsOneWidget);
     expect(
@@ -36,7 +40,9 @@ void main() {
     expect(find.text('Conjunto'), findsNothing);
   });
 
-  testWidgets('sync status communicates state without financial data', (tester) async {
+  testWidgets('sync status communicates state without financial data', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: SyncStatusView(

@@ -15,6 +15,7 @@ void main() {
   ) async {
     await tester.pumpWidget(_goldenApp(LarTheme.dark));
     expect(find.byType(Text), findsNothing);
+    expect(find.byType(Icon), findsNWidgets(4));
     expect(tester.takeException(), isNull);
   });
 
@@ -87,16 +88,40 @@ Widget _goldenApp(ThemeData theme) => MaterialApp(
       children: <Widget>[
         ColoredBox(
           color: Theme.of(context).colorScheme.surface,
-          child: const SizedBox(width: 232),
+          child: const SizedBox(
+            width: 232,
+            child: Column(
+              children: <Widget>[
+                SizedBox(height: 84),
+                Icon(Icons.home_outlined, size: 28),
+                SizedBox(height: 28),
+                Icon(Icons.more_horiz, size: 28),
+              ],
+            ),
+          ),
         ),
         Expanded(
           child: ColoredBox(
             color: Theme.of(context).scaffoldBackgroundColor,
             child: const Padding(
               padding: EdgeInsets.all(32),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: SizedBox(width: 280, height: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  SizedBox(width: 280, height: 12),
+                  SizedBox(height: 36),
+                  Row(
+                    children: <Widget>[
+                      Icon(Icons.cloud_off_outlined, size: 22),
+                      SizedBox(width: 16),
+                      Icon(Icons.visibility_off_outlined, size: 22),
+                    ],
+                  ),
+                  SizedBox(height: 48),
+                  SizedBox(width: 420, height: 1),
+                  SizedBox(height: 20),
+                  SizedBox(width: 560, height: 96),
+                ],
               ),
             ),
           ),
