@@ -139,6 +139,7 @@ Riscos: formatos divergentes e encoding; falso positivo de duplicata. Mitigaçã
 Objetivo: instalar o primeiro cliente Flutter, provar login/sincronização/cache e entregar uma Home real somente leitura.
 
 Especificação aprovada: [Fundação Flutter e Casa de Valores](superpowers/specs/2026-08-13-lar-finance-flutter-foundation-design.md).
+Plano técnico: [implementação da fundação Flutter](superpowers/plans/2026-08-13-lar-finance-flutter-foundation-implementation.md).
 
 - [ ] verificar/instalar Flutter, Android SDK e ferramentas Windows;
 - [ ] criar workspace com targets Windows/Android/iOS e fixar versões;

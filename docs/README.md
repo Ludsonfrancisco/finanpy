@@ -47,6 +47,7 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
 - [Fundação](superpowers/plans/2026-08-09-lar-finance-foundation.md)
 - [Importação e cartões](superpowers/plans/2026-08-09-lar-finance-imports-cards.md)
 - [Cliente Flutter](superpowers/plans/2026-08-09-lar-finance-flutter-client.md)
+- [Sprint 4 — Fundação Flutter Casa de Valores](superpowers/plans/2026-08-13-lar-finance-flutter-foundation-implementation.md)
 - [Planejamento e patrimônio](superpowers/plans/2026-08-09-lar-finance-planning-wealth.md)
 - [Operação e distribuição](superpowers/plans/2026-08-09-lar-finance-operations-release.md)
 
