@@ -1,42 +1,35 @@
 # Task 3 — Casa de Valores design system and adaptive shell
 
-## RED / GREEN
+## Commit chain
 
-- RED: `flutter test test/design_system test/app/adaptive_shell_test.dart` failed because the requested token, component and shell classes did not yet exist.
-- GREEN: after the minimal implementation, focused tests passed. A test assertion was adjusted from the non-rendered `ButtonSegment` configuration object to its visible approved labels; breakpoint tests use the physical test viewport so 390×844 and 1366×768 are actual constraints.
+- `b19adae` — initial design-system and adaptive-shell foundation.
+- `c44b8b7` — clean golden baselines.
+- `b7b3335` — system theme, accessibility, contrast, scrolling, and representative structural golden corrections.
 
-## Files
+## Delivered
 
-- Added explicit Casa de Valores tokens, spacing, typography and Material 3 light/dark themes.
-- Added `FinancialAmount`, `OwnerSelector`, `SyncStatusView`, adaptive desktop/mobile navigation, and the approved routes `/login`, `/device-owner`, `/initial-sync`, `/home`, `/more`.
-- Replaced the Flutter counter template with the private, data-safe offline shell; it deliberately shows no fictional balance.
-- Added unit/widget, breakpoint and golden coverage, including `casa_de_valores_dark.png` and `casa_de_valores_light.png`.
+- Explicit Material 3 Casa de Valores light/dark tokens; `ThemeMode.system` follows platform preference.
+- Adaptive rail (desktop) and bottom navigation (mobile), only with implemented destinations.
+- Private, data-safe Home shell with `SingleChildScrollView`; financial amount hiding and tabular figures; owner selection; sync-state semantics including freshness.
+- Dark error/on-error pair corrected for AA contrast.
+- Desktop Home/shell golden fixture now contains rail, navigation/status icons, and structural content shapes without test-font artifacts. Labels remain tested in real widgets.
 
-## Accessibility and responsiveness
+## TDD, accessibility, and visual evidence
 
-- Financial values use tabular figures; hidden values expose only `Valor financeiro oculto` to semantics.
-- Owner and sync controls expose Portuguese semantic labels; sync states include an icon plus text rather than colour alone.
-- Desktop uses an extended `NavigationRail` from 900px; mobile uses only the two implemented `NavigationBar` destinations. Material 3 controls preserve keyboard focus behavior.
+- RED recorded for missing Task 3 APIs; green widget coverage for tokens, amount privacy, owner labels, sync state, and 390×844/1366×768 shell breakpoints.
+- Golden-artifact regression proved the first fixture contained three text widgets; it now asserts no text/Ahem artifacts, required icon geometry, clean debug flags, and no pending exception.
+- Both regenerated dark and light PNGs were independently inspected: no red/yellow overlays or Ahem glyphs.
+- Dual independent Impeccable v4 verdicts are ready.
 
-## Visual comparison
+## Fresh verification
 
-The shell follows the reference atmosphere: dark green-graphite canvas, restrained champagne selection, mineral/amber/danger state colours, sparse surfaces and an actual desktop sidebar rather than a stretched mobile bar. No reference logo, ornament, or synthetic financial values were copied. Golden rendering uses Flutter's test font (Ahem), so it validates layout/colour geometry rather than production system-font glyph aesthetics; no interactive Windows screenshot was captured.
-
-## Verification
-
-- `flutter test --update-goldens test/design_system test/app/adaptive_shell_test.dart` — 9 passed.
-- `flutter test test/design_system test/app/adaptive_shell_test.dart` — 9 passed.
+- `flutter test --update-goldens test/app/adaptive_shell_test.dart` — 6 passed.
+- `flutter test test/app/adaptive_shell_test.dart` — 6 passed.
+- `dart format --set-exit-if-changed lib test` — clean.
 - `flutter analyze` — no issues.
-- `flutter test` — 14 passed.
-- `flutter build windows --debug` — built `build/windows/x64/runner/Debug/lar_finance.exe`.
-- `git diff --check` — no whitespace errors (only expected Windows CRLF conversion warnings).
+- `flutter test` — 17 passed.
+- `flutter build windows --debug` — succeeded.
 
-## Concerns
+## Residual P2 / next task
 
-No functional blockers. A runtime Windows screenshot and the separate Impeccable v4 critique were not performed here; the controller coordinates that critique as requested.
-
-## Corrective golden follow-up
-
-Human inspection identified red text-layout artifacts and Ahem glyphs in the first golden baselines. The issue reproduced on the committed environment: the PNG had 5,941 sampled red pixels. The Flutter rendering debug flags `debugPaintBaselinesEnabled` and `debugPaintTextLayoutBoxes` were both false, and `tester.takeException()` was null, so it was not a debug-paint or overflow exception. The source strings are UTF-8 (the PowerShell display was the mojibake layer); no source corruption was found.
-
-A RED regression test proved that the golden fixture contained three `Text` widgets (fixture copy and navigation labels), which causes test-font/layout artifacts. The fixture was reduced to structural, text-free sidebar/canvas geometry; production labels and functional breakpoint tests remain unchanged. The new regression asserts no `Text` widgets and no pending exception. Goldens were regenerated and independently viewed: no red/yellow overlays or Ahem glyphs remain. Fresh verification: adaptive golden tests 6 passed, full suite 16 passed, `flutter analyze` clean, and Windows debug build succeeded.
+Task 4 should broaden automated text-scale, keyboard-focus and owner-selector interaction coverage. Cupertino-specific platform adaptation remains a next-task concern; Task 3 intentionally provides the shared Material adaptive foundation. Strings should move to the localization layer when it is introduced.
