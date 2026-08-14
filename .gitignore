@@ -272,3 +272,10 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,django
+# Flutter generated artifacts
+/mobile/.dart_tool/
+/mobile/.flutter-plugins-dependencies
+/mobile/build/
+/mobile/coverage/
+!/mobile/lib/
+!/mobile/lib/**

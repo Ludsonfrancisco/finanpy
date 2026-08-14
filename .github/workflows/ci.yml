@@ -86,3 +86,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: "false"
+
+  flutter:
+    name: Flutter checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Read pinned Flutter version
+        id: flutter-version
+        shell: bash
+        run: echo "version=$(python -c 'import json; print(json.load(open("tool/flutter-version.json"))["frameworkVersion"])')" >> "$GITHUB_OUTPUT"
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter-version.outputs.version }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: flutter analyze
+      - run: flutter test
