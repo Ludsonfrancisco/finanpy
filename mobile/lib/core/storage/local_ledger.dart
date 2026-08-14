@@ -140,7 +140,7 @@ final class DriftLocalLedger implements LocalLedger {
   }
 
   Future<void> _applyChange(SyncChangePayload change) async {
-    _requiredUuidValue(change.entityUuid, 'entity_uuid');
+    final entityUuid = _requiredUuidValue(change.entityUuid, 'entity_uuid');
     if (change.entityVersion < 1) {
       throw FormatException('entity_version must be positive.');
     }
@@ -157,7 +157,7 @@ final class DriftLocalLedger implements LocalLedger {
 
     final existingVersion = await _existingVersion(
       change.entityType,
-      change.entityUuid,
+      entityUuid,
     );
     if (existingVersion != null && change.entityVersion <= existingVersion) {
       throw StateError(
@@ -166,12 +166,12 @@ final class DriftLocalLedger implements LocalLedger {
     }
 
     if (change.operation == 'delete') {
-      _validateDeletePayload(change);
-      await _deleteEntity(change.entityType, change.entityUuid);
+      _validateDeletePayload(change, entityUuid);
+      await _deleteEntity(change.entityType, entityUuid);
       return;
     }
 
-    _validateEnvelope(change);
+    _validateEnvelope(change, entityUuid);
     switch (change.entityType) {
       case 'account':
         await _db
@@ -239,10 +239,14 @@ final class DriftLocalLedger implements LocalLedger {
       localNow.month,
       localNow.day + 31,
     );
-    final ownerUuid = scope.ownerUuid;
-    if (ownerUuid != null) {
-      _requiredUuidValue(ownerUuid, 'ownerUuid');
-    }
+    final ownerUuid = scope.ownerUuid == null
+        ? null
+        : _requiredUuidValue(scope.ownerUuid!, 'ownerUuid');
+    final canonicalScope = switch (scope.kind) {
+      OwnerScopeKind.household => const OwnerScope.household(),
+      OwnerScopeKind.selfOwner => OwnerScope.self(ownerUuid!),
+      OwnerScopeKind.spouse => OwnerScope.spouse(ownerUuid!),
+    };
 
     return _db.transaction(() async {
       final aggregateVariables = <Variable>[];
@@ -316,7 +320,7 @@ SELECT t.uuid, t.description, c.name AS category_name, o.name AS owner_name,
       final lastSuccessText = aggregate.readNullable<String>('last_success_at');
 
       return HomeSnapshot(
-        scope: scope,
+        scope: canonicalScope,
         balanceMinor: aggregate.read<int>('balance_minor'),
         monthExpenseMinor: aggregate.read<int>('month_expense_minor'),
         upcomingCommitmentMinor: aggregate.read<int>(
@@ -409,8 +413,8 @@ TransactionsCompanion _transactionFrom(JsonObject json) {
   );
 }
 
-void _validateEnvelope(SyncChangePayload change) {
-  if (_requiredUuid(change.payload, 'uuid') != change.entityUuid ||
+void _validateEnvelope(SyncChangePayload change, String entityUuid) {
+  if (_requiredUuid(change.payload, 'uuid') != entityUuid ||
       _requiredPositiveInt(change.payload, 'version') != change.entityVersion) {
     throw const FormatException(
       'Sync envelope UUID/version does not match its payload.',
@@ -418,8 +422,8 @@ void _validateEnvelope(SyncChangePayload change) {
   }
 }
 
-void _validateDeletePayload(SyncChangePayload change) {
-  if (_requiredUuid(change.payload, 'uuid') != change.entityUuid ||
+void _validateDeletePayload(SyncChangePayload change, String entityUuid) {
+  if (_requiredUuid(change.payload, 'uuid') != entityUuid ||
       change.payload['deleted'] != true) {
     throw const FormatException('Invalid delete payload.');
   }

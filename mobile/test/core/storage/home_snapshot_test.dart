@@ -99,6 +99,18 @@ void main() {
     expect(snapshot.monthExpenseMinor, 100);
   });
 
+  test('watchHome canonicalizes an uppercase owner scope', () async {
+    final snapshot = await ledger
+        .watchHome(
+          const OwnerScope.self('A0000000-0000-4000-8000-000000000001'),
+          DateTime(2026, 8, 14),
+        )
+        .first;
+
+    expect(snapshot.balanceMinor, 10000);
+    expect(snapshot.scope.ownerUuid, 'a0000000-0000-4000-8000-000000000001');
+  });
+
   test('watchHome orders ties by date updatedAt and UUID descending', () async {
     final date = DateTime.utc(2026, 8, 10);
     await _insertTransaction(
@@ -184,7 +196,7 @@ Future<void> _seedHome(AppDatabase db) async {
       .into(db.owners)
       .insert(
         OwnersCompanion.insert(
-          uuid: '20000000-0000-4000-8000-000000000001',
+          uuid: 'a0000000-0000-4000-8000-000000000001',
           type: 'self',
           name: 'Eu',
         ),
@@ -195,7 +207,7 @@ Future<void> _seedHome(AppDatabase db) async {
         AccountsCompanion.insert(
           uuid: '30000000-0000-4000-8000-000000000001',
           householdUuid: '10000000-0000-4000-8000-000000000001',
-          financialOwnerUuid: '20000000-0000-4000-8000-000000000001',
+          financialOwnerUuid: 'a0000000-0000-4000-8000-000000000001',
           name: 'Conta',
           type: 'checking',
           initialBalanceMinor: 10000,
@@ -245,7 +257,7 @@ Future<void> _insertTransaction(
         TransactionsCompanion.insert(
           uuid: uuid,
           householdUuid: '10000000-0000-4000-8000-000000000001',
-          financialOwnerUuid: '20000000-0000-4000-8000-000000000001',
+          financialOwnerUuid: 'a0000000-0000-4000-8000-000000000001',
           accountUuid: '30000000-0000-4000-8000-000000000001',
           categoryUuid: '40000000-0000-4000-8000-000000000001',
           description: uuid,

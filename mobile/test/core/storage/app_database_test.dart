@@ -499,6 +499,73 @@ void main() {
     },
   );
 
+  test('applyDelta canonicalizes uppercase UUIDs before updating', () async {
+    final ledger = DriftLocalLedger(db);
+    await ledger.replaceBootstrap(
+      _bootstrap(cursor: 'cursor-before'),
+      now,
+      '77777777-7777-4777-8777-777777777777',
+    );
+
+    await ledger.applyDelta(
+      SyncPage(
+        changes: [
+          SyncChangePayload(
+            entityType: 'account',
+            entityUuid: 'B3333333-3333-4333-8333-333333333333',
+            entityVersion: 2,
+            operation: 'update',
+            payload: _accountPayload(
+              uuid: 'B3333333-3333-4333-8333-333333333333',
+              name: 'Atualizada',
+              version: 2,
+            ),
+          ),
+        ],
+        cursor: 'cursor-uppercase',
+      ),
+      now.add(const Duration(minutes: 1)),
+    );
+
+    final accounts = await db.select(db.accounts).get();
+    expect(accounts, hasLength(1));
+    expect(accounts.single.uuid, 'b3333333-3333-4333-8333-333333333333');
+    expect(accounts.single.name, 'Atualizada');
+    expect(accounts.single.version, 2);
+    expect((await ledger.readSyncMetadata())?.cursor, 'cursor-uppercase');
+  });
+
+  test('applyDelta canonicalizes uppercase UUIDs before deleting', () async {
+    final ledger = DriftLocalLedger(db);
+    await ledger.replaceBootstrap(
+      _bootstrap(cursor: 'cursor-before'),
+      now,
+      '77777777-7777-4777-8777-777777777777',
+    );
+
+    await ledger.applyDelta(
+      const SyncPage(
+        changes: [
+          SyncChangePayload(
+            entityType: 'transaction',
+            entityUuid: 'B5555555-5555-4555-8555-555555555555',
+            entityVersion: 2,
+            operation: 'delete',
+            payload: {
+              'uuid': 'B5555555-5555-4555-8555-555555555555',
+              'deleted': true,
+            },
+          ),
+        ],
+        cursor: 'cursor-uppercase',
+      ),
+      now.add(const Duration(minutes: 1)),
+    );
+
+    expect(await db.select(db.transactions).get(), isEmpty);
+    expect((await ledger.readSyncMetadata())?.cursor, 'cursor-uppercase');
+  });
+
   test('applyDelta deletes a UUID and advances cursor last', () async {
     final ledger = DriftLocalLedger(db);
     await ledger.replaceBootstrap(
