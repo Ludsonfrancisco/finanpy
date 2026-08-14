@@ -58,7 +58,7 @@ final class _TransactionRow extends StatelessWidget {
     final details =
         '${transaction.categoryName} · ${transaction.ownerName} · $date';
     final amountSemantics = hidden
-        ? 'Valor financeiro oculto'
+        ? 'Valor oculto'
         : formatBrlMinor(transaction.signedAmountMinor, showPositiveSign: true);
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final amount = FinancialAmount(

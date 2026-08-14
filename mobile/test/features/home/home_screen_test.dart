@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:lar_finance/app/app_lifecycle.dart';
+import 'package:lar_finance/app/value_visibility_controller.dart';
 import 'package:lar_finance/core/sync/sync_models.dart' show SyncResult;
 import 'package:lar_finance/core/sync/sync_state.dart';
 import 'package:lar_finance/design_system/components/financial_amount.dart';
@@ -196,7 +197,39 @@ void main() {
       expect(find.text('R\$\u00a024.860,40'), findsNothing);
       expect(find.byTooltip('Mostrar valores'), findsOneWidget);
       expect(
-        find.bySemanticsLabel(RegExp(r'Supermercado.*Valor financeiro oculto')),
+        find.bySemanticsLabel(RegExp(r'Supermercado.*Valor oculto')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'a preferência global controla todos os valores financeiros da Home',
+    (tester) async {
+      final repository = _FakeHomeRepository(
+        streams: {OwnerScopeKind.household: Stream.value(_snapshot())},
+      );
+      final controller = _controller(repository);
+      final visibility = ValueVisibilityController(
+        _MemoryVisibilityRepository(),
+      );
+      addTearDown(controller.dispose);
+      addTearDown(visibility.dispose);
+      await visibility.restore(returningFromInactive: false);
+
+      await _pumpHome(tester, controller, visibilityController: visibility);
+      await visibility.toggle();
+      await tester.pump();
+
+      final amounts = tester.widgetList<FinancialAmount>(
+        find.byType(FinancialAmount),
+      );
+      expect(amounts, isNotEmpty);
+      expect(amounts.every((amount) => amount.hidden), isTrue);
+      expect(find.text('R\$ 24.860,40'), findsNothing);
+      expect(find.bySemanticsLabel('Valor oculto'), findsWidgets);
+      expect(
+        find.bySemanticsLabel(RegExp(r'Supermercado.*Valor oculto')),
         findsOneWidget,
       );
     },
@@ -408,6 +441,7 @@ Future<void> _pumpHome(
   double textScale = 1,
   TargetPlatform platform = TargetPlatform.android,
   ValueNotifier<int>? resumeSignal,
+  ValueVisibilityController? visibilityController,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(390, 1200);
@@ -418,7 +452,10 @@ Future<void> _pumpHome(
       size: const Size(390, 1200),
       textScaler: TextScaler.linear(textScale),
     ),
-    child: HomeScreen(controller: controller),
+    child: HomeScreen(
+      controller: controller,
+      visibilityController: visibilityController,
+    ),
   );
   if (resumeSignal != null) {
     home = AppResumeScope(notifier: resumeSignal, child: home);
@@ -431,6 +468,14 @@ Future<void> _pumpHome(
   );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 20));
+}
+
+final class _MemoryVisibilityRepository implements ValueVisibilityRepository {
+  @override
+  Future<bool?> readValuesHidden() async => null;
+
+  @override
+  Future<void> writeValuesHidden(bool hidden) async {}
 }
 
 HomeSnapshot _snapshot({

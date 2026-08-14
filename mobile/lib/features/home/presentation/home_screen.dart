@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/adaptive_shell.dart';
 import '../../../app/app_lifecycle.dart';
+import '../../../app/value_visibility_controller.dart';
 import '../../../core/sync/sync_state.dart';
 import '../../../design_system/components/owner_selector.dart';
 import '../../../design_system/components/sync_status.dart';
@@ -26,9 +27,14 @@ import 'widgets/commitments_summary.dart';
 import 'widgets/recent_transactions.dart';
 
 final class HomeScreen extends StatefulWidget {
-  const HomeScreen({required this.controller, super.key});
+  const HomeScreen({
+    required this.controller,
+    this.visibilityController,
+    super.key,
+  });
 
   final HomeController controller;
+  final ValueVisibilityController? visibilityController;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -42,6 +48,7 @@ final class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     widget.controller.addListener(_refresh);
+    widget.visibilityController?.addListener(_refresh);
     unawaited(widget.controller.start());
   }
 
@@ -58,16 +65,22 @@ final class _HomeScreenState extends State<HomeScreen> {
   @override
   void didUpdateWidget(HomeScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller == widget.controller) return;
-    oldWidget.controller.removeListener(_refresh);
-    widget.controller.addListener(_refresh);
-    unawaited(widget.controller.start());
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_refresh);
+      widget.controller.addListener(_refresh);
+      unawaited(widget.controller.start());
+    }
+    if (oldWidget.visibilityController != widget.visibilityController) {
+      oldWidget.visibilityController?.removeListener(_refresh);
+      widget.visibilityController?.addListener(_refresh);
+    }
   }
 
   @override
   void dispose() {
     _resumeListenable?.removeListener(_handleAppResume);
     widget.controller.removeListener(_refresh);
+    widget.visibilityController?.removeListener(_refresh);
     super.dispose();
   }
 
@@ -88,6 +101,7 @@ final class _HomeScreenState extends State<HomeScreen> {
       lastSuccessAt: snapshot?.lastSyncedAt ?? controller.syncTimestamp,
     );
     final ios = Theme.of(context).platform == TargetPlatform.iOS;
+    final hidden = widget.visibilityController?.hidden ?? _valuesHidden;
     final body = Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -102,9 +116,15 @@ final class _HomeScreenState extends State<HomeScreen> {
             children: <Widget>[
               _StatusAndPrivacy(
                 syncData: syncData,
-                hidden: _valuesHidden,
-                onToggleHidden: () =>
-                    setState(() => _valuesHidden = !_valuesHidden),
+                hidden: hidden,
+                onToggleHidden: () {
+                  final visibility = widget.visibilityController;
+                  if (visibility != null) {
+                    unawaited(visibility.toggle());
+                  } else {
+                    setState(() => _valuesHidden = !_valuesHidden);
+                  }
+                },
               ),
               const SizedBox(height: LarSpacing.xl),
               OwnerSelector(
@@ -119,7 +139,7 @@ final class _HomeScreenState extends State<HomeScreen> {
                   snapshot: snapshot,
                   error: state.error,
                   syncPhase: controller.syncPhase,
-                  hidden: _valuesHidden,
+                  hidden: hidden,
                   monthLabel: DateFormat(
                     'MMMM',
                     'pt_BR',

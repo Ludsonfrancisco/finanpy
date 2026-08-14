@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'app/app_config.dart';
 import 'app/app_lifecycle.dart';
 import 'app/router.dart';
+import 'app/value_visibility_controller.dart';
 import 'core/network/dio_transport.dart';
 import 'core/network/session_transport.dart';
 import 'core/storage/app_database.dart';
@@ -27,6 +28,10 @@ Future<void> main() async {
   final config = AppConfig.fromEnvironment();
   config.validate();
   final database = AppDatabase(driftDatabase(name: 'lar_finance'));
+  final valueVisibilityController = ValueVisibilityController(
+    DriftValueVisibilityRepository(database),
+  );
+  await valueVisibilityController.restore(returningFromInactive: false);
   final tokenStore = SecureTokenStore(const FlutterSecureStorage());
   final sessionAuthority = SessionAuthority.forStore(tokenStore);
   final transport = DioTransport(baseUrl: config.normalizedApiBaseUrl);
@@ -59,6 +64,7 @@ Future<void> main() async {
       authController: controller,
       syncCoordinator: syncCoordinator,
       homeRepository: homeRepository,
+      valueVisibilityController: valueVisibilityController,
     ),
   );
 }
@@ -69,6 +75,7 @@ class MyApp extends StatelessWidget {
     required this.authController,
     this.syncCoordinator,
     this.homeRepository,
+    this.valueVisibilityController,
     AppConfig? appConfig,
   }) : appConfig = appConfig ?? AppConfig.fromEnvironment(),
        router = createAppRouter(
@@ -76,12 +83,14 @@ class MyApp extends StatelessWidget {
          authController,
          syncCoordinator: syncCoordinator,
          homeRepository: homeRepository,
+         valueVisibilityController: valueVisibilityController,
        );
 
   final AppConfig appConfig;
   final AuthController authController;
   final LedgerSyncCoordinator? syncCoordinator;
   final HomeRepository? homeRepository;
+  final ValueVisibilityController? valueVisibilityController;
   final GoRouter router;
 
   @override
@@ -101,6 +110,11 @@ class MyApp extends StatelessWidget {
           (ref) => authController,
           disposeNotifier: false,
         ),
+        if (valueVisibilityController != null)
+          valueVisibilityControllerProvider.overrideWith(
+            (ref) => valueVisibilityController!,
+            disposeNotifier: false,
+          ),
       ],
       child: coordinator == null
           ? app

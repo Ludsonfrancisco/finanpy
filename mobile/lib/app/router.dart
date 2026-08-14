@@ -14,12 +14,15 @@ import '../features/home/data/home_repository.dart';
 import '../features/home/presentation/home_screen.dart';
 import 'adaptive_shell.dart';
 import 'app_config.dart';
+import 'privacy_shield.dart';
+import 'value_visibility_controller.dart';
 
 GoRouter createAppRouter(
   AppConfig config,
   AuthController authController, {
   LedgerSyncCoordinator? syncCoordinator,
   HomeRepository? homeRepository,
+  ValueVisibilityController? valueVisibilityController,
 }) {
   config.validate();
   return GoRouter(
@@ -58,10 +61,19 @@ GoRouter createAppRouter(
       ShellRoute(
         builder: (context, state, child) {
           final index = state.uri.path == '/more' ? 1 : 0;
-          return AdaptiveShell(
-            selectedIndex: index,
-            onSelect: (value) => context.go(value == 0 ? '/home' : '/more'),
-            child: child,
+          return PrivacyShield(
+            onInactive: valueVisibilityController
+                ?.protectBeforeFirstReadForInactiveReturn,
+            onResumed: valueVisibilityController == null
+                ? null
+                : () => valueVisibilityController.restore(
+                    returningFromInactive: true,
+                  ),
+            child: AdaptiveShell(
+              selectedIndex: index,
+              onSelect: (value) => context.go(value == 0 ? '/home' : '/more'),
+              child: child,
+            ),
           );
         },
         routes: <RouteBase>[
@@ -70,6 +82,7 @@ GoRouter createAppRouter(
             builder: (context, state) => _HomeShell(
               syncCoordinator: syncCoordinator,
               homeRepository: homeRepository,
+              valueVisibilityController: valueVisibilityController,
             ),
           ),
           GoRoute(
@@ -86,10 +99,12 @@ final class _HomeShell extends StatefulWidget {
   const _HomeShell({
     required this.syncCoordinator,
     required this.homeRepository,
+    required this.valueVisibilityController,
   });
 
   final LedgerSyncCoordinator? syncCoordinator;
   final HomeRepository? homeRepository;
+  final ValueVisibilityController? valueVisibilityController;
 
   @override
   State<_HomeShell> createState() => _HomeShellState();
@@ -132,7 +147,12 @@ final class _HomeShellState extends State<_HomeShell> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
-    if (controller != null) return HomeScreen(controller: controller);
+    if (controller != null) {
+      return HomeScreen(
+        controller: controller,
+        visibilityController: widget.valueVisibilityController,
+      );
+    }
     final text = Theme.of(context).textTheme;
     final coordinator = widget.syncCoordinator;
     return SafeArea(

@@ -28,7 +28,7 @@ void main() {
     expect(find.text('R\$\u00a0••••••'), findsOneWidget);
     expect(
       tester.getSemantics(find.byType(FinancialAmount)).label,
-      'Valor financeiro oculto',
+      'Valor oculto',
     );
   });
 

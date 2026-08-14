@@ -43,7 +43,7 @@ final class FinancialAmount extends StatelessWidget {
       label: amount == null
           ? 'Valor financeiro indisponível'
           : hidden
-          ? 'Valor financeiro oculto'
+          ? 'Valor oculto'
           : 'Valor financeiro',
       value: amount == null || hidden ? null : visible,
       child: ExcludeSemantics(

@@ -15,6 +15,7 @@ final class OwnerSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final ios = Theme.of(context).platform == TargetPlatform.iOS;
     return Semantics(
+      container: true,
       label: 'Visão financeira',
       child: ConstrainedBox(
         constraints: BoxConstraints(minHeight: ios ? 44 : 48),
@@ -25,29 +26,29 @@ final class OwnerSelector extends StatelessWidget {
                 thumbColor: Theme.of(context).brightness == Brightness.dark
                     ? LarColors.champagneSelectedDark
                     : Theme.of(context).colorScheme.secondary,
-                children: const <int, Widget>{
-                  0: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('Lar'),
-                  ),
-                  1: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('Eu'),
-                  ),
-                  2: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('Esposa'),
-                  ),
+                children: <int, Widget>{
+                  0: _ownerLabel('Lar', 0, selected),
+                  1: _ownerLabel('Eu', 1, selected),
+                  2: _ownerLabel('Esposa', 2, selected),
                 },
                 onValueChanged: (value) {
                   if (value != null) onSelected(value);
                 },
               )
             : SegmentedButton<int>(
-                segments: const <ButtonSegment<int>>[
-                  ButtonSegment<int>(value: 0, label: Text('Lar')),
-                  ButtonSegment<int>(value: 1, label: Text('Eu')),
-                  ButtonSegment<int>(value: 2, label: Text('Esposa')),
+                segments: <ButtonSegment<int>>[
+                  ButtonSegment<int>(
+                    value: 0,
+                    label: _ownerLabel('Lar', 0, selected),
+                  ),
+                  ButtonSegment<int>(
+                    value: 1,
+                    label: _ownerLabel('Eu', 1, selected),
+                  ),
+                  ButtonSegment<int>(
+                    value: 2,
+                    label: _ownerLabel('Esposa', 2, selected),
+                  ),
                 ],
                 selected: <int>{selected},
                 onSelectionChanged: (selection) => onSelected(selection.first),
@@ -69,3 +70,15 @@ final class OwnerSelector extends StatelessWidget {
     );
   }
 }
+
+Widget _ownerLabel(String label, int value, int selected) => Semantics(
+  container: true,
+  label: value == selected ? '$label, selecionado' : label,
+  selected: value == selected,
+  child: ExcludeSemantics(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Text(label),
+    ),
+  ),
+);
