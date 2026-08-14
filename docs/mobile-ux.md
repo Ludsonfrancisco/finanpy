@@ -10,21 +10,20 @@
 - Cada dispositivo possui sessão revogável e escolhe `Eu` ou `Esposa` como padrão; `Conjunto` permanece disponível em cada lançamento.
 - Sem landing e sem cadastro público.
 
-O design system final está em `[INVESTIGAR]`. Não produzir telas finais antes do gate visual em [design-system.md](design-system.md).
+A direção **Casa de Valores** foi aprovada. A Sprint 4 implementará e validará os tokens finais conforme [design-system.md](design-system.md) e a [especificação Flutter](superpowers/specs/2026-08-13-lar-finance-flutter-foundation-design.md).
 
 ## Arquitetura da informação
 
-### Navegação candidata
+### Navegação aprovada
 
 | Destino | Conteúdo |
 |---|---|
 | Início | visão do lar, compromissos e atalhos |
 | Movimentações | extrato, busca, filtros, importação e conciliação |
-| Planejar | orçamento, recorrências, calendário e metas |
-| Patrimônio | contas, cartões, dívidas, investimentos e bens |
-| Mais | fontes, relatórios, segurança, dispositivos e backup |
+| Contas | contas; cartões, dívidas, investimentos e bens entram progressivamente |
+| Mais | importação, planejamento, fontes, relatórios, segurança, dispositivos e backup |
 
-Os nomes e a divisão final serão validados em protótipo `[INVESTIGAR]`. No Windows, a barra inferior vira rail/sidebar e detalhes podem usar master-detail.
+No Windows, a barra inferior vira sidebar e detalhes podem usar master-detail. Destinos sem tela entregue não aparecem como controles mortos; a navegação cresce progressivamente.
 
 ## Fluxos críticos
 
@@ -148,7 +147,7 @@ Sem caso de uso aprovado; não solicitar.
 - listas paginadas/virtualizadas;
 - agregações pré-computadas no backend quando necessário;
 - importação não bloqueia a UI;
-- metas técnicas exatas de hardware/rede serão medidas no Sprint 5 `[INVESTIGAR]`.
+- metas técnicas exatas de hardware/rede serão medidas na Sprint 4 `[INVESTIGAR]`.
 
 ## Acessibilidade
 

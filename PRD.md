@@ -1,7 +1,7 @@
 # Lar Finance — PRD do estado atual e evolução do produto
 
 > Fonte única de verdade do produto. Atualizado em 13/08/2026 a partir da branch
-> `codex/sprint-3-ofx-import`, após o piloto OFX Nubank, configuração Docker e
+> `main`, após o piloto OFX Nubank, configuração Docker, direção Casa de Valores e
 > validação real já registrada no EasyPanel/R2.
 
 ## Status e convenções
@@ -12,7 +12,7 @@
 - **Produto alvo:** aplicativo Flutter para iOS, Android e Windows, sincronizado com o backend Django no servidor Linux/EasyPanel.
 - **Estratégia de dados aprovada:** importação de arquivos primeiro; integração paga automática somente após o produto estar maduro e em uso.
 - **Usuários do produto:** uma família no mesmo Lar, com um único login compartilhado nesta fase. Cada dispositivo terá sessão própria e revogável. O domínio mantém credenciais de acesso separadas dos responsáveis financeiros `Eu`, `Esposa` e `Conjunto`, permitindo dois logins no futuro sem migrar o ledger.
-- **Identidade visual:** em avaliação. A preferência por uma linguagem fintech premium semelhante em espírito ao C6 Bank é uma referência candidata, não uma decisão final.
+- **Identidade visual:** direção **Casa de Valores** aprovada: fintech doméstica premium, grafite esverdeado, marfim quente, champanhe restrito e verde mineral. C6 Bank permanece apenas referência de acabamento, sem copiar marca ou componentes.
 - **Regra visual irrevogável:** não usar roxo.
 - **`[INVESTIGAR]`:** decisão ou comportamento sem evidência suficiente. Não deve ser implementado por suposição.
 - **`As-is`:** comportamento comprovado no código atual.
@@ -113,7 +113,7 @@ Nenhuma dependência Flutter, PostgreSQL, fila ou provedor financeiro está pres
 
 | Camada | Direção | Estado |
 |---|---|---|
-| Cliente | Flutter, um código-base para iOS, Android e Windows | aprovado; versão exata será fixada no Sprint 0 `[INVESTIGAR]` |
+| Cliente | Flutter, um código-base para iOS, Android e Windows | aprovado; versão exata será fixada na primeira task da Sprint 4 `[INVESTIGAR]` |
 | Backend | Django preservado e transformado em API versionada | API v1 entregue na Sprint 2 |
 | API | Django REST Framework 3.17.1 | entregue na Sprint 2 |
 | Banco servidor | PostgreSQL | aprovado como direção; versão/imagem EasyPanel `[INVESTIGAR]` |
@@ -122,7 +122,7 @@ Nenhuma dependência Flutter, PostgreSQL, fila ou provedor financeiro está pres
 | Importação | OFX Nubank de conta/cartão; CSV/PDF/XLSX por adaptadores futuros | piloto OFX entregue |
 | Automação futura | adaptador de provedor, inicialmente candidato Pierre | contratação e suporte a dois CPFs `[INVESTIGAR]` |
 
-Não há versões exatas para componentes ainda não adicionados ao repositório. Inventá-las agora violaria a política de evidência; o Sprint 0 cria o lockfile e registra as versões escolhidas.
+Não há versões exatas para componentes ainda não adicionados ao repositório. Inventá-las agora violaria a política de evidência; a primeira task da Sprint 4 cria o lockfile e registra as versões escolhidas.
 
 ## 4. Arquitetura
 
@@ -427,9 +427,9 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
   rate limit persistente, alertas e rollback por imagem imutável.
 - [x] Sprint 2: API v1, autenticação e contrato de sincronização — concluída após revisão independente final sem achados.
 - [x] Sprint 3: piloto OFX Nubank, deduplicação, prévia e confirmação atômica.
-- [ ] Sprint 4: cartões, faturas, limites e parcelamentos.
-- [ ] Sprint 5: shell Flutter, login, storage seguro e offline.
-- [ ] Sprint 6: visão geral, movimentações e proprietários.
+- [ ] Sprint 4: fundação Flutter, Casa de Valores, login, storage seguro, sincronização, cache offline e Home real somente leitura.
+- [ ] Sprint 5: movimentações, contas, importação e rotina diária no Flutter.
+- [ ] Sprint 6: cartões, faturas, limites e parcelamentos.
 - [ ] Sprint 7: orçamento, recorrências, calendário e metas.
 - [ ] Sprint 8: empréstimos, financiamentos e dívidas.
 - [ ] Sprint 9: investimentos, bens e patrimônio líquido.

@@ -134,7 +134,50 @@ explícita e atômica. CSV, outros bancos e conciliação permanecem pendentes.
 
 Riscos: formatos divergentes e encoding; falso positivo de duplicata. Mitigação: profiles/fixtures e sugestão humana em baixa confiança.
 
-## Sprint 4 — Cartões, faturas, limites e parcelas
+## Sprint 4 — Fundação Flutter e Home Casa de Valores
+
+Objetivo: instalar o primeiro cliente Flutter, provar login/sincronização/cache e entregar uma Home real somente leitura.
+
+Especificação aprovada: [Fundação Flutter e Casa de Valores](superpowers/specs/2026-08-13-lar-finance-flutter-foundation-design.md).
+
+- [ ] verificar/instalar Flutter, Android SDK e ferramentas Windows;
+- [ ] criar workspace com targets Windows/Android/iOS e fixar versões;
+- [ ] implementar arquitetura simples por features e repositories;
+- [ ] SQLite local com migrations e atualizações atômicas;
+- [ ] API client, timeout, refresh coordenado e retry controlado;
+- [ ] secure storage nativo para tokens;
+- [ ] login/logout e sessão por dispositivo;
+- [ ] sync inicial/incremental e estados offline/stale;
+- [ ] shell adaptativo e temas claro/escuro Casa de Valores;
+- [ ] Home real somente leitura com `Lar`/`Eu`/`Esposa`;
+- [ ] ocultar valores e proteção no app switcher quando suportado;
+- [ ] testes unitários, widget, golden e integração;
+- [ ] benchmark de abertura <2s com cache;
+- [ ] primeiro instalável Windows e builds de validação Android/iOS aplicáveis.
+
+Aceite: usuário entra, sincroniza, consulta a Home pelo cache offline e vê os mesmos dados ao acessar outro dispositivo; nenhuma escrita offline entra nesta sprint.
+
+Riscos: ferramentas ausentes, pacote sem suporte Windows ou cache local inconsistente. Mitigação: prova do ambiente na primeira task, versões fixadas e testes de migração/atomicidade.
+
+## Sprint 5 — Movimentações, contas e importação no Flutter
+
+Objetivo: tornar o Flutter útil para acompanhamento diário.
+
+- [ ] lista e detalhe de contas com origem/freshness;
+- [ ] lista paginada, busca e filtros;
+- [ ] detalhe/edição/categorização;
+- [ ] fluxo de importação e conciliação mobile;
+- [ ] escritas offline com outbox e conflito demonstrável;
+- [ ] visualização adaptativa Windows;
+- [ ] loading/vazio/erro/offline/conflito;
+- [ ] acessibilidade e teclado;
+- [ ] teste com volume realista.
+
+Aceite: rotina diária completa pode ser feita no app sem recorrer ao web, exceto administração avançada documentada.
+
+Riscos: dashboard ficar denso ou enganoso. Mitigação: hierarquia validada com dados reais e sem zeros presumidos.
+
+## Sprint 6 — Cartões, faturas, limites e parcelas
 
 Objetivo: representar crédito sem corromper caixa.
 
@@ -147,53 +190,11 @@ Objetivo: representar crédito sem corromper caixa.
 - [ ] pagamento da fatura conciliado com conta;
 - [ ] estornos, tarifas, juros e pagamento parcial;
 - [ ] importador CSV inicial de cartão com fixture real `[INVESTIGAR instituição]`;
-- [ ] API e fallback web mínimo.
+- [ ] API, Flutter e fallback web mínimo.
 
 Aceite: compra afeta fatura/limite, pagamento afeta caixa, consolidado não conta ambos como duas despesas.
 
 Riscos: formatos de fatura e parcelamento variam; migration ambígua. Mitigação: exceções manuais e dados originais preservados.
-
-## Sprint 5 — Fundação Flutter, login e offline
-
-Objetivo: instalar app em ambientes de desenvolvimento e provar sync offline.
-
-- [ ] criar workspace Flutter com targets iOS/Android/Windows;
-- [ ] fixar SDK/pacotes e configurar flavors;
-- [ ] implementar arquitetura por features e repositories;
-- [ ] SQLite local, migrations e criptografia/risco decidido;
-- [ ] API client, refresh, timeout e retry controlado;
-- [ ] secure storage por plataforma;
-- [ ] login, logout, biometria opt-in e fallback;
-- [ ] outbox, delta e conflito demonstrável;
-- [ ] app shell adaptativo e tema provisório de engenharia;
-- [ ] estados offline/stale/sync;
-- [ ] telemetria sem PII;
-- [ ] testes unitários, widget e integração;
-- [ ] benchmark de abertura <2s com cache.
-
-Aceite: usuário entra, consulta cache offline, cria alteração offline, reconecta e sincroniza sem perda.
-
-Riscos: pacote não suportar Windows ou background; migração local falhar. Mitigação: proof-of-concept e tabela de suporte antes de fechar ADR.
-
-## Sprint 6 — Início, movimentações e proprietários
-
-Objetivo: tornar o Flutter útil para acompanhamento diário.
-
-- [ ] owner switcher Lar/Eu/Esposa;
-- [ ] Início com caixa, patrimônio e compromissos;
-- [ ] origem e freshness de cada bloco;
-- [ ] lista paginada, busca e filtros;
-- [ ] detalhe/edição/categorização;
-- [ ] fluxo de importação e conciliação mobile;
-- [ ] visualização adaptativa Windows;
-- [ ] ocultar valores e proteção no app switcher `[INVESTIGAR]`;
-- [ ] loading/vazio/erro/offline/conflito;
-- [ ] acessibilidade e teclado;
-- [ ] teste com volume realista.
-
-Aceite: rotina diária completa pode ser feita no app sem recorrer ao web, exceto administração avançada documentada.
-
-Riscos: dashboard ficar denso ou enganoso. Mitigação: hierarquia validada com dados reais e sem zeros presumidos.
 
 ## Sprint 7 — Planejamento, recorrências e metas
 

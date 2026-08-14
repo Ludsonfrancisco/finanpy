@@ -1,6 +1,6 @@
 # Direção visual do Lar Finance
 
-> Status: **candidato em investigação**. Este documento define critérios e proibições, não congela ainda a identidade final.
+> Status: **direção Casa de Valores aprovada em 13/08/2026**. Tokens exatos serão validados durante a Sprint 4.
 
 ## Decisões firmes
 
@@ -32,14 +32,15 @@ Princípios potencialmente aproveitáveis:
 - geometria sóbria, não infantil;
 - sensação de segurança e autonomia.
 
-## Design read provisório
+## Direção aprovada — Casa de Valores
 
 - **Intenção:** painel financeiro familiar confiável, completo e privado.
 - **Tom emocional:** calma, clareza, domínio e proteção.
 - **Densidade:** média-alta por ser produto de dados, com respiro entre blocos.
 - **Motion:** baixo a moderado, funcional.
 - **Plataforma:** cross-platform premium neutral, com adaptações nativas.
-- **Referência visual:** carbono/mineral como uma opção, ainda `[INVESTIGAR]`.
+- **Referência visual:** grafite esverdeado, marfim quente, champanhe restrito e verde mineral.
+- **Referência aprovada:** [Home Casa de Valores](design-assets/casa-de-valores-home-reference.png), com dados sintéticos e sem autoridade literal sobre logo, ícones ou tipografia.
 
 ## Dials provisórios
 
@@ -47,26 +48,26 @@ Princípios potencialmente aproveitáveis:
 - `MOTION_INTENSITY = 3`
 - `VISUAL_DENSITY = 6`
 
-Revisar no gate visual. Esses números documentam intenção, não tokens de código.
+Esses números documentam intenção, não tokens de código.
 
 ## Gate de decisão visual
 
 Antes de implementar componentes finais:
 
-- [ ] coletar 3 a 5 referências aprovadas pelo usuário;
-- [ ] registrar o que agrada/desagrada em cada uma;
-- [ ] criar três moodboards próprios, sem copiar marca;
-- [ ] escolher modo base e estratégia claro/escuro;
+- [x] coletar referências de produtos financeiros reais;
+- [x] registrar os princípios aproveitáveis sem copiar identidade;
+- [x] criar três direções próprias, sem copiar marca;
+- [x] escolher Casa de Valores e projetar claro/escuro;
 - [ ] validar paleta completa em contraste e daltonismo;
 - [ ] validar tipografia aberta/licenciada em iOS, Android e Windows;
-- [ ] criar conceitos separados de Login, Início, Movimentações, Fatura e Patrimônio;
-- [ ] testar com textos e valores reais anonimizados;
-- [ ] aprovar um conceito e documentar tokens;
+- [ ] criar na implementação os conceitos de Login, Início e estados essenciais;
+- [x] testar a direção com textos e valores financeiros sintéticos;
+- [x] aprovar o conceito; documentar tokens exatos durante a Sprint 4;
 - [ ] registrar a escolha em ADR-008.
 
-Enquanto este gate não terminar, qualquer paleta ou tipografia é experimental.
+Até a validação de contraste, licença e plataformas, os hexadecimais e famílias tipográficas continuam referências, não tokens definitivos.
 
-## Três territórios a explorar
+## Territórios avaliados
 
 ### A. Mineral quente
 
@@ -80,7 +81,7 @@ Off-white, carvão, tipografia editorial e acento azul petróleo ou verde profun
 
 Neutros quentes, materiais foscos e acento terracota ou verde oliva. Reforça o conceito de lar sem perder precisão financeira.
 
-Todos devem excluir roxo. A escolha entre A/B/C está `[INVESTIGAR]`.
+Todos excluem roxo. **Casa de Valores** escolhe o território mineral quente com uma camada editorial e identidade doméstica própria.
 
 ## Tokens que serão obrigatórios
 

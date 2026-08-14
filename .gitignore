@@ -15,6 +15,7 @@ media
 data/
 backups/
 /.superpowers/
+/.impeccable/
 /qa_screenshot_*.png
 /screenshots/
 

@@ -13,6 +13,8 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
   entrega concluída, evidências e bloqueios operacionais restantes.
 - [Sprint 3 — Importação OFX Nubank](sprints/sprint-3-ofx-import.md): piloto
   manual entregue, com escopo, rollback e riscos explícitos.
+- [Sprint 4 — Fundação Flutter e Casa de Valores](superpowers/specs/2026-08-13-lar-finance-flutter-foundation-design.md):
+  direção aprovada, escopo, arquitetura adaptativa e critérios de aceite.
 - [Backup automático no R2](sprints/automatic-r2-backup.md): configuração,
   operação, interpretação de resultados, restauração e rollback.
 
@@ -23,7 +25,7 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
 - [Importação e sincronização](imports-and-sync.md): arquivos, deduplicação,
   conciliação, offline e provedor futuro.
 - [UX mobile/desktop](mobile-ux.md): jornadas, telas, estados e acessibilidade.
-- [Direção visual](design-system.md): critérios firmes e gate visual pendente.
+- [Direção visual](design-system.md): Casa de Valores aprovada e validações de tokens pendentes.
 - [Segurança e operação](security-and-operations.md): ameaças, backup,
   EasyPanel, observabilidade e privacidade.
 - [Runbook EasyPanel](deploy-easypanel.md): implantação, backup e rollback.
@@ -56,5 +58,5 @@ importação manual, do custo, de dois CPFs e da cobertura das instituições.
 - `[INVESTIGAR]` indica ausência de evidência suficiente.
 - Versões só são exatas quando pinadas ou comprovadas.
 - Mudança de arquitetura exige ADR.
-- O design final depende de aprovação explícita do gate visual.
+- Mudanças na direção Casa de Valores dependem de nova aprovação explícita.
 - Segredos, CPF, email privado, valores e payload bancário não entram nos docs.
