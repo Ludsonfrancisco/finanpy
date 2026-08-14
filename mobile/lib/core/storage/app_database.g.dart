@@ -2544,6 +2544,19 @@ class $SyncStateTable extends SyncState
     requiredDuringInsert: false,
     defaultValue: const Constant(-1),
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<PersistedSessionIdentity, String>
+  sessionIdentity =
+      GeneratedColumn<String>(
+        'session_identity',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      ).withConverter<PersistedSessionIdentity>(
+        $SyncStateTable.$convertersessionIdentity,
+      );
   static const VerificationMeta _lastSuccessAtMeta = const VerificationMeta(
     'lastSuccessAt',
   );
@@ -2563,6 +2576,7 @@ class $SyncStateTable extends SyncState
     householdUuid,
     sessionDeviceUuid,
     sessionGeneration,
+    sessionIdentity,
     lastSuccessAt,
   ];
   @override
@@ -2660,6 +2674,12 @@ class $SyncStateTable extends SyncState
         DriftSqlType.int,
         data['${effectivePrefix}session_generation'],
       )!,
+      sessionIdentity: $SyncStateTable.$convertersessionIdentity.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}session_identity'],
+        )!,
+      ),
       lastSuccessAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_success_at'],
@@ -2671,6 +2691,9 @@ class $SyncStateTable extends SyncState
   $SyncStateTable createAlias(String alias) {
     return $SyncStateTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<PersistedSessionIdentity, String, String>
+  $convertersessionIdentity = const PersistedSessionIdentityConverter();
 }
 
 class SyncStateData extends DataClass implements Insertable<SyncStateData> {
@@ -2679,6 +2702,7 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
   final String householdUuid;
   final String sessionDeviceUuid;
   final int sessionGeneration;
+  final PersistedSessionIdentity sessionIdentity;
   final DateTime? lastSuccessAt;
   const SyncStateData({
     required this.key,
@@ -2686,6 +2710,7 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
     required this.householdUuid,
     required this.sessionDeviceUuid,
     required this.sessionGeneration,
+    required this.sessionIdentity,
     this.lastSuccessAt,
   });
   @override
@@ -2696,6 +2721,11 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
     map['household_uuid'] = Variable<String>(householdUuid);
     map['session_device_uuid'] = Variable<String>(sessionDeviceUuid);
     map['session_generation'] = Variable<int>(sessionGeneration);
+    {
+      map['session_identity'] = Variable<String>(
+        $SyncStateTable.$convertersessionIdentity.toSql(sessionIdentity),
+      );
+    }
     if (!nullToAbsent || lastSuccessAt != null) {
       map['last_success_at'] = Variable<DateTime>(lastSuccessAt);
     }
@@ -2709,6 +2739,7 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
       householdUuid: Value(householdUuid),
       sessionDeviceUuid: Value(sessionDeviceUuid),
       sessionGeneration: Value(sessionGeneration),
+      sessionIdentity: Value(sessionIdentity),
       lastSuccessAt: lastSuccessAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastSuccessAt),
@@ -2726,6 +2757,9 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
       householdUuid: serializer.fromJson<String>(json['householdUuid']),
       sessionDeviceUuid: serializer.fromJson<String>(json['sessionDeviceUuid']),
       sessionGeneration: serializer.fromJson<int>(json['sessionGeneration']),
+      sessionIdentity: $SyncStateTable.$convertersessionIdentity.fromJson(
+        serializer.fromJson<String>(json['sessionIdentity']),
+      ),
       lastSuccessAt: serializer.fromJson<DateTime?>(json['lastSuccessAt']),
     );
   }
@@ -2738,6 +2772,9 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
       'householdUuid': serializer.toJson<String>(householdUuid),
       'sessionDeviceUuid': serializer.toJson<String>(sessionDeviceUuid),
       'sessionGeneration': serializer.toJson<int>(sessionGeneration),
+      'sessionIdentity': serializer.toJson<String>(
+        $SyncStateTable.$convertersessionIdentity.toJson(sessionIdentity),
+      ),
       'lastSuccessAt': serializer.toJson<DateTime?>(lastSuccessAt),
     };
   }
@@ -2748,6 +2785,7 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
     String? householdUuid,
     String? sessionDeviceUuid,
     int? sessionGeneration,
+    PersistedSessionIdentity? sessionIdentity,
     Value<DateTime?> lastSuccessAt = const Value.absent(),
   }) => SyncStateData(
     key: key ?? this.key,
@@ -2755,6 +2793,7 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
     householdUuid: householdUuid ?? this.householdUuid,
     sessionDeviceUuid: sessionDeviceUuid ?? this.sessionDeviceUuid,
     sessionGeneration: sessionGeneration ?? this.sessionGeneration,
+    sessionIdentity: sessionIdentity ?? this.sessionIdentity,
     lastSuccessAt: lastSuccessAt.present
         ? lastSuccessAt.value
         : this.lastSuccessAt,
@@ -2772,6 +2811,9 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
       sessionGeneration: data.sessionGeneration.present
           ? data.sessionGeneration.value
           : this.sessionGeneration,
+      sessionIdentity: data.sessionIdentity.present
+          ? data.sessionIdentity.value
+          : this.sessionIdentity,
       lastSuccessAt: data.lastSuccessAt.present
           ? data.lastSuccessAt.value
           : this.lastSuccessAt,
@@ -2786,6 +2828,7 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
           ..write('householdUuid: $householdUuid, ')
           ..write('sessionDeviceUuid: $sessionDeviceUuid, ')
           ..write('sessionGeneration: $sessionGeneration, ')
+          ..write('sessionIdentity: $sessionIdentity, ')
           ..write('lastSuccessAt: $lastSuccessAt')
           ..write(')'))
         .toString();
@@ -2798,6 +2841,7 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
     householdUuid,
     sessionDeviceUuid,
     sessionGeneration,
+    sessionIdentity,
     lastSuccessAt,
   );
   @override
@@ -2809,6 +2853,7 @@ class SyncStateData extends DataClass implements Insertable<SyncStateData> {
           other.householdUuid == this.householdUuid &&
           other.sessionDeviceUuid == this.sessionDeviceUuid &&
           other.sessionGeneration == this.sessionGeneration &&
+          other.sessionIdentity == this.sessionIdentity &&
           other.lastSuccessAt == this.lastSuccessAt);
 }
 
@@ -2818,6 +2863,7 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateData> {
   final Value<String> householdUuid;
   final Value<String> sessionDeviceUuid;
   final Value<int> sessionGeneration;
+  final Value<PersistedSessionIdentity> sessionIdentity;
   final Value<DateTime?> lastSuccessAt;
   final Value<int> rowid;
   const SyncStateCompanion({
@@ -2826,6 +2872,7 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateData> {
     this.householdUuid = const Value.absent(),
     this.sessionDeviceUuid = const Value.absent(),
     this.sessionGeneration = const Value.absent(),
+    this.sessionIdentity = const Value.absent(),
     this.lastSuccessAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -2835,6 +2882,7 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateData> {
     required String householdUuid,
     required String sessionDeviceUuid,
     this.sessionGeneration = const Value.absent(),
+    this.sessionIdentity = const Value.absent(),
     this.lastSuccessAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : cursor = Value(cursor),
@@ -2846,6 +2894,7 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateData> {
     Expression<String>? householdUuid,
     Expression<String>? sessionDeviceUuid,
     Expression<int>? sessionGeneration,
+    Expression<String>? sessionIdentity,
     Expression<DateTime>? lastSuccessAt,
     Expression<int>? rowid,
   }) {
@@ -2855,6 +2904,7 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateData> {
       if (householdUuid != null) 'household_uuid': householdUuid,
       if (sessionDeviceUuid != null) 'session_device_uuid': sessionDeviceUuid,
       if (sessionGeneration != null) 'session_generation': sessionGeneration,
+      if (sessionIdentity != null) 'session_identity': sessionIdentity,
       if (lastSuccessAt != null) 'last_success_at': lastSuccessAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -2866,6 +2916,7 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateData> {
     Value<String>? householdUuid,
     Value<String>? sessionDeviceUuid,
     Value<int>? sessionGeneration,
+    Value<PersistedSessionIdentity>? sessionIdentity,
     Value<DateTime?>? lastSuccessAt,
     Value<int>? rowid,
   }) {
@@ -2875,6 +2926,7 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateData> {
       householdUuid: householdUuid ?? this.householdUuid,
       sessionDeviceUuid: sessionDeviceUuid ?? this.sessionDeviceUuid,
       sessionGeneration: sessionGeneration ?? this.sessionGeneration,
+      sessionIdentity: sessionIdentity ?? this.sessionIdentity,
       lastSuccessAt: lastSuccessAt ?? this.lastSuccessAt,
       rowid: rowid ?? this.rowid,
     );
@@ -2898,6 +2950,11 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateData> {
     if (sessionGeneration.present) {
       map['session_generation'] = Variable<int>(sessionGeneration.value);
     }
+    if (sessionIdentity.present) {
+      map['session_identity'] = Variable<String>(
+        $SyncStateTable.$convertersessionIdentity.toSql(sessionIdentity.value),
+      );
+    }
     if (lastSuccessAt.present) {
       map['last_success_at'] = Variable<DateTime>(lastSuccessAt.value);
     }
@@ -2915,6 +2972,7 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateData> {
           ..write('householdUuid: $householdUuid, ')
           ..write('sessionDeviceUuid: $sessionDeviceUuid, ')
           ..write('sessionGeneration: $sessionGeneration, ')
+          ..write('sessionIdentity: $sessionIdentity, ')
           ..write('lastSuccessAt: $lastSuccessAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5964,6 +6022,7 @@ typedef $$SyncStateTableCreateCompanionBuilder =
       required String householdUuid,
       required String sessionDeviceUuid,
       Value<int> sessionGeneration,
+      Value<PersistedSessionIdentity> sessionIdentity,
       Value<DateTime?> lastSuccessAt,
       Value<int> rowid,
     });
@@ -5974,6 +6033,7 @@ typedef $$SyncStateTableUpdateCompanionBuilder =
       Value<String> householdUuid,
       Value<String> sessionDeviceUuid,
       Value<int> sessionGeneration,
+      Value<PersistedSessionIdentity> sessionIdentity,
       Value<DateTime?> lastSuccessAt,
       Value<int> rowid,
     });
@@ -6027,6 +6087,16 @@ class $$SyncStateTableFilterComposer
   ColumnFilters<int> get sessionGeneration => $composableBuilder(
     column: $table.sessionGeneration,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    PersistedSessionIdentity,
+    PersistedSessionIdentity,
+    String
+  >
+  get sessionIdentity => $composableBuilder(
+    column: $table.sessionIdentity,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<DateTime> get lastSuccessAt => $composableBuilder(
@@ -6087,6 +6157,11 @@ class $$SyncStateTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sessionIdentity => $composableBuilder(
+    column: $table.sessionIdentity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get lastSuccessAt => $composableBuilder(
     column: $table.lastSuccessAt,
     builder: (column) => ColumnOrderings(column),
@@ -6138,6 +6213,12 @@ class $$SyncStateTableAnnotationComposer
 
   GeneratedColumn<int> get sessionGeneration => $composableBuilder(
     column: $table.sessionGeneration,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<PersistedSessionIdentity, String>
+  get sessionIdentity => $composableBuilder(
+    column: $table.sessionIdentity,
     builder: (column) => column,
   );
 
@@ -6203,6 +6284,8 @@ class $$SyncStateTableTableManager
                 Value<String> householdUuid = const Value.absent(),
                 Value<String> sessionDeviceUuid = const Value.absent(),
                 Value<int> sessionGeneration = const Value.absent(),
+                Value<PersistedSessionIdentity> sessionIdentity =
+                    const Value.absent(),
                 Value<DateTime?> lastSuccessAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncStateCompanion(
@@ -6211,6 +6294,7 @@ class $$SyncStateTableTableManager
                 householdUuid: householdUuid,
                 sessionDeviceUuid: sessionDeviceUuid,
                 sessionGeneration: sessionGeneration,
+                sessionIdentity: sessionIdentity,
                 lastSuccessAt: lastSuccessAt,
                 rowid: rowid,
               ),
@@ -6221,6 +6305,8 @@ class $$SyncStateTableTableManager
                 required String householdUuid,
                 required String sessionDeviceUuid,
                 Value<int> sessionGeneration = const Value.absent(),
+                Value<PersistedSessionIdentity> sessionIdentity =
+                    const Value.absent(),
                 Value<DateTime?> lastSuccessAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncStateCompanion.insert(
@@ -6229,6 +6315,7 @@ class $$SyncStateTableTableManager
                 householdUuid: householdUuid,
                 sessionDeviceUuid: sessionDeviceUuid,
                 sessionGeneration: sessionGeneration,
+                sessionIdentity: sessionIdentity,
                 lastSuccessAt: lastSuccessAt,
                 rowid: rowid,
               ),

@@ -43,7 +43,7 @@ final class AuthController extends ChangeNotifier {
   final SessionAuthority? _sessionAuthority;
   AuthState _state = const AuthState(phase: AuthPhase.checking);
   bool _disposed = false;
-  bool _logoutInFlight = false;
+  Future<void>? _logoutInFlight;
 
   AuthState get state => _state;
 
@@ -92,9 +92,17 @@ final class AuthController extends ChangeNotifier {
       }
 
       final syncedDeviceUuid = await _repository.readSyncedDeviceUuid();
+      final syncedSessionIdentity = await _repository
+          .readSyncedSessionIdentity();
+      final sessionIdentity = session.sessionIdentity;
       _emit(
         AuthState(
-          phase: lastSyncAt != null && syncedDeviceUuid == session.deviceUuid
+          phase:
+              lastSyncAt != null &&
+                  syncedDeviceUuid == session.deviceUuid &&
+                  sessionIdentity != null &&
+                  sessionIdentity.isNotEmpty &&
+                  syncedSessionIdentity == sessionIdentity
               ? AuthPhase.authenticated
               : AuthPhase.initialSync,
           deviceName: deviceName,
@@ -111,6 +119,8 @@ final class AuthController extends ChangeNotifier {
   }
 
   Future<void> login({required String email, required String password}) async {
+    final logoutInFlight = _logoutInFlight;
+    if (logoutInFlight != null) await logoutInFlight;
     if (_state.isSubmitting) return;
     _emit(
       AuthState(
@@ -223,16 +233,40 @@ final class AuthController extends ChangeNotifier {
     return true;
   }
 
-  Future<void> logout() async {
-    if (_logoutInFlight) return;
-    _logoutInFlight = true;
-    _emit(const AuthState(phase: AuthPhase.signedOut));
+  Future<void> logout() {
+    final logoutInFlight = _logoutInFlight;
+    if (logoutInFlight != null) return logoutInFlight;
+    _emit(
+      AuthState(
+        phase: AuthPhase.signedOut,
+        isSubmitting: true,
+        deviceName: _state.deviceName,
+        lastSyncAt: _state.lastSyncAt,
+      ),
+    );
+    late final Future<void> operation;
+    operation = _performLogout().whenComplete(() {
+      if (!identical(_logoutInFlight, operation)) return;
+      _logoutInFlight = null;
+      if (_state.phase == AuthPhase.signedOut && _state.isSubmitting) {
+        _emit(
+          AuthState(
+            phase: AuthPhase.signedOut,
+            deviceName: _state.deviceName,
+            lastSyncAt: _state.lastSyncAt,
+          ),
+        );
+      }
+    });
+    _logoutInFlight = operation;
+    return operation;
+  }
+
+  Future<void> _performLogout() async {
     try {
       await _repository.logout();
     } catch (_) {
       // A local logout remains authoritative.
-    } finally {
-      _logoutInFlight = false;
     }
   }
 

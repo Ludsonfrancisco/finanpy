@@ -7,6 +7,122 @@ import 'package:lar_finance/core/network/session_transport.dart';
 import 'package:lar_finance/features/auth/domain/session.dart';
 
 void main() {
+  group('SessionAuthority', () {
+    for (final replacementCase in <({String name, StoredTokens tokens})>[
+      (name: 'the same token and device values', tokens: _tokens()),
+      (
+        name: 'different token and device values',
+        tokens: StoredTokens(
+          accessToken: 'access-replacement',
+          accessExpiresAt: DateTime.utc(2030, 1, 3),
+          refreshToken: 'refresh-replacement',
+          refreshExpiresAt: DateTime.utc(2030, 2, 3),
+          deviceUuid: '99999999-9999-4999-8999-999999999999',
+        ),
+      ),
+    ]) {
+      test(
+        'a blocked vault read cannot make stale tokens current after ${replacementCase.name}',
+        () async {
+          final enteredRead = Completer<void>();
+          final releaseRead = Completer<void>();
+          addTearDown(() {
+            if (!releaseRead.isCompleted) releaseRead.complete();
+          });
+          final store = _BlockingReadTokenStore(_tokens());
+          final authority = SessionAuthority.forStore(store);
+          final before = await authority.snapshot();
+          store.blockNextRead(
+            enteredRead: enteredRead,
+            releaseRead: releaseRead,
+          );
+
+          final pendingSnapshot = authority.snapshot();
+          await enteredRead.future;
+          final clear = authority.clear();
+          final replacement = replacementCase.tokens;
+          final write = authority.write(replacement);
+          releaseRead.complete();
+          final after = await pendingSnapshot;
+          await Future.wait(<Future<void>>[clear, write]);
+
+          expect(before, isNotNull);
+          expect(after, isNotNull);
+          expect(after!.sessionIdentity, isNot(before!.sessionIdentity));
+          expect(after.tokens.accessToken, replacement.accessToken);
+          expect(after.tokens.deviceUuid, replacement.deviceUuid);
+          expect(await authority.isCurrent(before), isFalse);
+          expect(await authority.commitRefresh(before, _tokens()), isFalse);
+          expect(await authority.isCurrent(after), isTrue);
+          final stored = await store.read();
+          expect(stored?.accessToken, replacement.accessToken);
+          expect(stored?.deviceUuid, replacement.deviceUuid);
+          expect(stored?.sessionIdentity, after.sessionIdentity);
+        },
+      );
+    }
+
+    test('refresh preserves the logical session identity', () async {
+      final store = _FakeTokenStore(_tokens());
+      final authority = SessionAuthority.forStore(store);
+      final before = await authority.snapshot();
+      final rotated = StoredTokens(
+        accessToken: 'access-rotated',
+        accessExpiresAt: DateTime.utc(2030, 1, 4),
+        refreshToken: 'refresh-rotated',
+        refreshExpiresAt: DateTime.utc(2030, 2, 4),
+        deviceUuid: before!.tokens.deviceUuid,
+      );
+
+      expect(await authority.commitRefresh(before, rotated), isTrue);
+
+      final after = await authority.snapshot();
+      expect(after?.sessionIdentity, before.sessionIdentity);
+      expect(after?.tokens.accessToken, 'access-rotated');
+      expect(after?.tokens.sessionIdentity, before.sessionIdentity);
+    });
+
+    test(
+      'refresh rejects a changed device or forged session identity',
+      () async {
+        final store = _FakeTokenStore(_tokens());
+        final authority = SessionAuthority.forStore(store);
+        final before = await authority.snapshot();
+
+        expect(
+          await authority.commitRefresh(
+            before!,
+            StoredTokens(
+              accessToken: 'access-wrong-device',
+              accessExpiresAt: DateTime.utc(2030, 1, 4),
+              refreshToken: 'refresh-wrong-device',
+              refreshExpiresAt: DateTime.utc(2030, 2, 4),
+              deviceUuid: '99999999-9999-4999-8999-999999999999',
+            ),
+          ),
+          isFalse,
+        );
+        expect(
+          await authority.commitRefresh(
+            before,
+            StoredTokens(
+              accessToken: 'access-forged-identity',
+              accessExpiresAt: DateTime.utc(2030, 1, 4),
+              refreshToken: 'refresh-forged-identity',
+              refreshExpiresAt: DateTime.utc(2030, 2, 4),
+              deviceUuid: before.tokens.deviceUuid,
+              sessionIdentity: 'forged-session-identity',
+            ),
+          ),
+          isFalse,
+        );
+        final after = await authority.snapshot();
+        expect(after?.sessionIdentity, before.sessionIdentity);
+        expect(after?.tokens.accessToken, before.tokens.accessToken);
+      },
+    );
+  });
+
   group('SessionTransport', () {
     test(
       'coordinates one refresh for two simultaneous 401 responses',
@@ -214,7 +330,7 @@ void main() {
           throwsA(isA<OfflineFailure>()),
         );
 
-        expect(await store.read(), same(original));
+        _expectSameServerTokens(await store.read(), original);
       },
     );
 
@@ -243,7 +359,7 @@ void main() {
             throwsA(isA<RequestFailure>()),
           );
 
-          expect(await store.read(), same(original));
+          _expectSameServerTokens(await store.read(), original);
         },
       );
     }
@@ -325,7 +441,7 @@ void main() {
           client.restoreSession(),
           throwsA(isA<OfflineFailure>()),
         );
-        expect(await store.read(), same(original));
+        _expectSameServerTokens(await store.read(), original);
       },
     );
 
@@ -479,6 +595,15 @@ Future<void> _eventually(bool Function() condition) async {
   expect(condition(), isTrue);
 }
 
+void _expectSameServerTokens(StoredTokens? actual, StoredTokens expected) {
+  expect(actual?.accessToken, expected.accessToken);
+  expect(actual?.accessExpiresAt, expected.accessExpiresAt);
+  expect(actual?.refreshToken, expected.refreshToken);
+  expect(actual?.refreshExpiresAt, expected.refreshExpiresAt);
+  expect(actual?.deviceUuid, expected.deviceUuid);
+  expect(actual?.sessionIdentity, isNotEmpty);
+}
+
 final class _FakeTokenStore implements TokenStore {
   _FakeTokenStore(this.value);
 
@@ -489,6 +614,42 @@ final class _FakeTokenStore implements TokenStore {
 
   @override
   Future<StoredTokens?> read() async => value;
+
+  @override
+  Future<void> write(StoredTokens tokens) async => value = tokens;
+}
+
+final class _BlockingReadTokenStore implements TokenStore {
+  _BlockingReadTokenStore(this.value);
+
+  StoredTokens? value;
+  Completer<void>? _enteredRead;
+  Completer<void>? _releaseRead;
+
+  void blockNextRead({
+    required Completer<void> enteredRead,
+    required Completer<void> releaseRead,
+  }) {
+    _enteredRead = enteredRead;
+    _releaseRead = releaseRead;
+  }
+
+  @override
+  Future<void> clear() async => value = null;
+
+  @override
+  Future<StoredTokens?> read() async {
+    final captured = value;
+    final enteredRead = _enteredRead;
+    final releaseRead = _releaseRead;
+    if (enteredRead != null && releaseRead != null) {
+      _enteredRead = null;
+      _releaseRead = null;
+      enteredRead.complete();
+      await releaseRead.future;
+    }
+    return captured;
+  }
 
   @override
   Future<void> write(StoredTokens tokens) async => value = tokens;

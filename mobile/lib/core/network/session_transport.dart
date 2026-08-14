@@ -211,10 +211,14 @@ final class SessionTransport {
         throw const RequestFailure();
       }
       final rotated = _parseSession(body);
-      final committed = await _sessionAuthority.commitRefresh(current, rotated);
+      final identified = rotated.withSessionIdentity(current.sessionIdentity);
+      final committed = await _sessionAuthority.commitRefresh(
+        current,
+        identified,
+      );
       if (!committed) throw const RequestFailure();
       _onEvent?.call('session.refresh.completed');
-      return rotated;
+      return identified;
     } on OfflineFailure {
       _onEvent?.call('session.refresh.offline');
       rethrow;

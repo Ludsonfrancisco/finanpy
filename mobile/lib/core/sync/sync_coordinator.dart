@@ -53,7 +53,8 @@ final class LedgerSyncCoordinator {
     final metadata = await _ledger.readSyncMetadata();
     return metadata != null &&
         metadata.sessionDeviceUuid == expected.tokens.deviceUuid &&
-        metadata.sessionGeneration == expected.generation;
+        metadata.sessionIdentity == expected.sessionIdentity &&
+        await _sessionAuthority.isCurrent(expected);
   }
 
   Future<SyncResult?> synchronizeIfStale(Duration maximumAge) async {
@@ -65,7 +66,8 @@ final class LedgerSyncCoordinator {
     if (metadata == null ||
         expected == null ||
         metadata.sessionDeviceUuid != expected.tokens.deviceUuid ||
-        metadata.sessionGeneration != expected.generation) {
+        metadata.sessionIdentity != expected.sessionIdentity ||
+        !await _sessionAuthority.isCurrent(expected)) {
       return synchronize();
     }
     final age = _now().toUtc().difference(metadata.lastSuccessAt.toUtc());
@@ -86,7 +88,7 @@ final class LedgerSyncCoordinator {
           metadata != null &&
           deviceUuid != null &&
           metadata.sessionDeviceUuid == deviceUuid &&
-          metadata.sessionGeneration == expectedSession?.generation;
+          metadata.sessionIdentity == expectedSession?.sessionIdentity;
       state.markSyncing(hasValidCache ? metadata.lastSuccessAt : null);
       if (deviceUuid == null) {
         state.markFailed(null);
@@ -102,6 +104,7 @@ final class LedgerSyncCoordinator {
           syncedAt,
           deviceUuid,
           sessionGeneration: expectedSession.generation,
+          sessionIdentity: expectedSession.sessionIdentity,
           isSessionCurrent: () =>
               _sessionAuthority.isGenerationCurrent(expectedSession!),
         );
@@ -140,6 +143,7 @@ final class LedgerSyncCoordinator {
         pages,
         syncedAt,
         sessionGeneration: expectedSession.generation,
+        sessionIdentity: expectedSession.sessionIdentity,
         isSessionCurrent: () =>
             _sessionAuthority.isGenerationCurrent(expectedSession!),
       );

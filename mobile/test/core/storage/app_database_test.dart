@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lar_finance/core/storage/app_database.dart';
 import 'package:lar_finance/core/storage/local_ledger.dart';
+import 'package:lar_finance/core/storage/tables.dart';
 import 'package:lar_finance/core/sync/sync_models.dart';
 
 void main() {
@@ -17,7 +18,7 @@ void main() {
     await db.close();
   });
 
-  test('schema v2 stores exact minor units with valid relations', () async {
+  test('schema v3 stores exact minor units with valid relations', () async {
     await _seedParents(db, now);
 
     await db
@@ -40,12 +41,12 @@ void main() {
         );
 
     final transaction = await db.select(db.transactions).getSingle();
-    expect(db.schemaVersion, 2);
+    expect(db.schemaVersion, 3);
     expect(transaction.amountMinor, 2486040);
     expect(transaction.version, 3);
   });
 
-  test('schema v2 rejects an invalid transaction relation', () async {
+  test('schema v3 rejects an invalid transaction relation', () async {
     await _seedParents(db, now);
 
     final insert = db
@@ -79,7 +80,7 @@ void main() {
     );
   });
 
-  test('schema v2 rejects an unknown owner type', () async {
+  test('schema v3 rejects an unknown owner type', () async {
     final insert = db
         .into(db.owners)
         .insert(
@@ -93,7 +94,7 @@ void main() {
     await expectLater(insert, throwsA(isA<Exception>()));
   });
 
-  test('schema v2 rejects a sync-state key other than ledger', () async {
+  test('schema v3 rejects a sync-state key other than ledger', () async {
     await db
         .into(db.households)
         .insert(
@@ -118,7 +119,35 @@ void main() {
     await expectLater(insert, throwsA(isA<Exception>()));
   });
 
-  test('schema v2 rejects a non-positive entity version', () async {
+  test(
+    'persisted session identities stay redacted in database values',
+    () async {
+      const identity = 'opaque-session-identity-must-stay-private';
+      await db
+          .into(db.households)
+          .insert(
+            HouseholdsCompanion.insert(
+              uuid: '11111111-1111-4111-8111-111111111111',
+              name: 'Casa',
+              updatedAt: now,
+            ),
+          );
+      final companion = SyncStateCompanion.insert(
+        cursor: 'cursor-redaction',
+        householdUuid: '11111111-1111-4111-8111-111111111111',
+        sessionDeviceUuid: '77777777-7777-4777-8777-777777777777',
+        sessionIdentity: const Value(PersistedSessionIdentity(identity)),
+      );
+      await db.into(db.syncState).insert(companion);
+      final row = await db.select(db.syncState).getSingle();
+
+      expect(row.toString(), isNot(contains(identity)));
+      expect(companion.toString(), isNot(contains(identity)));
+      expect(row.toJson().toString(), isNot(contains(identity)));
+    },
+  );
+
+  test('schema v3 rejects a non-positive entity version', () async {
     await db
         .into(db.households)
         .insert(
@@ -158,7 +187,7 @@ void main() {
     await expectLater(insert, throwsA(isA<Exception>()));
   });
 
-  test('schema v2 rejects a negative transaction magnitude', () async {
+  test('schema v3 rejects a negative transaction magnitude', () async {
     await _seedParents(db, now);
     final insert = db
         .into(db.transactions)

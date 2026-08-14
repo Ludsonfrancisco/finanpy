@@ -101,6 +101,46 @@ void main() {
     },
   );
 
+  test(
+    'login waits for prior logout cleanup before creating a new session',
+    () async {
+      final release = Completer<void>();
+      final gateway = _FakeAuthGateway(
+        restoredSession: _sessionFor(_deviceUuid),
+        selectedOwnerUuid: _selfUuid,
+        syncedDeviceUuid: _deviceUuid,
+        logoutRelease: release,
+      );
+      final controller = AuthController(gateway);
+      await controller.initialize();
+
+      final logout = controller.logout();
+      final login = controller.login(
+        email: 'ana@example.com',
+        password: 'synthetic-secret',
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.state.phase, AuthPhase.signedOut);
+      expect(controller.state.isSubmitting, isTrue);
+      expect(gateway.loginCalls, 0);
+
+      release.complete();
+      await logout;
+      await login;
+      expect(controller.state.phase, AuthPhase.choosingOwner);
+
+      await controller.selectDeviceOwner(_spouseUuid);
+      expect(gateway.selectedUuid, _spouseUuid);
+      expect(gateway.operations, <String>[
+        'logout-start',
+        'logout-cleanup',
+        'login',
+        'select:$_spouseUuid',
+      ]);
+    },
+  );
+
   testWidgets('guarded routes move through login, owner, and initial sync', (
     tester,
   ) async {
@@ -263,6 +303,7 @@ const _selfUuid = '22222222-2222-4222-8222-222222222222';
 const _spouseUuid = '33333333-3333-4333-8333-333333333333';
 const _sharedUuid = '44444444-4444-4444-8444-444444444444';
 const _deviceUuid = '11111111-1111-4111-8111-111111111111';
+const _sessionIdentity = 'synthetic-session-identity';
 
 LoginResult _loginResult() => LoginResult(
   session: StoredTokens(
@@ -285,6 +326,7 @@ StoredTokens _sessionFor(String deviceUuid) => StoredTokens(
   refreshToken: 'refresh-secret',
   refreshExpiresAt: DateTime.utc(2030, 2, 1),
   deviceUuid: deviceUuid,
+  sessionIdentity: _sessionIdentity,
 );
 
 final class _FakeAuthGateway implements AuthGateway {
@@ -308,13 +350,19 @@ final class _FakeAuthGateway implements AuthGateway {
   final LoginResult? loginResult;
   final Completer<void>? logoutRelease;
   int logoutCalls = 0;
+  int loginCalls = 0;
   String? selectedUuid;
+  final List<String> operations = <String>[];
 
   @override
   Future<LoginResult> login({
     required String email,
     required String password,
-  }) async => loginResult ?? _loginResult();
+  }) async {
+    loginCalls++;
+    operations.add('login');
+    return loginResult ?? _loginResult();
+  }
 
   @override
   Future<List<DeviceOwnerOption>> loadOwners() {
@@ -327,7 +375,10 @@ final class _FakeAuthGateway implements AuthGateway {
   @override
   Future<void> logout() async {
     logoutCalls++;
+    operations.add('logout-start');
     await logoutRelease?.future;
+    operations.add('logout-cleanup');
+    selectedUuid = null;
     if (logoutThrows) throw StateError('offline');
   }
 
@@ -352,5 +403,12 @@ final class _FakeAuthGateway implements AuthGateway {
   Future<String?> readSyncedDeviceUuid() async => syncedDeviceUuid;
 
   @override
-  Future<void> selectDeviceOwner(String uuid) async => selectedUuid = uuid;
+  Future<String?> readSyncedSessionIdentity() async =>
+      syncedDeviceUuid == null ? null : _sessionIdentity;
+
+  @override
+  Future<void> selectDeviceOwner(String uuid) async {
+    operations.add('select:$uuid');
+    selectedUuid = uuid;
+  }
 }

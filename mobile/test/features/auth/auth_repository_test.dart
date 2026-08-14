@@ -17,15 +17,19 @@ void main() {
       FlutterSecureStorage.setMockInitialValues(<String, String>{});
       const storage = FlutterSecureStorage();
       final store = SecureTokenStore(storage);
-      final tokens = _tokens();
+      final tokens = _tokens().withSessionIdentity(
+        'opaque-synthetic-session-identity',
+      );
 
       await store.write(tokens);
       final restored = await store.read();
 
       expect(restored?.accessToken, tokens.accessToken);
       expect(restored?.refreshToken, tokens.refreshToken);
+      expect(restored?.sessionIdentity, tokens.sessionIdentity);
       expect(restored.toString(), isNot(contains(tokens.accessToken)));
       expect(restored.toString(), isNot(contains(tokens.refreshToken)));
+      expect(restored.toString(), isNot(contains(tokens.sessionIdentity!)));
 
       await store.clear();
       expect(await store.read(), isNull);

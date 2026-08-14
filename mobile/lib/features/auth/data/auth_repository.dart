@@ -35,6 +35,7 @@ abstract interface class AuthGateway {
   Future<String> readDeviceName();
   Future<DateTime?> readLastSyncAt();
   Future<String?> readSyncedDeviceUuid();
+  Future<String?> readSyncedSessionIdentity();
 }
 
 final class AuthRepository implements AuthGateway {
@@ -186,6 +187,15 @@ final class AuthRepository implements AuthGateway {
       _database.syncState,
     )..where((row) => row.key.equals('ledger'))).getSingleOrNull();
     return sync?.sessionDeviceUuid;
+  }
+
+  @override
+  Future<String?> readSyncedSessionIdentity() async {
+    final sync = await (_database.select(
+      _database.syncState,
+    )..where((row) => row.key.equals('ledger'))).getSingleOrNull();
+    final identity = sync?.sessionIdentity;
+    return identity == null || identity.isEmpty ? null : identity.value;
   }
 
   @override

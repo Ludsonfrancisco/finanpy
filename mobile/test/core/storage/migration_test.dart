@@ -72,6 +72,9 @@ void main() {
         file,
         setup: (rawDatabase) {
           rawDatabase.execute(
+            'ALTER TABLE sync_state DROP COLUMN session_identity',
+          );
+          rawDatabase.execute(
             'ALTER TABLE sync_state DROP COLUMN session_generation',
           );
           rawDatabase.execute('PRAGMA user_version = 1');
@@ -89,12 +92,69 @@ void main() {
     expect(account.initialBalanceMinor, 12345);
     expect(syncState.cursor, 'cursor-v1');
     expect(syncState.sessionGeneration, -1);
+    expect(syncState.sessionIdentity, isEmpty);
     expect(
       await db
           .customSelect('PRAGMA user_version')
           .getSingle()
           .then((row) => row.read<int>('user_version')),
-      2,
+      3,
+    );
+  });
+
+  test('schema v2 migrates its cache to an unbound session identity', () async {
+    final directory = await Directory.systemTemp.createTemp('lar-finance-v2-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}ledger.sqlite',
+    );
+    final now = DateTime.utc(2026, 8, 14, 12);
+    var db = AppDatabase(NativeDatabase(file));
+    await db
+        .into(db.households)
+        .insert(
+          HouseholdsCompanion.insert(
+            uuid: '11111111-1111-4111-8111-111111111111',
+            name: 'Casa',
+            updatedAt: now,
+          ),
+        );
+    await db
+        .into(db.syncState)
+        .insert(
+          SyncStateCompanion.insert(
+            cursor: 'cursor-v2',
+            householdUuid: '11111111-1111-4111-8111-111111111111',
+            sessionDeviceUuid: '77777777-7777-4777-8777-777777777777',
+            sessionGeneration: const Value(4),
+            lastSuccessAt: Value(now),
+          ),
+        );
+    await db.close();
+
+    db = AppDatabase(
+      NativeDatabase(
+        file,
+        setup: (rawDatabase) {
+          rawDatabase.execute(
+            'ALTER TABLE sync_state DROP COLUMN session_identity',
+          );
+          rawDatabase.execute('PRAGMA user_version = 2');
+        },
+      ),
+    );
+    addTearDown(db.close);
+
+    final syncState = await db.select(db.syncState).getSingle();
+    expect(syncState.cursor, 'cursor-v2');
+    expect(syncState.sessionGeneration, 4);
+    expect(syncState.sessionIdentity, isEmpty);
+    expect(
+      await db
+          .customSelect('PRAGMA user_version')
+          .getSingle()
+          .then((row) => row.read<int>('user_version')),
+      3,
     );
   });
 }

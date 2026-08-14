@@ -3,6 +3,44 @@
 
 import 'package:drift/drift.dart';
 
+final class PersistedSessionIdentity {
+  const PersistedSessionIdentity(this.value);
+
+  final String value;
+
+  bool get isEmpty => value.isEmpty;
+
+  @override
+  String toString() => '<redacted-session-identity>';
+
+  @override
+  bool operator ==(Object other) =>
+      other is PersistedSessionIdentity && other.value == value;
+
+  @override
+  int get hashCode => value.hashCode;
+}
+
+final class PersistedSessionIdentityConverter
+    extends TypeConverter<PersistedSessionIdentity, String>
+    with JsonTypeConverter2<PersistedSessionIdentity, String, String> {
+  const PersistedSessionIdentityConverter();
+
+  @override
+  PersistedSessionIdentity fromSql(String fromDb) =>
+      PersistedSessionIdentity(fromDb);
+
+  @override
+  String toSql(PersistedSessionIdentity value) => value.value;
+
+  @override
+  PersistedSessionIdentity fromJson(String json) =>
+      PersistedSessionIdentity(json);
+
+  @override
+  String toJson(PersistedSessionIdentity value) => '<redacted>';
+}
+
 class Households extends Table {
   TextColumn get uuid => text()();
   TextColumn get name => text()();
@@ -130,6 +168,9 @@ class SyncState extends Table {
   TextColumn get sessionDeviceUuid => text()();
   IntColumn get sessionGeneration =>
       integer().withDefault(const Constant(-1))();
+  TextColumn get sessionIdentity => text()
+      .withDefault(const Constant(''))
+      .map(const PersistedSessionIdentityConverter())();
   DateTimeColumn get lastSuccessAt => dateTime().nullable()();
 
   @override

@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../money/minor_units.dart';
 import '../sync/sync_models.dart';
 import 'app_database.dart';
+import 'tables.dart';
 
 abstract interface class LocalLedger {
   Stream<HomeSnapshot> watchHome(OwnerScope scope, DateTime now);
@@ -11,18 +12,21 @@ abstract interface class LocalLedger {
     DateTime syncedAt,
     String sessionDeviceUuid, {
     int sessionGeneration = 0,
+    String sessionIdentity = '',
     bool Function()? isSessionCurrent,
   });
   Future<void> applyDelta(
     SyncPage page,
     DateTime syncedAt, {
     int sessionGeneration = 0,
+    String sessionIdentity = '',
     bool Function()? isSessionCurrent,
   });
   Future<void> applyDeltaChain(
     List<SyncPage> pages,
     DateTime syncedAt, {
     int sessionGeneration = 0,
+    String sessionIdentity = '',
     bool Function()? isSessionCurrent,
   });
   Future<SyncMetadata?> readSyncMetadata();
@@ -60,6 +64,7 @@ final class DriftLocalLedger implements LocalLedger {
     DateTime syncedAt,
     String sessionDeviceUuid, {
     int sessionGeneration = 0,
+    String sessionIdentity = '',
     bool Function()? isSessionCurrent,
   }) {
     return _db.transaction(() async {
@@ -108,6 +113,7 @@ final class DriftLocalLedger implements LocalLedger {
                 'sessionDeviceUuid',
               ),
               sessionGeneration: Value(sessionGeneration),
+              sessionIdentity: Value(PersistedSessionIdentity(sessionIdentity)),
               lastSuccessAt: Value(syncedAt),
             ),
           );
@@ -121,12 +127,14 @@ final class DriftLocalLedger implements LocalLedger {
     SyncPage page,
     DateTime syncedAt, {
     int sessionGeneration = 0,
+    String sessionIdentity = '',
     bool Function()? isSessionCurrent,
   }) {
     return applyDeltaChain(
       <SyncPage>[page],
       syncedAt,
       sessionGeneration: sessionGeneration,
+      sessionIdentity: sessionIdentity,
       isSessionCurrent: isSessionCurrent,
     );
   }
@@ -136,6 +144,7 @@ final class DriftLocalLedger implements LocalLedger {
     List<SyncPage> pages,
     DateTime syncedAt, {
     int sessionGeneration = 0,
+    String sessionIdentity = '',
     bool Function()? isSessionCurrent,
   }) {
     if (pages.isEmpty) {
@@ -161,6 +170,7 @@ final class DriftLocalLedger implements LocalLedger {
         SyncStateCompanion(
           cursor: Value(_nonEmpty(pages.last.cursor, 'cursor')),
           sessionGeneration: Value(sessionGeneration),
+          sessionIdentity: Value(PersistedSessionIdentity(sessionIdentity)),
           lastSuccessAt: Value(syncedAt),
         ),
       );
@@ -184,6 +194,7 @@ final class DriftLocalLedger implements LocalLedger {
       householdUuid: row.householdUuid,
       sessionDeviceUuid: row.sessionDeviceUuid,
       sessionGeneration: row.sessionGeneration,
+      sessionIdentity: row.sessionIdentity.value,
       lastSuccessAt: lastSuccessAt,
     );
   }

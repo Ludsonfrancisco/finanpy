@@ -19,6 +19,7 @@ import 'package:lar_finance/features/auth/presentation/initial_sync_screen.dart'
 import 'package:intl/date_symbol_data_local.dart';
 
 const _deviceUuid = '70000000-0000-4000-8000-000000000001';
+const _sessionIdentity = 'synthetic-session-identity';
 
 void main() {
   setUpAll(() => initializeDateFormatting('pt_BR'));
@@ -324,7 +325,11 @@ void main() {
 
       expect(readyCalls, 0);
       expect(ledger.metadata, isNull);
-      expect(await store.read(), same(replacement));
+      final storedReplacement = await store.read();
+      expect(storedReplacement?.accessToken, replacement.accessToken);
+      expect(storedReplacement?.refreshToken, replacement.refreshToken);
+      expect(storedReplacement?.deviceUuid, replacement.deviceUuid);
+      expect(storedReplacement?.sessionIdentity, isNotEmpty);
       expect(
         find.text('Não foi possível sincronizar seus dados. Tente novamente.'),
         findsOneWidget,
@@ -402,6 +407,7 @@ SyncMetadata _metadata(DateTime timestamp) => SyncMetadata(
   householdUuid: '10000000-0000-4000-8000-000000000001',
   sessionDeviceUuid: _deviceUuid,
   sessionGeneration: 0,
+  sessionIdentity: _sessionIdentity,
   lastSuccessAt: timestamp,
 );
 
@@ -415,12 +421,14 @@ final class _MemoryLedger implements LocalLedger {
     SyncPage page,
     DateTime syncedAt, {
     int sessionGeneration = 0,
+    String sessionIdentity = '',
     bool Function()? isSessionCurrent,
   }) async {
     await applyDeltaChain(
       <SyncPage>[page],
       syncedAt,
       sessionGeneration: sessionGeneration,
+      sessionIdentity: sessionIdentity,
       isSessionCurrent: isSessionCurrent,
     );
   }
@@ -430,6 +438,7 @@ final class _MemoryLedger implements LocalLedger {
     List<SyncPage> pages,
     DateTime syncedAt, {
     int sessionGeneration = 0,
+    String sessionIdentity = '',
     bool Function()? isSessionCurrent,
   }) async {
     if (isSessionCurrent != null && !isSessionCurrent()) {
@@ -441,6 +450,7 @@ final class _MemoryLedger implements LocalLedger {
       householdUuid: current.householdUuid,
       sessionDeviceUuid: current.sessionDeviceUuid,
       sessionGeneration: sessionGeneration,
+      sessionIdentity: sessionIdentity,
       lastSuccessAt: syncedAt,
     );
   }
@@ -454,6 +464,7 @@ final class _MemoryLedger implements LocalLedger {
     DateTime syncedAt,
     String sessionDeviceUuid, {
     int sessionGeneration = 0,
+    String sessionIdentity = '',
     bool Function()? isSessionCurrent,
   }) async {
     if (isSessionCurrent != null && !isSessionCurrent()) {
@@ -464,6 +475,7 @@ final class _MemoryLedger implements LocalLedger {
       householdUuid: payload.household['uuid']! as String,
       sessionDeviceUuid: sessionDeviceUuid,
       sessionGeneration: sessionGeneration,
+      sessionIdentity: sessionIdentity,
       lastSuccessAt: syncedAt,
     );
   }
@@ -513,6 +525,7 @@ StoredTokens _session() => StoredTokens(
   refreshToken: 'synthetic-refresh',
   refreshExpiresAt: DateTime.utc(2031),
   deviceUuid: _deviceUuid,
+  sessionIdentity: _sessionIdentity,
 );
 
 final class _TestAuthGateway implements AuthGateway {
@@ -568,6 +581,10 @@ final class _TestAuthGateway implements AuthGateway {
 
   @override
   Future<String?> readSyncedDeviceUuid() async => syncedDeviceUuid;
+
+  @override
+  Future<String?> readSyncedSessionIdentity() async =>
+      syncedDeviceUuid == null ? null : _sessionIdentity;
 
   @override
   Future<void> selectDeviceOwner(String uuid) async {}

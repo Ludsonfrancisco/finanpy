@@ -56,5 +56,8 @@ final class _SignedOutGateway implements AuthGateway {
   Future<String?> readSyncedDeviceUuid() async => null;
 
   @override
+  Future<String?> readSyncedSessionIdentity() async => null;
+
+  @override
   Future<void> selectDeviceOwner(String uuid) => throw UnimplementedError();
 }

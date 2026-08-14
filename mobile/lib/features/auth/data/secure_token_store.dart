@@ -13,6 +13,7 @@ final class SecureTokenStore implements TokenStore {
   static const _refresh = 'session.refresh';
   static const _refreshExpiry = 'session.refresh_expiry';
   static const _deviceUuid = 'session.device_uuid';
+  static const _identity = 'session.identity';
 
   @override
   Future<StoredTokens?> read() async {
@@ -23,13 +24,15 @@ final class SecureTokenStore implements TokenStore {
         storage.read(key: _refresh),
         storage.read(key: _refreshExpiry),
         storage.read(key: _deviceUuid),
+        storage.read(key: _identity),
       ]);
-      if (values.every((value) => value == null)) {
+      final requiredValues = values.take(5);
+      if (requiredValues.every((value) => value == null)) {
         return null;
       }
       final accessExpiry = DateTime.tryParse(values[1] ?? '');
       final refreshExpiry = DateTime.tryParse(values[3] ?? '');
-      if (values.any((value) => value == null || value.isEmpty) ||
+      if (requiredValues.any((value) => value == null || value.isEmpty) ||
           accessExpiry == null ||
           refreshExpiry == null) {
         await clear();
@@ -41,6 +44,7 @@ final class SecureTokenStore implements TokenStore {
         refreshToken: values[2]!,
         refreshExpiresAt: refreshExpiry,
         deviceUuid: values[4]!,
+        sessionIdentity: values[5],
       );
     } catch (_) {
       throw const RequestFailure();
@@ -61,6 +65,12 @@ final class SecureTokenStore implements TokenStore {
         value: tokens.refreshExpiresAt.toUtc().toIso8601String(),
       );
       await storage.write(key: _deviceUuid, value: tokens.deviceUuid);
+      final identity = tokens.sessionIdentity;
+      if (identity == null || identity.isEmpty) {
+        await storage.delete(key: _identity);
+      } else {
+        await storage.write(key: _identity, value: identity);
+      }
     } catch (_) {
       await clear();
       throw const RequestFailure();
@@ -76,6 +86,7 @@ final class SecureTokenStore implements TokenStore {
         _refresh,
         _refreshExpiry,
         _deviceUuid,
+        _identity,
       ]) {
         await storage.delete(key: key);
       }

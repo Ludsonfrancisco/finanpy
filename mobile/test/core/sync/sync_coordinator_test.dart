@@ -16,6 +16,7 @@ import 'package:lar_finance/core/sync/sync_state.dart';
 import 'package:lar_finance/features/auth/domain/session.dart';
 
 const _deviceUuid = '70000000-0000-4000-8000-000000000001';
+const _sessionIdentity = 'synthetic-session-identity';
 
 void main() {
   group('LedgerSyncCoordinator', () {
@@ -499,7 +500,7 @@ void main() {
         expect(after?.cursor, before?.cursor);
         expect(after?.lastSuccessAt, before?.lastSuccessAt);
         expect(await coordinator.hasValidCache(), isFalse);
-        expect(await store.read(), same(replacement));
+        _expectSameSessionValues(await store.read(), replacement);
       },
     );
 
@@ -542,7 +543,7 @@ void main() {
         expect(await pausedLedger.readSyncMetadata(), isNull);
         expect(await coordinator.hasValidCache(), isFalse);
         expect(coordinator.lastSuccessfulSession, isNull);
-        expect(await store.read(), same(replacement));
+        _expectSameSessionValues(await store.read(), replacement);
       },
     );
 
@@ -601,7 +602,53 @@ void main() {
         expect(after?.lastSuccessAt, before?.lastSuccessAt);
         expect(await coordinator.hasValidCache(), isFalse);
         expect(coordinator.lastSuccessfulSession, isNull);
-        expect(await store.read(), same(replacement));
+        _expectSameSessionValues(await store.read(), replacement);
+      },
+    );
+
+    test(
+      'restart keeps a valid cache bound to the persisted session identity',
+      () async {
+        final file = File('${temporaryDirectory.path}/ledger.sqlite');
+        final vault = _SharedTokenVault();
+        final firstStore = _VaultTokenStore(vault);
+        final firstAuthority = SessionAuthority.forStore(firstStore);
+        await firstAuthority.write(_tokens());
+        final firstSession = await firstAuthority.snapshot();
+        final firstApi = _FakeSyncApi(bootstrap: bootstrap);
+        final firstCoordinator = _coordinator(
+          ledger,
+          firstApi,
+          sessionAuthority: firstAuthority,
+        );
+
+        expect(await firstCoordinator.synchronize(), SyncResult.updated);
+        await database.close();
+
+        final secondStore = _VaultTokenStore(vault);
+        final secondAuthority = SessionAuthority.forStore(secondStore);
+        final secondSession = await secondAuthority.snapshot();
+        final secondDatabase = AppDatabase(NativeDatabase(file));
+        addTearDown(secondDatabase.close);
+        final secondApi = _FakeSyncApi(
+          pages: const <SyncPage>[
+            SyncPage(
+              changes: <SyncChangePayload>[],
+              cursor: 'cursor-after-restart',
+            ),
+          ],
+        );
+        final secondCoordinator = _coordinator(
+          DriftLocalLedger(secondDatabase),
+          secondApi,
+          sessionAuthority: secondAuthority,
+        );
+
+        expect(secondSession?.sessionIdentity, firstSession?.sessionIdentity);
+        expect(await secondCoordinator.hasValidCache(), isTrue);
+        expect(await secondCoordinator.synchronize(), SyncResult.current);
+        expect(secondApi.bootstrapCalls, 0);
+        expect(secondApi.changeCursors, <String>[bootstrap.cursor]);
       },
     );
   });
@@ -674,6 +721,7 @@ Future<void> _seedBootstrap(LocalLedger ledger, BootstrapPayload bootstrap) {
     bootstrap,
     DateTime.utc(2026, 8, 14, 12),
     _deviceUuid,
+    sessionIdentity: _sessionIdentity,
   );
 }
 
@@ -816,7 +864,17 @@ StoredTokens _tokens() => StoredTokens(
   refreshToken: 'synthetic-refresh',
   refreshExpiresAt: DateTime.utc(2031),
   deviceUuid: _deviceUuid,
+  sessionIdentity: _sessionIdentity,
 );
+
+void _expectSameSessionValues(StoredTokens? actual, StoredTokens expected) {
+  expect(actual?.accessToken, expected.accessToken);
+  expect(actual?.accessExpiresAt, expected.accessExpiresAt);
+  expect(actual?.refreshToken, expected.refreshToken);
+  expect(actual?.refreshExpiresAt, expected.refreshExpiresAt);
+  expect(actual?.deviceUuid, expected.deviceUuid);
+  expect(actual?.sessionIdentity, isNotEmpty);
+}
 
 final class _MemoryTokenStore implements TokenStore {
   _MemoryTokenStore(this.value);
@@ -831,4 +889,23 @@ final class _MemoryTokenStore implements TokenStore {
 
   @override
   Future<void> write(StoredTokens tokens) async => value = tokens;
+}
+
+final class _SharedTokenVault {
+  StoredTokens? value;
+}
+
+final class _VaultTokenStore implements TokenStore {
+  _VaultTokenStore(this.vault);
+
+  final _SharedTokenVault vault;
+
+  @override
+  Future<void> clear() async => vault.value = null;
+
+  @override
+  Future<StoredTokens?> read() async => vault.value;
+
+  @override
+  Future<void> write(StoredTokens tokens) async => vault.value = tokens;
 }

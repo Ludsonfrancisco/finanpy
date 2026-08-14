@@ -64,6 +64,7 @@ final class SyncMetadata {
     required this.householdUuid,
     required this.sessionDeviceUuid,
     required this.sessionGeneration,
+    required this.sessionIdentity,
     required this.lastSuccessAt,
   });
 
@@ -71,6 +72,7 @@ final class SyncMetadata {
   final String householdUuid;
   final String sessionDeviceUuid;
   final int sessionGeneration;
+  final String sessionIdentity;
   final DateTime lastSuccessAt;
 }
 
