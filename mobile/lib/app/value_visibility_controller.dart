@@ -46,6 +46,7 @@ final class ValueVisibilityController extends ChangeNotifier {
 
   final ValueVisibilityRepository _repository;
   bool _hidden = false;
+  Future<void> _operations = Future<void>.value();
 
   bool get hidden => _hidden;
 
@@ -57,18 +58,28 @@ final class ValueVisibilityController extends ChangeNotifier {
 
   Future<void> restore({required bool returningFromInactive}) async {
     if (returningFromInactive) protectBeforeFirstReadForInactiveReturn();
-    final persisted = await _repository.readValuesHidden();
-    final next = persisted ?? false;
+    return _serialize(() async {
+      final persisted = await _repository.readValuesHidden();
+      _setHidden(persisted ?? false);
+    });
+  }
+
+  Future<void> toggle() => _serialize(() async {
+    final next = !_hidden;
+    await _repository.writeValuesHidden(next);
+    _setHidden(next);
+  });
+
+  Future<T> _serialize<T>(Future<T> Function() action) {
+    final result = _operations.then((_) => action());
+    _operations = result.then<void>((_) {}, onError: (_, _) {});
+    return result;
+  }
+
+  void _setHidden(bool next) {
     if (_hidden == next) return;
     _hidden = next;
     notifyListeners();
-  }
-
-  Future<void> toggle() async {
-    final next = !_hidden;
-    _hidden = next;
-    notifyListeners();
-    await _repository.writeValuesHidden(next);
   }
 }
 

@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:lar_finance/app/adaptive_shell.dart';
 import 'package:lar_finance/app/app_lifecycle.dart';
 import 'package:lar_finance/app/value_visibility_controller.dart';
 import 'package:lar_finance/core/sync/sync_models.dart' show SyncResult;
@@ -235,7 +237,7 @@ void main() {
     },
   );
 
-  testWidgets('200% de texto mantém ordem, sem overflow ou exceção', (
+  testWidgets('200% de texto em 320px mantém ordem, sem overflow ou exceção', (
     tester,
   ) async {
     final repository = _FakeHomeRepository(
@@ -245,7 +247,12 @@ void main() {
     final controller = _controller(repository, syncState: syncState);
     addTearDown(controller.dispose);
 
-    await _pumpHome(tester, controller, textScale: 2);
+    await _pumpHome(
+      tester,
+      controller,
+      textScale: 2,
+      viewportSize: const Size(320, 1200),
+    );
 
     expect(tester.takeException(), isNull);
     final labels = <String>[
@@ -259,6 +266,57 @@ void main() {
         .toList();
     expect(tops, orderedEquals(tops.toList()..sort()));
   });
+
+  testWidgets(
+    'Tab reaches privacy, owner, retry, and navigation in visual order',
+    (tester) async {
+      var retries = 0;
+      final repository = _FakeHomeRepository(
+        streams: {OwnerScopeKind.household: Stream.value(_snapshot())},
+      );
+      final syncState = SyncState(
+        retry: () async {
+          retries += 1;
+          return SyncResult.current;
+        },
+      )..markFailed(_syncedAt);
+      final controller = _controller(repository, syncState: syncState);
+      addTearDown(controller.dispose);
+
+      await _pumpHome(tester, controller, withAdaptiveShell: true);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(
+        _isFocused(tester, find.byKey(const Key('privacy-toggle'))),
+        isTrue,
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(find.byTooltip('Mostrar valores'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(find.byTooltip('Ocultar valores'), findsOneWidget);
+
+      for (var index = 0; index < 4; index++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+      }
+      expect(_isFocused(tester, find.byKey(const Key('sync-retry'))), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(retries, 1);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(find.byKey(const Key('primary-navigation')), findsOneWidget);
+      expect(
+        FocusManager.instance.primaryFocus?.context
+            ?.findAncestorWidgetOfExactType<NavigationBar>(),
+        isNotNull,
+      );
+    },
+  );
 
   test('recria a projeção na próxima meia-noite local', () async {
     var now = DateTime(2026, 8, 14, 23, 59, 30);
@@ -442,14 +500,16 @@ Future<void> _pumpHome(
   TargetPlatform platform = TargetPlatform.android,
   ValueNotifier<int>? resumeSignal,
   ValueVisibilityController? visibilityController,
+  Size viewportSize = const Size(390, 1200),
+  bool withAdaptiveShell = false,
 }) async {
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = const Size(390, 1200);
+  tester.view.physicalSize = viewportSize;
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
   Widget home = MediaQuery(
     data: MediaQueryData(
-      size: const Size(390, 1200),
+      size: viewportSize,
       textScaler: TextScaler.linear(textScale),
     ),
     child: HomeScreen(
@@ -460,6 +520,9 @@ Future<void> _pumpHome(
   if (resumeSignal != null) {
     home = AppResumeScope(notifier: resumeSignal, child: home);
   }
+  if (withAdaptiveShell) {
+    home = AdaptiveShell(selectedIndex: 0, onSelect: (_) {}, child: home);
+  }
   await tester.pumpWidget(
     MaterialApp(
       theme: LarTheme.light.copyWith(platform: platform),
@@ -468,6 +531,15 @@ Future<void> _pumpHome(
   );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 20));
+}
+
+bool _isFocused(WidgetTester tester, Finder finder) {
+  final widget = tester.widget(finder);
+  return switch (widget) {
+    IconButton(:final focusNode) => focusNode?.hasPrimaryFocus ?? false,
+    TextButton(:final focusNode) => focusNode?.hasPrimaryFocus ?? false,
+    _ => false,
+  };
 }
 
 final class _MemoryVisibilityRepository implements ValueVisibilityRepository {

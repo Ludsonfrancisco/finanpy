@@ -43,6 +43,8 @@ final class HomeScreen extends StatefulWidget {
 final class _HomeScreenState extends State<HomeScreen> {
   bool _valuesHidden = false;
   ValueListenable<int>? _resumeListenable;
+  final FocusNode _privacyFocusNode = FocusNode(debugLabel: 'privacy-toggle');
+  final FocusNode _retryFocusNode = FocusNode(debugLabel: 'sync-retry');
 
   @override
   void initState() {
@@ -81,6 +83,8 @@ final class _HomeScreenState extends State<HomeScreen> {
     _resumeListenable?.removeListener(_handleAppResume);
     widget.controller.removeListener(_refresh);
     widget.visibilityController?.removeListener(_refresh);
+    _privacyFocusNode.dispose();
+    _retryFocusNode.dispose();
     super.dispose();
   }
 
@@ -114,22 +118,30 @@ final class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _StatusAndPrivacy(
-                syncData: syncData,
-                hidden: hidden,
-                onToggleHidden: () {
-                  final visibility = widget.visibilityController;
-                  if (visibility != null) {
-                    unawaited(visibility.toggle());
-                  } else {
-                    setState(() => _valuesHidden = !_valuesHidden);
-                  }
-                },
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(1),
+                child: _StatusAndPrivacy(
+                  syncData: syncData,
+                  hidden: hidden,
+                  privacyFocusNode: _privacyFocusNode,
+                  onToggleHidden: () {
+                    final visibility = widget.visibilityController;
+                    if (visibility != null) {
+                      unawaited(visibility.toggle());
+                    } else {
+                      setState(() => _valuesHidden = !_valuesHidden);
+                    }
+                  },
+                ),
               ),
               const SizedBox(height: LarSpacing.xl),
-              OwnerSelector(
-                selected: _scopeIndex(state.selectedKind),
-                onSelected: controller.select,
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(2),
+                child: OwnerSelector(
+                  key: const Key('owner-selector'),
+                  selected: _scopeIndex(state.selectedKind),
+                  onSelected: controller.select,
+                ),
               ),
               const SizedBox(height: LarSpacing.xxl),
               if (state.isLoading && snapshot == null)
@@ -146,6 +158,7 @@ final class _HomeScreenState extends State<HomeScreen> {
                   ).format(controller.now).toLowerCase(),
                   desktop: desktop,
                   onRetry: controller.retrySync,
+                  retryFocusNode: _retryFocusNode,
                 ),
             ],
           ),
@@ -182,11 +195,13 @@ final class _StatusAndPrivacy extends StatelessWidget {
     required this.syncData,
     required this.hidden,
     required this.onToggleHidden,
+    required this.privacyFocusNode,
   });
 
   final SyncStatusData syncData;
   final bool hidden;
   final VoidCallback onToggleHidden;
+  final FocusNode privacyFocusNode;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -194,6 +209,8 @@ final class _StatusAndPrivacy extends StatelessWidget {
       Expanded(child: SyncStatusView(data: syncData)),
       const SizedBox(width: LarSpacing.sm),
       IconButton(
+        key: const Key('privacy-toggle'),
+        focusNode: privacyFocusNode,
         tooltip: hidden ? 'Mostrar valores' : 'Ocultar valores',
         onPressed: onToggleHidden,
         icon: Icon(
@@ -234,6 +251,7 @@ final class _SnapshotContent extends StatelessWidget {
     required this.monthLabel,
     required this.desktop,
     required this.onRetry,
+    required this.retryFocusNode,
   });
 
   final HomeSnapshot? snapshot;
@@ -243,6 +261,7 @@ final class _SnapshotContent extends StatelessWidget {
   final String monthLabel;
   final bool desktop;
   final Future<void> Function() onRetry;
+  final FocusNode retryFocusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -285,10 +304,15 @@ final class _SnapshotContent extends StatelessWidget {
           if (syncPhase == SyncPhase.offline || syncPhase == SyncPhase.failed)
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Tentar novamente'),
+              child: FocusTraversalOrder(
+                order: const NumericFocusOrder(3),
+                child: TextButton.icon(
+                  key: const Key('sync-retry'),
+                  focusNode: retryFocusNode,
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Tentar novamente'),
+                ),
               ),
             ),
         ],

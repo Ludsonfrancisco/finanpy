@@ -31,3 +31,18 @@
 
 - No Windows, o `PrivacyShield` Flutter protege o conteúdo enquanto o app está no estado coberto. Miniaturas do SO são apenas melhor esforço e não constituem fronteira de segurança.
 - `FLAG_SECURE` é a fronteira Android para screenshots/recentes; não há permissões novas, push, biometria ou escrita financeira.
+
+## Onda corretiva pós-review
+
+- O projeto usa `SceneDelegate`; a cobertura nativa iOS foi movida para `sceneWillResignActive` e `sceneDidEnterBackground`, com overlay opaco idempotente na janela da cena. A remoção ocorre apenas em `sceneDidBecomeActive`; os callbacks ineficazes foram removidos do `AppDelegate`.
+- O `PrivacyShield` mantém a superfície opaca durante `onResumed` e só a remove após a conclusão bem-sucedida. Um epoch de lifecycle impede uma conclusão antiga de descobrir uma transição inativa posterior.
+- `ValueVisibilityController` serializa restore/toggle/write. Um write falho não publica a alteração em memória; leituras antigas não sobrescrevem um toggle enfileirado.
+- `FinancialAmount(hidden: true, minorUnits: null)` agora mascara o valor e anuncia `Valor oculto`, sem expor `Indisponível`.
+- A prova de layout passou a executar realmente em 320 logical px com escala 2.0. O teste de teclado verifica Tab na ordem privacidade → seletor → retry → navegação, além de Space/Enter para privacidade e retry.
+
+### Evidência adicional
+
+- REDs observados para conclusão antecipada do shield, completion obsoleto, corrida restore/toggle, toggles concorrentes, write falho, valor nulo oculto e ausência dos callbacks SceneDelegate.
+- GREEN focado: `flutter test test/app test/accessibility test/features/home` — passou (48 testes); `flutter analyze` — passou.
+- O teste iOS é estático e verifica a SceneDelegate/remoção do AppDelegate neste Windows. Build e runtime iOS seguem explicitamente pendentes de macOS/Xcode.
+- Fechamento da onda: `flutter test` — passou (168 testes); `dart format --output=none --set-exit-if-changed lib test` e `git diff --check` — passaram. Builds reais `flutter build windows --debug` e `flutter build apk --debug` — passaram.

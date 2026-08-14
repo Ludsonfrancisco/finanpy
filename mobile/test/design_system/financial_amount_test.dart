@@ -32,6 +32,24 @@ void main() {
     );
   });
 
+  testWidgets(
+    'hidden takes precedence when a financial amount is unavailable',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: FinancialAmount(minorUnits: null, hidden: true),
+        ),
+      );
+
+      expect(find.text('R\$ ••••••'), findsOneWidget);
+      expect(find.text('Indisponível'), findsNothing);
+      expect(
+        tester.getSemantics(find.byType(FinancialAmount)).label,
+        'Valor oculto',
+      );
+    },
+  );
+
   testWidgets('owner selector exposes exactly the approved household views', (
     tester,
   ) async {

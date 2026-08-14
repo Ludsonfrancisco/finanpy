@@ -21,6 +21,7 @@ final class PrivacyShield extends StatefulWidget {
 final class _PrivacyShieldState extends State<PrivacyShield>
     with WidgetsBindingObserver {
   bool _covered = false;
+  int _lifecycleEpoch = 0;
 
   @override
   void initState() {
@@ -35,13 +36,31 @@ final class _PrivacyShieldState extends State<PrivacyShield>
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:
+        _lifecycleEpoch += 1;
         if (!_covered) setState(() => _covered = true);
         widget.onInactive?.call();
       case AppLifecycleState.resumed:
-        if (_covered) setState(() => _covered = false);
         final restore = widget.onResumed;
-        if (restore != null) unawaited(restore());
+        if (restore == null) {
+          if (_covered) setState(() => _covered = false);
+          return;
+        }
+        final epoch = ++_lifecycleEpoch;
+        unawaited(_restoreAfterResume(restore, epoch));
     }
+  }
+
+  Future<void> _restoreAfterResume(
+    Future<void> Function() restore,
+    int epoch,
+  ) async {
+    try {
+      await restore();
+    } catch (_) {
+      return;
+    }
+    if (!mounted || epoch != _lifecycleEpoch || !_covered) return;
+    setState(() => _covered = false);
   }
 
   @override

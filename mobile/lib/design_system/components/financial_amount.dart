@@ -22,11 +22,7 @@ final class FinancialAmount extends StatelessWidget {
     final visible = amount == null
         ? 'Indisponível'
         : formatBrlMinor(amount, showPositiveSign: showPositiveSign);
-    final value = amount == null
-        ? visible
-        : hidden
-        ? 'R\$\u00a0••••••'
-        : visible;
+    final value = hidden ? 'R\$\u00a0••••••' : visible;
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final paintedValue = wrapAtLargeText && scale >= 1.8
         ? value.replaceFirst('\u00a0', '\n')
@@ -40,10 +36,10 @@ final class FinancialAmount extends StatelessWidget {
           fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
         );
     return Semantics(
-      label: amount == null
-          ? 'Valor financeiro indisponível'
-          : hidden
+      label: hidden
           ? 'Valor oculto'
+          : amount == null
+          ? 'Valor financeiro indisponível'
           : 'Valor financeiro',
       value: amount == null || hidden ? null : visible,
       child: ExcludeSemantics(

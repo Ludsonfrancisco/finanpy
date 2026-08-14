@@ -19,21 +19,35 @@ final class AdaptiveShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final desktop = MediaQuery.sizeOf(context).width >= LarBreakpoints.desktop;
-    return desktop
-        ? Scaffold(
-            body: Row(
-              children: <Widget>[
-                LarSidebar(selectedIndex: selectedIndex, onSelect: onSelect),
-                Expanded(child: child),
-              ],
+    return FocusTraversalGroup(
+      policy: OrderedTraversalPolicy(),
+      child: desktop
+          ? Scaffold(
+              body: Row(
+                children: <Widget>[
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(4),
+                    child: LarSidebar(
+                      key: const Key('primary-navigation'),
+                      selectedIndex: selectedIndex,
+                      onSelect: onSelect,
+                    ),
+                  ),
+                  Expanded(child: child),
+                ],
+              ),
+            )
+          : Scaffold(
+              body: child,
+              bottomNavigationBar: FocusTraversalOrder(
+                order: const NumericFocusOrder(4),
+                child: LarBottomNavigation(
+                  key: const Key('primary-navigation'),
+                  selectedIndex: selectedIndex,
+                  onSelect: onSelect,
+                ),
+              ),
             ),
-          )
-        : Scaffold(
-            body: child,
-            bottomNavigationBar: LarBottomNavigation(
-              selectedIndex: selectedIndex,
-              onSelect: onSelect,
-            ),
-          );
+    );
   }
 }
