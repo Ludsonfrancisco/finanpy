@@ -612,13 +612,17 @@
       },
       "LoginRequest": {
         "type": "object",
-        "required": ["email", "password", "platform", "name", "default_owner_uuid"],
+        "required": ["email", "password", "platform", "name"],
         "properties": {
           "email": {"type": "string", "format": "email"},
           "password": {"type": "string", "writeOnly": true},
           "platform": {"type": "string", "enum": ["windows", "ios", "android"]},
           "name": {"type": "string", "maxLength": 80},
-          "default_owner_uuid": {"type": "string", "format": "uuid"}
+          "default_owner_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional. When omitted, the active self owner for the household is selected. Explicit UUIDs remain limited to an active self or spouse owner in the same household."
+          }
         },
         "additionalProperties": false
       },

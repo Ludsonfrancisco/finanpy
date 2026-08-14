@@ -12,7 +12,7 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(trim_whitespace=False, write_only=True)
     platform = serializers.ChoiceField(choices=DeviceSession.PLATFORM_CHOICES)
     name = serializers.CharField(max_length=80)
-    default_owner_uuid = serializers.UUIDField()
+    default_owner_uuid = serializers.UUIDField(required=False)
 
     def validate(self, attrs):
         user = authenticate(
@@ -31,16 +31,26 @@ class LoginSerializer(serializers.Serializer):
         if membership is None:
             raise InvalidCredentials()
 
-        owner = FinancialOwner.objects.filter(
-            uuid=attrs['default_owner_uuid'],
+        owner_uuid = attrs.get('default_owner_uuid')
+        owner_query = FinancialOwner.objects.filter(
             household=membership.household,
             is_active=True,
             type__in=(FinancialOwner.SELF, FinancialOwner.SPOUSE),
-        ).first()
-        if owner is None:
-            raise serializers.ValidationError(
-                {'default_owner_uuid': ['Escolha o responsável próprio ou cônjuge deste Lar.']}
-            )
+        )
+        if owner_uuid is None:
+            owner = owner_query.filter(type=FinancialOwner.SELF).first()
+            if owner is None:
+                raise InvalidCredentials()
+        else:
+            owner = owner_query.filter(uuid=owner_uuid).first()
+            if owner is None:
+                raise serializers.ValidationError(
+                    {
+                        'default_owner_uuid': [
+                            'Escolha o responsável próprio ou cônjuge deste Lar.'
+                        ]
+                    }
+                )
 
         attrs['user'] = user
         attrs['household'] = membership.household

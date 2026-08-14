@@ -136,6 +136,16 @@ class OpenApiContractTest(SimpleTestCase):
         self.assertTrue(REQUIRED_SCHEMAS.issubset(schemas))
         self.assertIn('ErrorEnvelope', schemas)
 
+    def test_login_default_owner_is_optional_but_documented(self):
+        login = self.contract['components']['schemas']['LoginRequest']
+
+        self.assertNotIn('default_owner_uuid', login['required'])
+        self.assertIn('default_owner_uuid', login['properties'])
+        self.assertIn(
+            'active self owner',
+            login['properties']['default_owner_uuid']['description'],
+        )
+
     def test_cursor_is_issued_only_by_bootstrap_and_delta_responses(self):
         push_schema = self.contract['paths']['/sync/push/']['post']['responses'][
             '200'

@@ -1,5 +1,5 @@
 from datetime import timedelta
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from django.core.cache import cache
 from django.test import TestCase
@@ -104,6 +104,124 @@ class DeviceAuthenticationApiTest(TestCase):
         self.assertEqual(session.refresh_token_digest, digest_token(body['refresh_token']))
         self.assertNotEqual(body['access_token'], session.access_token_digest)
         self.assertNotEqual(body['refresh_token'], session.refresh_token_digest)
+
+    def test_login_without_default_owner_uses_active_self_owner(self):
+        payload = {
+            'email': self.user.email,
+            'password': self.password,
+            'platform': DeviceSession.WINDOWS,
+            'name': 'Notebook novo',
+        }
+
+        response = self.client.post(
+            '/api/v1/auth/login/', payload, content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()['device']['default_owner_uuid'],
+            str(self.self_owner.uuid),
+        )
+
+    def test_login_without_default_owner_rejects_household_without_active_self(self):
+        self.self_owner.is_active = False
+        self.self_owner.save(update_fields=['is_active'])
+
+        payload = {
+            'email': self.user.email,
+            'password': self.password,
+            'platform': DeviceSession.ANDROID,
+            'name': 'Telefone novo',
+        }
+        response = self.client.post(
+            '/api/v1/auth/login/',
+            payload,
+            content_type='application/json',
+        )
+        invalid_response = self.client.post(
+            '/api/v1/auth/login/',
+            {**payload, 'password': 'Wrong-pass-123'},
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()['error']['code'], 'invalid_credentials')
+        self.assertEqual(response.json()['error'], invalid_response.json()['error'])
+        self.assertFalse(DeviceSession.objects.exists())
+
+    def test_login_with_explicit_spouse_owner_succeeds(self):
+        response = self.client.post(
+            '/api/v1/auth/login/',
+            data=self.login_payload(default_owner_uuid=str(self.spouse_owner.uuid)),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()['device']['default_owner_uuid'],
+            str(self.spouse_owner.uuid),
+        )
+
+    def test_login_with_explicit_inactive_owner_is_rejected(self):
+        self.spouse_owner.is_active = False
+        self.spouse_owner.save(update_fields=['is_active'])
+
+        response = self.client.post(
+            '/api/v1/auth/login/',
+            data=self.login_payload(default_owner_uuid=str(self.spouse_owner.uuid)),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('default_owner_uuid', response.json()['error']['fields'])
+        self.assertFalse(DeviceSession.objects.exists())
+
+    def test_login_with_explicit_foreign_owner_is_rejected(self):
+        other_user = User.objects.create_user(
+            email='other@example.test', password=self.password
+        )
+        other_household = ensure_household_for_user(other_user)
+        foreign_owner = get_financial_owner(other_household, owner_type='self')
+
+        response = self.client.post(
+            '/api/v1/auth/login/',
+            data=self.login_payload(default_owner_uuid=str(foreign_owner.uuid)),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('default_owner_uuid', response.json()['error']['fields'])
+        self.assertFalse(DeviceSession.objects.exists())
+
+    def test_invalid_explicit_owner_errors_do_not_reveal_owner_existence(self):
+        other_user = User.objects.create_user(
+            email='other@example.test', password=self.password
+        )
+        other_household = ensure_household_for_user(other_user)
+        foreign_owner = get_financial_owner(other_household, owner_type='self')
+        self.spouse_owner.is_active = False
+        self.spouse_owner.save(update_fields=['is_active'])
+        invalid_owner_uuids = (
+            uuid4(),
+            self.shared_owner.uuid,
+            self.spouse_owner.uuid,
+            foreign_owner.uuid,
+        )
+
+        responses = [
+            self.client.post(
+                '/api/v1/auth/login/',
+                data=self.login_payload(default_owner_uuid=str(owner_uuid)),
+                content_type='application/json',
+            )
+            for owner_uuid in invalid_owner_uuids
+        ]
+
+        baseline_error = responses[0].json()['error']
+        for response in responses:
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.json()['error'], baseline_error)
+        self.assertFalse(DeviceSession.objects.exists())
 
     def test_shared_owner_default(self):
         response = self.client.post(

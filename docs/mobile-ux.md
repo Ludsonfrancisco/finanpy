@@ -56,6 +56,8 @@ Abrir Início, verificar atualização, ver pendências, abrir movimentação, c
 
 Componentes: marca Lar Finance, email, senha, mostrar/ocultar, entrar, recuperação administrativa `[INVESTIGAR]`, status do servidor e opção biométrica após primeiro login. Estados: inicial, preenchendo, validando, credencial inválida, servidor indisponível, dispositivo revogado e offline sem sessão.
 
+O primeiro login não exige que o cliente conheça previamente os responsáveis do Lar: ao enviar email, senha, plataforma e nome do dispositivo, o servidor seleciona `Eu` ativo como padrão. Clientes existentes podem continuar enviando explicitamente o UUID de `Eu` ou `Esposa`; a escolha também pode ser alterada depois em dispositivos.
+
 ### Início
 
 Ordem recomendada:
