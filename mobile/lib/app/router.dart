@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../design_system/components/owner_selector.dart';
 import '../design_system/components/sync_status.dart';
 import '../design_system/lar_spacing.dart';
 import '../core/sync/sync_coordinator.dart';
@@ -10,6 +9,9 @@ import '../features/auth/presentation/device_owner_screen.dart';
 import '../features/auth/presentation/initial_sync_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/more_screen.dart';
+import '../features/home/application/home_controller.dart';
+import '../features/home/data/home_repository.dart';
+import '../features/home/presentation/home_screen.dart';
 import 'adaptive_shell.dart';
 import 'app_config.dart';
 
@@ -17,6 +19,7 @@ GoRouter createAppRouter(
   AppConfig config,
   AuthController authController, {
   LedgerSyncCoordinator? syncCoordinator,
+  HomeRepository? homeRepository,
 }) {
   config.validate();
   return GoRouter(
@@ -64,8 +67,10 @@ GoRouter createAppRouter(
         routes: <RouteBase>[
           GoRoute(
             path: '/home',
-            builder: (context, state) =>
-                _HomeShell(syncCoordinator: syncCoordinator),
+            builder: (context, state) => _HomeShell(
+              syncCoordinator: syncCoordinator,
+              homeRepository: homeRepository,
+            ),
           ),
           GoRoute(
             path: '/more',
@@ -78,18 +83,56 @@ GoRouter createAppRouter(
 }
 
 final class _HomeShell extends StatefulWidget {
-  const _HomeShell({required this.syncCoordinator});
+  const _HomeShell({
+    required this.syncCoordinator,
+    required this.homeRepository,
+  });
 
   final LedgerSyncCoordinator? syncCoordinator;
+  final HomeRepository? homeRepository;
 
   @override
   State<_HomeShell> createState() => _HomeShellState();
 }
 
 final class _HomeShellState extends State<_HomeShell> {
-  int owner = 0;
+  HomeController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _createController();
+  }
+
+  @override
+  void didUpdateWidget(_HomeShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.syncCoordinator == widget.syncCoordinator &&
+        oldWidget.homeRepository == widget.homeRepository) {
+      return;
+    }
+    _controller?.dispose();
+    _createController();
+  }
+
+  void _createController() {
+    final repository = widget.homeRepository;
+    final coordinator = widget.syncCoordinator;
+    _controller = repository == null || coordinator == null
+        ? null
+        : HomeController(repository: repository, syncState: coordinator.state);
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller != null) return HomeScreen(controller: controller);
     final text = Theme.of(context).textTheme;
     final coordinator = widget.syncCoordinator;
     return SafeArea(
@@ -130,11 +173,6 @@ final class _HomeShellState extends State<_HomeShell> {
                         ),
                       ),
                     const SizedBox(height: LarSpacing.lg),
-                    OwnerSelector(
-                      selected: owner,
-                      onSelected: (value) => setState(() => owner = value),
-                    ),
-                    const SizedBox(height: LarSpacing.xxl),
                     Text(
                       'Dados ainda não sincronizados',
                       style: text.titleLarge,

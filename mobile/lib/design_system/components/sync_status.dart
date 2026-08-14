@@ -25,8 +25,11 @@ final class SyncStatusView extends StatelessWidget {
     SyncVisualState.offline => Icons.cloud_off_outlined,
     SyncVisualState.failed => Icons.error_outline,
   };
-  Color get _color => switch (data.state) {
-    SyncVisualState.current || SyncVisualState.syncing => LarColors.mineral,
+  Color _color(BuildContext context) => switch (data.state) {
+    SyncVisualState.current || SyncVisualState.syncing =>
+      Theme.of(context).brightness == Brightness.dark
+          ? LarColors.mineralOnDark
+          : LarColors.mineral,
     SyncVisualState.offline => LarColors.amber,
     SyncVisualState.failed => LarColors.danger,
   };
@@ -41,7 +44,7 @@ final class SyncStatusView extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(_icon, size: 18, color: _color),
+            Icon(_icon, size: 18, color: _color(context)),
             const SizedBox(width: 8),
             Flexible(
               child: Text(detail == null ? _label : '$_label · $detail'),

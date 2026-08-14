@@ -20,4 +20,20 @@ void main() {
     expect(LarTheme.light.scaffoldBackgroundColor, LarColors.lightCanvas);
     expect(LarTheme.dark.scaffoldBackgroundColor, LarColors.darkCanvas);
   });
+
+  test('verde mineral de leitura mantém contraste AA no canvas escuro', () {
+    expect(
+      _contrastRatio(LarColors.mineralOnDark, LarColors.darkCanvas),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+}
+
+double _contrastRatio(Color foreground, Color background) {
+  final lighter = foreground.computeLuminance() > background.computeLuminance()
+      ? foreground
+      : background;
+  final darker = identical(lighter, foreground) ? background : foreground;
+  return (lighter.computeLuminance() + 0.05) /
+      (darker.computeLuminance() + 0.05);
 }

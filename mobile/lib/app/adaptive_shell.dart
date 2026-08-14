@@ -20,11 +20,13 @@ final class AdaptiveShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final desktop = MediaQuery.sizeOf(context).width >= LarBreakpoints.desktop;
     return desktop
-        ? Row(
-            children: <Widget>[
-              LarSidebar(selectedIndex: selectedIndex, onSelect: onSelect),
-              Expanded(child: child),
-            ],
+        ? Scaffold(
+            body: Row(
+              children: <Widget>[
+                LarSidebar(selectedIndex: selectedIndex, onSelect: onSelect),
+                Expanded(child: child),
+              ],
+            ),
           )
         : Scaffold(
             body: child,

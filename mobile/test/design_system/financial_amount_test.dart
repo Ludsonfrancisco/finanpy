@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lar_finance/design_system/components/financial_amount.dart';
@@ -39,6 +40,47 @@ void main() {
     expect(find.text('Esposa'), findsOneWidget);
     expect(find.text('Conjunto'), findsNothing);
   });
+
+  testWidgets('owner selector uses the native iOS segmented affordance', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(platform: TargetPlatform.iOS),
+        home: OwnerSelector(selected: 0, onSelected: (_) {}),
+      ),
+    );
+
+    expect(find.byType(CupertinoSlidingSegmentedControl<int>), findsOneWidget);
+    expect(find.byType(SegmentedButton<int>), findsNothing);
+  });
+
+  testWidgets(
+    'financial amount formats signed minor units without losing cents',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Column(
+            children: <Widget>[
+              FinancialAmount(
+                minorUnits: -28640,
+                hidden: false,
+                showPositiveSign: true,
+              ),
+              FinancialAmount(
+                minorUnits: 780000,
+                hidden: false,
+                showPositiveSign: true,
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.text('-R\$\u00a0286,40'), findsOneWidget);
+      expect(find.text('+R\$\u00a07.800,00'), findsOneWidget);
+    },
+  );
 
   testWidgets('sync status communicates state without financial data', (
     tester,

@@ -19,6 +19,7 @@ import 'features/auth/application/auth_controller.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/secure_token_store.dart';
 import 'features/auth/domain/session.dart';
+import 'features/home/data/home_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,11 +52,13 @@ Future<void> main() async {
     ledger: DriftLocalLedger(database),
     sessionAuthority: sessionAuthority,
   );
+  final homeRepository = DriftHomeRepository(database);
   runApp(
     MyApp(
       appConfig: config,
       authController: controller,
       syncCoordinator: syncCoordinator,
+      homeRepository: homeRepository,
     ),
   );
 }
@@ -65,17 +68,20 @@ class MyApp extends StatelessWidget {
     super.key,
     required this.authController,
     this.syncCoordinator,
+    this.homeRepository,
     AppConfig? appConfig,
   }) : appConfig = appConfig ?? AppConfig.fromEnvironment(),
        router = createAppRouter(
          appConfig ?? AppConfig.fromEnvironment(),
          authController,
          syncCoordinator: syncCoordinator,
+         homeRepository: homeRepository,
        );
 
   final AppConfig appConfig;
   final AuthController authController;
   final LedgerSyncCoordinator? syncCoordinator;
+  final HomeRepository? homeRepository;
   final GoRouter router;
 
   @override
