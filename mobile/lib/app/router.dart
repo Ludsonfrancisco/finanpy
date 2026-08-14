@@ -3,22 +3,38 @@ import 'package:go_router/go_router.dart';
 import '../design_system/components/owner_selector.dart';
 import '../design_system/components/sync_status.dart';
 import '../design_system/lar_spacing.dart';
+import '../features/auth/application/auth_controller.dart';
+import '../features/auth/presentation/device_owner_screen.dart';
+import '../features/auth/presentation/login_screen.dart';
+import '../features/auth/presentation/more_screen.dart';
 import 'adaptive_shell.dart';
 import 'app_config.dart';
 
-GoRouter createAppRouter(AppConfig config) {
+GoRouter createAppRouter(AppConfig config, AuthController authController) {
   config.validate();
   return GoRouter(
-    initialLocation: '/home',
+    initialLocation: '/login',
+    refreshListenable: authController,
+    redirect: (context, state) {
+      final path = state.uri.path;
+      return switch (authController.state.phase) {
+        AuthPhase.checking => null,
+        AuthPhase.signedOut => path == '/login' ? null : '/login',
+        AuthPhase.choosingOwner =>
+          path == '/device-owner' ? null : '/device-owner',
+        AuthPhase.initialSync =>
+          path == '/initial-sync' ? null : '/initial-sync',
+        AuthPhase.authenticated =>
+          path == '/login' || path == '/device-owner' || path == '/initial-sync'
+              ? '/home'
+              : null,
+      };
+    },
     routes: <RouteBase>[
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const _RouteNotice(title: 'Entrar no Lar'),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/device-owner',
-        builder: (context, state) =>
-            const _RouteNotice(title: 'Este dispositivo'),
+        builder: (context, state) => const DeviceOwnerScreen(),
       ),
       GoRoute(
         path: '/initial-sync',
@@ -41,7 +57,7 @@ GoRouter createAppRouter(AppConfig config) {
           ),
           GoRoute(
             path: '/more',
-            builder: (context, state) => const _RouteNotice(title: 'Mais'),
+            builder: (context, state) => const MoreScreen(),
           ),
         ],
       ),
