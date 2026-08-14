@@ -23,7 +23,7 @@ void main() {
         .into(db.households)
         .insert(
           HouseholdsCompanion.insert(
-            uuid: 'household-1',
+            uuid: '11111111-1111-4111-8111-111111111111',
             name: 'Casa',
             updatedAt: now,
           ),
@@ -31,15 +31,19 @@ void main() {
     await db
         .into(db.owners)
         .insert(
-          OwnersCompanion.insert(uuid: 'owner-1', type: 'self', name: 'Eu'),
+          OwnersCompanion.insert(
+            uuid: '22222222-2222-4222-8222-222222222222',
+            type: 'self',
+            name: 'Eu',
+          ),
         );
     await db
         .into(db.accounts)
         .insert(
           AccountsCompanion.insert(
-            uuid: 'account-1',
-            householdUuid: 'household-1',
-            financialOwnerUuid: 'owner-1',
+            uuid: '33333333-3333-4333-8333-333333333333',
+            householdUuid: '11111111-1111-4111-8111-111111111111',
+            financialOwnerUuid: '22222222-2222-4222-8222-222222222222',
             name: 'Conta',
             type: 'checking',
             initialBalanceMinor: 12345,
@@ -58,7 +62,7 @@ void main() {
     final household = await db.select(db.households).getSingle();
     final account = await db.select(db.accounts).getSingle();
     expect(setting.value, 'dark');
-    expect(household.uuid, 'household-1');
+    expect(household.uuid, '11111111-1111-4111-8111-111111111111');
     expect(account.initialBalanceMinor, 12345);
     expect(
       await db

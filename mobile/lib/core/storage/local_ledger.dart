@@ -86,7 +86,7 @@ final class DriftLocalLedger implements LocalLedger {
               key: const Value(_syncKey),
               cursor: _nonEmpty(payload.cursor, 'cursor'),
               householdUuid: household.uuid.value,
-              sessionDeviceUuid: _nonEmpty(
+              sessionDeviceUuid: _requiredUuidValue(
                 sessionDeviceUuid,
                 'sessionDeviceUuid',
               ),
@@ -140,6 +140,7 @@ final class DriftLocalLedger implements LocalLedger {
   }
 
   Future<void> _applyChange(SyncChangePayload change) async {
+    _requiredUuidValue(change.entityUuid, 'entity_uuid');
     if (change.entityVersion < 1) {
       throw FormatException('entity_version must be positive.');
     }
@@ -225,79 +226,128 @@ final class DriftLocalLedger implements LocalLedger {
   }
 
   Future<HomeSnapshot> _readHome(OwnerScope scope, DateTime now) async {
-    final accounts = await _db.select(_db.accounts).get();
-    final transactions = await _db.select(_db.transactions).get();
-    final categories = {
-      for (final category in await _db.select(_db.categories).get())
-        category.uuid: category.name,
-    };
-    final owners = {
-      for (final owner in await _db.select(_db.owners).get())
-        owner.uuid: owner.name,
-    };
-    final ownerUuid = scope.ownerUuid;
-    final scopedAccounts = ownerUuid == null
-        ? accounts
-        : accounts
-              .where((account) => account.financialOwnerUuid == ownerUuid)
-              .toList();
-    final scopedTransactions = ownerUuid == null
-        ? transactions
-        : transactions
-              .where(
-                (transaction) => transaction.financialOwnerUuid == ownerUuid,
-              )
-              .toList();
-    final monthStart = DateTime(now.year, now.month);
-    final nextMonth = DateTime(now.year, now.month + 1);
-    int signedAmount(Transaction transaction) => transaction.type == 'expense'
-        ? -transaction.amountMinor
-        : transaction.amountMinor;
-
-    final recent = [...scopedTransactions]
-      ..sort((left, right) => right.date.compareTo(left.date));
-    final metadata = await readSyncMetadata();
-
-    return HomeSnapshot(
-      scope: scope,
-      balanceMinor:
-          scopedAccounts.fold(
-            0,
-            (sum, account) => sum + account.initialBalanceMinor,
-          ) +
-          scopedTransactions.fold(0, (sum, item) => sum + signedAmount(item)),
-      monthExpenseMinor: scopedTransactions
-          .where(
-            (item) =>
-                item.type == 'expense' &&
-                !item.date.isBefore(monthStart) &&
-                item.date.isBefore(nextMonth),
-          )
-          .fold(0, (sum, item) => sum + item.amountMinor),
-      upcomingCommitmentMinor: scopedTransactions
-          .where((item) => item.type == 'expense' && item.date.isAfter(now))
-          .fold(0, (sum, item) => sum + item.amountMinor),
-      recentTransactions: recent
-          .take(5)
-          .map((item) {
-            return HomeTransaction(
-              uuid: item.uuid,
-              description: item.description,
-              categoryName: categories[item.categoryUuid] ?? '',
-              ownerName: owners[item.financialOwnerUuid] ?? '',
-              date: item.date,
-              signedAmountMinor: signedAmount(item),
-            );
-          })
-          .toList(growable: false),
-      lastSyncedAt: metadata?.lastSuccessAt,
+    final localNow = now.toLocal();
+    final monthStart = DateTime.utc(localNow.year, localNow.month);
+    final nextMonth = DateTime.utc(localNow.year, localNow.month + 1);
+    final tomorrow = DateTime.utc(
+      localNow.year,
+      localNow.month,
+      localNow.day + 1,
     );
+    final afterThirtyDays = DateTime.utc(
+      localNow.year,
+      localNow.month,
+      localNow.day + 31,
+    );
+    final ownerUuid = scope.ownerUuid;
+    if (ownerUuid != null) {
+      _requiredUuidValue(ownerUuid, 'ownerUuid');
+    }
+
+    return _db.transaction(() async {
+      final aggregateVariables = <Variable>[];
+      String predicate(String alias) {
+        if (ownerUuid == null) {
+          return '1 = 1';
+        }
+        aggregateVariables.add(Variable(ownerUuid));
+        return '$alias.financial_owner_uuid = ?';
+      }
+
+      final accountScope = predicate('a');
+      final balanceScope = predicate('t');
+      final monthScope = predicate('t');
+      aggregateVariables
+        ..add(Variable.withDateTime(monthStart))
+        ..add(Variable.withDateTime(nextMonth));
+      final upcomingScope = predicate('t');
+      aggregateVariables
+        ..add(Variable.withDateTime(tomorrow))
+        ..add(Variable.withDateTime(afterThirtyDays));
+
+      final aggregate = await _db
+          .customSelect(
+            '''
+SELECT
+  (SELECT COALESCE(SUM(a.initial_balance_minor), 0)
+     FROM accounts a WHERE $accountScope)
+  +
+  (SELECT COALESCE(SUM(
+      CASE WHEN t.type = 'expense' THEN -t.amount_minor ELSE t.amount_minor END
+    ), 0) FROM transactions t WHERE $balanceScope) AS balance_minor,
+  (SELECT COALESCE(SUM(t.amount_minor), 0)
+     FROM transactions t
+    WHERE $monthScope AND t.type = 'expense'
+      AND t.date >= ? AND t.date < ?) AS month_expense_minor,
+  (SELECT COALESCE(SUM(t.amount_minor), 0)
+     FROM transactions t
+    WHERE $upcomingScope AND t.type = 'expense'
+      AND t.date >= ? AND t.date < ?) AS upcoming_commitment_minor,
+  (SELECT last_success_at FROM sync_state WHERE key = 'ledger') AS last_success_at
+''',
+            variables: aggregateVariables,
+            readsFrom: {_db.accounts, _db.transactions, _db.syncState},
+          )
+          .getSingle();
+
+      final recentVariables = <Variable>[];
+      final recentScope = ownerUuid == null
+          ? '1 = 1'
+          : (() {
+              recentVariables.add(Variable(ownerUuid));
+              return 't.financial_owner_uuid = ?';
+            })();
+      final recentRows = await _db
+          .customSelect(
+            '''
+SELECT t.uuid, t.description, c.name AS category_name, o.name AS owner_name,
+       t.date, t.type, t.amount_minor
+  FROM transactions t
+  JOIN categories c ON c.uuid = t.category_uuid
+  JOIN owners o ON o.uuid = t.financial_owner_uuid
+ WHERE $recentScope
+ ORDER BY t.date DESC, t.updated_at DESC, t.uuid DESC
+ LIMIT 5
+''',
+            variables: recentVariables,
+            readsFrom: {_db.transactions, _db.categories, _db.owners},
+          )
+          .get();
+      final lastSuccessText = aggregate.readNullable<String>('last_success_at');
+
+      return HomeSnapshot(
+        scope: scope,
+        balanceMinor: aggregate.read<int>('balance_minor'),
+        monthExpenseMinor: aggregate.read<int>('month_expense_minor'),
+        upcomingCommitmentMinor: aggregate.read<int>(
+          'upcoming_commitment_minor',
+        ),
+        recentTransactions: recentRows
+            .map((row) {
+              final amount = row.read<int>('amount_minor');
+              return HomeTransaction(
+                uuid: row.read<String>('uuid'),
+                description: row.read<String>('description'),
+                categoryName: row.read<String>('category_name'),
+                ownerName: row.read<String>('owner_name'),
+                date: DateTime.parse(row.read<String>('date')),
+                signedAmountMinor: row.read<String>('type') == 'expense'
+                    ? -amount
+                    : amount,
+              );
+            })
+            .toList(growable: false),
+        lastSyncedAt: lastSuccessText == null
+            ? null
+            : DateTime.parse(lastSuccessText).toUtc(),
+      );
+    });
   }
 }
 
 HouseholdsCompanion _householdFrom(JsonObject json) {
   return HouseholdsCompanion.insert(
-    uuid: _requiredString(json, 'uuid'),
+    uuid: _requiredUuid(json, 'uuid'),
     name: _requiredString(json, 'name'),
     updatedAt: _requiredDateTime(json, 'updated_at'),
   );
@@ -305,7 +355,7 @@ HouseholdsCompanion _householdFrom(JsonObject json) {
 
 OwnersCompanion _ownerFrom(JsonObject json) {
   return OwnersCompanion.insert(
-    uuid: _requiredString(json, 'uuid'),
+    uuid: _requiredUuid(json, 'uuid'),
     type: _requiredString(json, 'type'),
     name: _requiredString(json, 'name'),
   );
@@ -313,9 +363,9 @@ OwnersCompanion _ownerFrom(JsonObject json) {
 
 AccountsCompanion _accountFrom(JsonObject json) {
   return AccountsCompanion.insert(
-    uuid: _requiredString(json, 'uuid'),
-    householdUuid: _requiredString(json, 'household_uuid'),
-    financialOwnerUuid: _requiredString(json, 'financial_owner_uuid'),
+    uuid: _requiredUuid(json, 'uuid'),
+    householdUuid: _requiredUuid(json, 'household_uuid'),
+    financialOwnerUuid: _requiredUuid(json, 'financial_owner_uuid'),
     name: _requiredString(json, 'name'),
     type: _requiredString(json, 'type'),
     initialBalanceMinor: parseMinorUnits(
@@ -330,8 +380,8 @@ AccountsCompanion _accountFrom(JsonObject json) {
 
 CategoriesCompanion _categoryFrom(JsonObject json) {
   return CategoriesCompanion.insert(
-    uuid: _requiredString(json, 'uuid'),
-    householdUuid: _requiredString(json, 'household_uuid'),
+    uuid: _requiredUuid(json, 'uuid'),
+    householdUuid: _requiredUuid(json, 'household_uuid'),
     name: _requiredString(json, 'name'),
     type: _requiredString(json, 'type'),
     color: _requiredString(json, 'color'),
@@ -344,13 +394,13 @@ CategoriesCompanion _categoryFrom(JsonObject json) {
 
 TransactionsCompanion _transactionFrom(JsonObject json) {
   return TransactionsCompanion.insert(
-    uuid: _requiredString(json, 'uuid'),
-    householdUuid: _requiredString(json, 'household_uuid'),
-    financialOwnerUuid: _requiredString(json, 'financial_owner_uuid'),
-    accountUuid: _requiredString(json, 'account_uuid'),
-    categoryUuid: _requiredString(json, 'category_uuid'),
+    uuid: _requiredUuid(json, 'uuid'),
+    householdUuid: _requiredUuid(json, 'household_uuid'),
+    financialOwnerUuid: _requiredUuid(json, 'financial_owner_uuid'),
+    accountUuid: _requiredUuid(json, 'account_uuid'),
+    categoryUuid: _requiredUuid(json, 'category_uuid'),
     description: _requiredString(json, 'description'),
-    amountMinor: parseMinorUnits(_requiredString(json, 'amount')),
+    amountMinor: _requiredTransactionMinor(json),
     date: _requiredDate(json, 'date'),
     type: _requiredString(json, 'type'),
     version: _requiredPositiveInt(json, 'version'),
@@ -360,7 +410,7 @@ TransactionsCompanion _transactionFrom(JsonObject json) {
 }
 
 void _validateEnvelope(SyncChangePayload change) {
-  if (_requiredString(change.payload, 'uuid') != change.entityUuid ||
+  if (_requiredUuid(change.payload, 'uuid') != change.entityUuid ||
       _requiredPositiveInt(change.payload, 'version') != change.entityVersion) {
     throw const FormatException(
       'Sync envelope UUID/version does not match its payload.',
@@ -369,7 +419,7 @@ void _validateEnvelope(SyncChangePayload change) {
 }
 
 void _validateDeletePayload(SyncChangePayload change) {
-  if (_requiredString(change.payload, 'uuid') != change.entityUuid ||
+  if (_requiredUuid(change.payload, 'uuid') != change.entityUuid ||
       change.payload['deleted'] != true) {
     throw const FormatException('Invalid delete payload.');
   }
@@ -381,6 +431,21 @@ String _requiredString(JsonObject json, String key) {
     throw FormatException('$key must be a non-empty string.');
   }
   return value;
+}
+
+final RegExp _uuidPattern = RegExp(
+  r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+);
+
+String _requiredUuid(JsonObject json, String key) {
+  return _requiredUuidValue(_requiredString(json, key), key);
+}
+
+String _requiredUuidValue(String value, String field) {
+  if (!_uuidPattern.hasMatch(value)) {
+    throw FormatException('$field must be a canonical UUID string.');
+  }
+  return value.toLowerCase();
 }
 
 String _nonEmpty(String value, String field) {
@@ -409,13 +474,50 @@ int _requiredPositiveInt(JsonObject json, String key) {
   return value;
 }
 
+int _requiredTransactionMinor(JsonObject json) {
+  final amount = parseMinorUnits(_requiredString(json, 'amount'));
+  if (amount < 0) {
+    throw const FormatException('amount must be a non-negative magnitude.');
+  }
+  return amount;
+}
+
 DateTime _requiredDateTime(JsonObject json, String key) {
   final value = _requiredString(json, key);
-  final parsed = DateTime.tryParse(value);
-  if (parsed == null || !value.contains('T')) {
-    throw FormatException('$key must be an ISO date-time string.');
+  final match = RegExp(
+    r'^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$',
+  ).firstMatch(value);
+  if (match == null) {
+    throw FormatException('$key must be a strict RFC3339 string.');
   }
-  return parsed;
+  final year = int.parse(match.group(1)!);
+  final month = int.parse(match.group(2)!);
+  final day = int.parse(match.group(3)!);
+  final hour = int.parse(match.group(4)!);
+  final minute = int.parse(match.group(5)!);
+  final second = int.parse(match.group(6)!);
+  final localComponents = DateTime.utc(year, month, day, hour, minute, second);
+  if (localComponents.year != year ||
+      localComponents.month != month ||
+      localComponents.day != day ||
+      localComponents.hour != hour ||
+      localComponents.minute != minute ||
+      localComponents.second != second) {
+    throw FormatException('$key has invalid RFC3339 components.');
+  }
+  final zone = match.group(7)!;
+  if (zone != 'Z') {
+    final zoneHour = int.parse(zone.substring(1, 3));
+    final zoneMinute = int.parse(zone.substring(4, 6));
+    if (zoneHour > 23 || zoneMinute > 59) {
+      throw FormatException('$key has an invalid RFC3339 offset.');
+    }
+  }
+  final parsed = DateTime.tryParse(value);
+  if (parsed == null) {
+    throw FormatException('$key must be a valid RFC3339 string.');
+  }
+  return parsed.toUtc();
 }
 
 DateTime _requiredDate(JsonObject json, String key) {

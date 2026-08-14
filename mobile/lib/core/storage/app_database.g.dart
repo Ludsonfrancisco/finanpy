@@ -1819,6 +1819,7 @@ class $TransactionsTable extends Transactions
     'amount_minor',
     aliasedName,
     false,
+    check: () => ComparableExpr(amountMinor).isBiggerOrEqualValue(0),
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );

@@ -104,7 +104,8 @@ class Transactions extends Table {
     onDelete: KeyAction.restrict,
   )();
   TextColumn get description => text()();
-  IntColumn get amountMinor => integer()();
+  IntColumn get amountMinor =>
+      integer().check(amountMinor.isBiggerOrEqualValue(0))();
   DateTimeColumn get date => dateTime()();
   TextColumn get type => text().check(type.isIn(const ['income', 'expense']))();
   IntColumn get version => integer().check(version.isBiggerOrEqualValue(1))();

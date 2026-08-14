@@ -610,7 +610,26 @@
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": []
+            "dsl_features": [
+              {
+                "check": {
+                  "dart_expression": {
+                    "elements": [
+                      {
+                        "lexeme": "ComparableExpr",
+                        "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+                      },
+                      "(",
+                      {
+                        "lexeme": "amountMinor",
+                        "tag": "amountMinor"
+                      },
+                      ").isBiggerOrEqualValue(0)"
+                    ]
+                  }
+                }
+              }
+            ]
           },
           {
             "name": "date",
@@ -883,7 +902,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"transactions\" (\"uuid\" TEXT NOT NULL, \"household_uuid\" TEXT NOT NULL REFERENCES households (uuid) ON UPDATE CASCADE ON DELETE RESTRICT, \"financial_owner_uuid\" TEXT NOT NULL REFERENCES owners (uuid) ON UPDATE CASCADE ON DELETE RESTRICT, \"account_uuid\" TEXT NOT NULL REFERENCES accounts (uuid) ON UPDATE CASCADE ON DELETE RESTRICT, \"category_uuid\" TEXT NOT NULL REFERENCES categories (uuid) ON UPDATE CASCADE ON DELETE RESTRICT, \"description\" TEXT NOT NULL, \"amount_minor\" INTEGER NOT NULL, \"date\" TEXT NOT NULL, \"type\" TEXT NOT NULL CHECK(\"type\" IN ('income', 'expense')), \"version\" INTEGER NOT NULL CHECK(\"version\" >= 1), \"created_at\" TEXT NOT NULL, \"updated_at\" TEXT NOT NULL, PRIMARY KEY (\"uuid\"));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"transactions\" (\"uuid\" TEXT NOT NULL, \"household_uuid\" TEXT NOT NULL REFERENCES households (uuid) ON UPDATE CASCADE ON DELETE RESTRICT, \"financial_owner_uuid\" TEXT NOT NULL REFERENCES owners (uuid) ON UPDATE CASCADE ON DELETE RESTRICT, \"account_uuid\" TEXT NOT NULL REFERENCES accounts (uuid) ON UPDATE CASCADE ON DELETE RESTRICT, \"category_uuid\" TEXT NOT NULL REFERENCES categories (uuid) ON UPDATE CASCADE ON DELETE RESTRICT, \"description\" TEXT NOT NULL, \"amount_minor\" INTEGER NOT NULL CHECK(\"amount_minor\" >= 0), \"date\" TEXT NOT NULL, \"type\" TEXT NOT NULL CHECK(\"type\" IN ('income', 'expense')), \"version\" INTEGER NOT NULL CHECK(\"version\" >= 1), \"created_at\" TEXT NOT NULL, \"updated_at\" TEXT NOT NULL, PRIMARY KEY (\"uuid\"));"
         }
       ]
     },
