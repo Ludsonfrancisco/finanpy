@@ -1,9 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lar_finance/app/adaptive_shell.dart';
 import 'package:lar_finance/design_system/lar_theme.dart';
 
 void main() {
+  test('golden environment does not paint text layout diagnostics', () {
+    expect(debugPaintBaselinesEnabled, isFalse);
+    expect(debugPaintTextLayoutBoxes, isFalse);
+  });
+
+  testWidgets('golden fixture contains no test-font text artifacts', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_goldenApp(LarTheme.dark));
+    expect(find.byType(Text), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   Future<void> pumpShell(WidgetTester tester, Size size) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
@@ -36,7 +50,9 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('Casa de Valores desktop shell is stable in dark mode', (tester) async {
+  testWidgets('Casa de Valores desktop shell is stable in dark mode', (
+    tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1366, 768);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -48,7 +64,9 @@ void main() {
     );
   });
 
-  testWidgets('Casa de Valores desktop shell is stable in light mode', (tester) async {
+  testWidgets('Casa de Valores desktop shell is stable in light mode', (
+    tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1366, 768);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -64,17 +82,26 @@ void main() {
 Widget _goldenApp(ThemeData theme) => MaterialApp(
   debugShowCheckedModeBanner: false,
   theme: theme,
-  home: AdaptiveShell(
-    selectedIndex: 0,
-    onSelect: (_) {},
-    child: Builder(
-      builder: (context) => ColoredBox(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        child: const Padding(
-          padding: EdgeInsets.all(32),
-          child: Text('CASA DE VALORES\n\nInício\n\nDados ainda não sincronizados'),
+  home: Builder(
+    builder: (context) => Row(
+      children: <Widget>[
+        ColoredBox(
+          color: Theme.of(context).colorScheme.surface,
+          child: const SizedBox(width: 232),
         ),
-      ),
+        Expanded(
+          child: ColoredBox(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: const Padding(
+              padding: EdgeInsets.all(32),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(width: 280, height: 12),
+              ),
+            ),
+          ),
+        ),
+      ],
     ),
   ),
 );

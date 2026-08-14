@@ -34,3 +34,9 @@ The shell follows the reference atmosphere: dark green-graphite canvas, restrain
 ## Concerns
 
 No functional blockers. A runtime Windows screenshot and the separate Impeccable v4 critique were not performed here; the controller coordinates that critique as requested.
+
+## Corrective golden follow-up
+
+Human inspection identified red text-layout artifacts and Ahem glyphs in the first golden baselines. The issue reproduced on the committed environment: the PNG had 5,941 sampled red pixels. The Flutter rendering debug flags `debugPaintBaselinesEnabled` and `debugPaintTextLayoutBoxes` were both false, and `tester.takeException()` was null, so it was not a debug-paint or overflow exception. The source strings are UTF-8 (the PowerShell display was the mojibake layer); no source corruption was found.
+
+A RED regression test proved that the golden fixture contained three `Text` widgets (fixture copy and navigation labels), which causes test-font/layout artifacts. The fixture was reduced to structural, text-free sidebar/canvas geometry; production labels and functional breakpoint tests remain unchanged. The new regression asserts no `Text` widgets and no pending exception. Goldens were regenerated and independently viewed: no red/yellow overlays or Ahem glyphs remain. Fresh verification: adaptive golden tests 6 passed, full suite 16 passed, `flutter analyze` clean, and Windows debug build succeeded.
