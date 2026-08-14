@@ -25,6 +25,7 @@ final class SessionTransport {
   final DateTime Function() _now;
   Completer<StoredTokens>? _refreshing;
   String? _refreshingForAccess;
+  int? _refreshingGeneration;
 
   Future<Map<String, Object?>> getObject(String path) =>
       _requestObject(path, method: 'GET');
@@ -140,8 +141,7 @@ final class SessionTransport {
   Future<StoredTokens> _coordinateRefresh(SessionSnapshot failedSession) async {
     final failedTokens = failedSession.tokens;
     final activeRefresh = _refreshing;
-    if (activeRefresh != null &&
-        _refreshingForAccess == failedTokens.accessToken) {
+    if (activeRefresh != null && _isRefreshingFor(failedSession)) {
       return activeRefresh.future;
     }
 
@@ -162,14 +162,14 @@ final class SessionTransport {
     }
 
     final afterReadRefresh = _refreshing;
-    if (afterReadRefresh != null &&
-        _refreshingForAccess == failedTokens.accessToken) {
+    if (afterReadRefresh != null && _isRefreshingFor(failedSession)) {
       return afterReadRefresh.future;
     }
 
     final completer = Completer<StoredTokens>();
     _refreshing = completer;
     _refreshingForAccess = failedTokens.accessToken;
+    _refreshingGeneration = current.generation;
     _onEvent?.call('session.refresh.started');
     unawaited(_completeRefresh(completer, current));
     return completer.future;
@@ -184,9 +184,11 @@ final class SessionTransport {
     } catch (error, stackTrace) {
       completer.completeError(error, stackTrace);
     } finally {
-      if (identical(_refreshing, completer)) {
+      if (identical(_refreshing, completer) &&
+          _refreshingGeneration == current.generation) {
         _refreshing = null;
         _refreshingForAccess = null;
+        _refreshingGeneration = null;
       }
     }
   }
@@ -247,4 +249,8 @@ final class SessionTransport {
   }
 
   bool _isExpired(DateTime expiry) => !expiry.toUtc().isAfter(_now().toUtc());
+
+  bool _isRefreshingFor(SessionSnapshot session) =>
+      _refreshingForAccess == session.tokens.accessToken &&
+      _refreshingGeneration == session.generation;
 }

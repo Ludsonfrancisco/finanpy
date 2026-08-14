@@ -85,6 +85,79 @@ void main() {
       expect(fake.refreshCalls, 1);
     });
 
+    test(
+      'starts a new-generation refresh when access tokens are identical',
+      () async {
+        final oldRefreshStarted = Completer<void>();
+        final releaseOldRefresh = Completer<void>();
+        addTearDown(() {
+          if (!releaseOldRefresh.isCompleted) releaseOldRefresh.complete();
+        });
+        var newRefreshCalls = 0;
+        final fake = _FakeApiTransport((request) async {
+          if (request.path == '/auth/refresh/') {
+            final refreshToken =
+                (request.data! as Map<Object?, Object?>)['refresh_token'];
+            if (refreshToken == 'refresh-old-generation') {
+              oldRefreshStarted.complete();
+              await releaseOldRefresh.future;
+              return ApiResponse(
+                statusCode: 200,
+                data: _sessionPayload(
+                  accessToken: 'access-refreshed-old',
+                  refreshToken: 'refresh-refreshed-old',
+                ),
+              );
+            }
+            if (refreshToken == 'refresh-new-generation') {
+              newRefreshCalls++;
+              return ApiResponse(
+                statusCode: 200,
+                data: _sessionPayload(
+                  accessToken: 'access-refreshed-new',
+                  refreshToken: 'refresh-refreshed-new',
+                ),
+              );
+            }
+          }
+          if (request.bearerToken == 'access-shared') {
+            return const ApiResponse(
+              statusCode: 401,
+              data: <String, Object?>{},
+            );
+          }
+          return ApiResponse(
+            statusCode: 200,
+            data: <String, Object?>{'path': request.path},
+          );
+        });
+        final store = _FakeTokenStore(
+          _tokensForGeneration(refreshToken: 'refresh-old-generation'),
+        );
+        final authority = SessionAuthority.forStore(store);
+        final client = SessionTransport(
+          transport: fake,
+          tokenStore: store,
+          sessionAuthority: authority,
+        );
+
+        final oldRequest = client.getObject('/old-generation/');
+        await oldRefreshStarted.future;
+        await authority.clear();
+        await authority.write(
+          _tokensForGeneration(refreshToken: 'refresh-new-generation'),
+        );
+
+        final newRequest = client.getObject('/new-generation/');
+        await _eventually(() => newRefreshCalls == 1);
+        expect(await newRequest, <String, Object?>{'path': '/new-generation/'});
+
+        releaseOldRefresh.complete();
+        await expectLater(oldRequest, throwsA(isA<RequestFailure>()));
+        expect((await store.read())?.accessToken, 'access-refreshed-new');
+      },
+    );
+
     test('refresh 401 clears tokens and expires the session', () async {
       final fake = _FakeApiTransport(
         (request) async => ApiResponse(
@@ -345,6 +418,15 @@ StoredTokens _tokensWith({
   deviceUuid: '11111111-1111-4111-8111-111111111111',
 );
 
+StoredTokens _tokensForGeneration({required String refreshToken}) =>
+    StoredTokens(
+      accessToken: 'access-shared',
+      accessExpiresAt: DateTime.utc(2030, 1, 1),
+      refreshToken: refreshToken,
+      refreshExpiresAt: DateTime.utc(2030, 2, 1),
+      deviceUuid: '11111111-1111-4111-8111-111111111111',
+    );
+
 Map<String, Object?> _tokenPayload() => <String, Object?>{
   'access_token': 'access-new',
   'access_expires_at': '2030-01-02T00:00:00Z',
@@ -366,6 +448,22 @@ Map<String, Object?> _tokenPayloadWithExpiries({
   'access_expires_at': accessExpiresAt.toIso8601String(),
   'refresh_token': 'refresh-new',
   'refresh_expires_at': refreshExpiresAt.toIso8601String(),
+  'device': <String, Object?>{
+    'uuid': '11111111-1111-4111-8111-111111111111',
+    'name': 'Lar Finance no Windows',
+    'platform': 'windows',
+    'default_owner_uuid': '22222222-2222-4222-8222-222222222222',
+  },
+};
+
+Map<String, Object?> _sessionPayload({
+  required String accessToken,
+  required String refreshToken,
+}) => <String, Object?>{
+  'access_token': accessToken,
+  'access_expires_at': '2030-01-02T00:00:00Z',
+  'refresh_token': refreshToken,
+  'refresh_expires_at': '2030-02-02T00:00:00Z',
   'device': <String, Object?>{
     'uuid': '11111111-1111-4111-8111-111111111111',
     'name': 'Lar Finance no Windows',
