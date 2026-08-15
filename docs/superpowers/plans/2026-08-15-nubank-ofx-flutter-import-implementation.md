@@ -112,7 +112,7 @@ cursor nunca é identificador bancário. `next_cursor` é `null` na última pág
 **Produces:** suporte estrito para UTF-8/NONE e SGML com fechamento explícito de
 tags folha, sem copiar dados reais.
 
-- [ ] **Step 1: Criar fixtures anônimas mínimas**
+- [x] **Step 1: Criar fixtures anônimas mínimas**
 
 Criar uma fixture de conta com cabeçalho:
 
@@ -127,7 +127,7 @@ CHARSET:NONE
 Criar uma fixture de cartão USASCII/1252 com tags folha explicitamente fechadas,
 por exemplo `<CODE>0</CODE>`, mantendo somente nomes, IDs e valores sintéticos.
 
-- [ ] **Step 2: Escrever testes RED**
+- [x] **Step 2: Escrever testes RED**
 
 ```python
 def test_parses_utf8_none_account_statement(self):
@@ -148,7 +148,7 @@ def test_rejects_unknown_encoding_and_mismatched_sgml_closing_tag(self):
         parse_nubank_ofx(mismatched_closing_tag)
 ```
 
-- [ ] **Step 3: Executar o RED**
+- [x] **Step 3: Executar o RED**
 
 ```powershell
 $env:SECRET_KEY='task-only-secret-not-production'
@@ -158,7 +158,7 @@ python manage.py test imports.tests.test_ofx
 
 Expected: UTF-8/NONE falha por encoding não suportado; cartão falha por markup.
 
-- [ ] **Step 4: Implementar decoder e tokenizer mínimos**
+- [x] **Step 4: Implementar decoder e tokenizer mínimos**
 
 Extrair o cabeçalho anterior a `<OFX>` sem logá-lo. Aceitar somente:
 
@@ -175,7 +175,7 @@ Preservar `utf-8-sig`. No tokenizer SGML, aceitar fechamento explícito apenas
 da última tag folha emitida; fechamento de container continua balanceado e
 qualquer fechamento desconhecido ou fora de ordem gera `OfxParseError`.
 
-- [ ] **Step 5: Rodar regressões e privacidade**
+- [x] **Step 5: Rodar regressões e privacidade**
 
 ```powershell
 python manage.py test imports.tests.test_ofx api.tests.test_import_api
@@ -186,7 +186,7 @@ git status --short
 
 Expected: testes verdes e nenhum dos dois arquivos reais no status/diff.
 
-- [ ] **Step 6: Revisar, commitar e enviar**
+- [x] **Step 6: Revisar, commitar e enviar**
 
 ```powershell
 git add imports/ofx.py imports/tests/test_ofx.py imports/tests/fixtures
