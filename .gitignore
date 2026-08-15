@@ -280,3 +280,6 @@ pyrightconfig.json
 !/mobile/lib/
 !/mobile/lib/**
 !/mobile/windows/runner/runner.exe.manifest
+
+# Local Git worktrees
+/.worktrees/
