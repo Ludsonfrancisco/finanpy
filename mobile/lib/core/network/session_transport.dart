@@ -27,8 +27,22 @@ final class SessionTransport {
   String? _refreshingForAccess;
   int? _refreshingGeneration;
 
-  Future<Map<String, Object?>> getObject(String path) =>
-      _requestObject(path, method: 'GET');
+  Future<Map<String, Object?>> getObject(
+    String path, {
+    bool surfaceServerErrors = false,
+  }) => _requestObject(
+    path,
+    method: 'GET',
+    surfaceServerErrors: surfaceServerErrors,
+  );
+
+  Future<Map<String, Object?>> postObject(String path, {Object? data}) =>
+      _requestObject(
+        path,
+        method: 'POST',
+        data: data,
+        surfaceServerErrors: true,
+      );
 
   Future<List<Object?>> getList(String path) async {
     final response = await _request(path, method: 'GET');
@@ -75,8 +89,14 @@ final class SessionTransport {
     String path, {
     required String method,
     Object? data,
+    bool surfaceServerErrors = false,
   }) async {
-    final response = await _request(path, method: method, data: data);
+    final response = await _request(
+      path,
+      method: method,
+      data: data,
+      surfaceServerErrors: surfaceServerErrors,
+    );
     final body = response.data;
     if (body is! Map) {
       throw const RequestFailure();
@@ -91,6 +111,7 @@ final class SessionTransport {
     bool isRetry = false,
     StoredTokens? retryTokens,
     SessionSnapshot? expectedSession,
+    bool surfaceServerErrors = false,
   }) async {
     final snapshot =
         expectedSession ??
@@ -108,6 +129,7 @@ final class SessionTransport {
         isRetry: true,
         retryTokens: refreshed,
         expectedSession: snapshot,
+        surfaceServerErrors: surfaceServerErrors,
       );
     }
     final response = await _transport.request(
@@ -130,9 +152,16 @@ final class SessionTransport {
         isRetry: true,
         retryTokens: refreshed,
         expectedSession: snapshot,
+        surfaceServerErrors: surfaceServerErrors,
       );
     }
     if (!response.isSuccessful) {
+      if (surfaceServerErrors) {
+        throw ServerFailure(
+          code: _serverErrorCode(response.data),
+          statusCode: response.statusCode,
+        );
+      }
       throw const RequestFailure();
     }
     return response;
@@ -257,4 +286,12 @@ final class SessionTransport {
   bool _isRefreshingFor(SessionSnapshot session) =>
       _refreshingForAccess == session.tokens.accessToken &&
       _refreshingGeneration == session.generation;
+
+  String _serverErrorCode(Object? body) {
+    if (body is! Map) return '';
+    final error = body['error'];
+    if (error is! Map) return '';
+    final code = error['code'];
+    return code is String ? code : '';
+  }
 }

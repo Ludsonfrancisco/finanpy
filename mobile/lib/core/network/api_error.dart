@@ -24,3 +24,18 @@ final class SessionExpired extends ApiError {
 final class RequestFailure extends ApiError {
   const RequestFailure() : super('Não foi possível concluir a solicitação.');
 }
+
+/// A refused request whose stable server code may drive a domain decision.
+///
+/// Only the code and the status cross this boundary. The remote message is
+/// never carried, so it can never reach the interface.
+final class ServerFailure extends ApiError {
+  const ServerFailure({required this.code, required this.statusCode})
+    : super('Não foi possível concluir a solicitação.');
+
+  final String code;
+  final int statusCode;
+
+  @override
+  String toString() => 'ServerFailure(code: $code, status: $statusCode)';
+}
