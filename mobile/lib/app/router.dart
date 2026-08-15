@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../design_system/components/sync_status.dart';
@@ -15,6 +17,7 @@ import '../features/home/presentation/home_screen.dart';
 import '../features/imports/application/import_controller.dart';
 import '../features/imports/data/import_repository.dart';
 import '../features/imports/data/ofx_file_picker.dart';
+import '../features/imports/presentation/import_screen.dart';
 import 'adaptive_shell.dart';
 import 'app_config.dart';
 import 'privacy_shield.dart';
@@ -298,45 +301,18 @@ final class _ImportShellState extends State<_ImportShell> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(LarSpacing.xl),
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, _) {
-            final state = _controller.state;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text('Importação OFX', style: text.headlineMedium),
-                const SizedBox(height: LarSpacing.lg),
-                OutlinedButton.icon(
-                  onPressed: state.isBusy ? null : _controller.selectFile,
-                  icon: const Icon(Icons.file_open_outlined),
-                  label: const Text('Selecionar arquivo OFX'),
-                ),
-                const SizedBox(height: LarSpacing.lg),
-                Text(_phaseLabel(state.phase), style: text.bodyLarge),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (context, _) => ImportScreen(
+      state: _controller.state,
+      onSelect: () => unawaited(_controller.selectFile()),
+      onConfirm: () => unawaited(_controller.confirm()),
+      onCancel: () => unawaited(_controller.cancel()),
+      onRetry: () => unawaited(_controller.retry()),
+      onLoadMore: () => unawaited(_controller.loadMore()),
+    ),
+  );
 }
-
-String _phaseLabel(ImportPhase phase) => switch (phase) {
-  ImportPhase.idle => 'Nenhum arquivo selecionado',
-  ImportPhase.picking => 'Escolhendo arquivo',
-  ImportPhase.uploading => 'Enviando arquivo',
-  ImportPhase.preview => 'Prévia carregada',
-  ImportPhase.confirming => 'Confirmando',
-  ImportPhase.completed => 'Importação concluída',
-  ImportPhase.failure => 'Não foi possível concluir',
-};
 
 final class _RouteNotice extends StatelessWidget {
   const _RouteNotice({required this.title});
