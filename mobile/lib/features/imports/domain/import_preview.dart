@@ -107,6 +107,28 @@ final class ImportPreview {
 
   bool get isActionable => status == ImportBatchStatus.previewReady;
   bool get hasMorePages => nextCursor != null;
+
+  /// Keeps the records already received and adopts the newest page metadata.
+  ImportPreview appendPage(ImportPreview page) => ImportPreview(
+    uuid: page.uuid,
+    status: page.status,
+    productType: page.productType,
+    statementStart: page.statementStart,
+    statementEnd: page.statementEnd,
+    expiresAt: page.expiresAt,
+    accountUuid: page.accountUuid,
+    financialOwnerUuid: page.financialOwnerUuid,
+    createdCount: page.createdCount,
+    duplicateCount: page.duplicateCount,
+    warningCount: page.warningCount,
+    recordCount: page.recordCount,
+    pendingCount: page.pendingCount,
+    incomeTotalMinor: page.incomeTotalMinor,
+    expenseTotalMinor: page.expenseTotalMinor,
+    isRepeatedFile: page.isRepeatedFile,
+    records: <ImportRecordPreview>[...records, ...page.records],
+    nextCursor: page.nextCursor,
+  );
 }
 
 /// Builds a preview only when every field of the payload is acceptable.

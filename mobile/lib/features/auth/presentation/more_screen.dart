@@ -6,7 +6,10 @@ import '../../../design_system/lar_spacing.dart';
 import '../application/auth_controller.dart';
 
 final class MoreScreen extends ConsumerWidget {
-  const MoreScreen({super.key});
+  const MoreScreen({this.onOpenImport, super.key});
+
+  /// Navigation is injected: this screen never builds its own transport.
+  final VoidCallback? onOpenImport;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,6 +43,19 @@ final class MoreScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: LarSpacing.xs),
                 Text(lastSync),
+                if (onOpenImport != null) ...<Widget>[
+                  const SizedBox(height: LarSpacing.xl),
+                  Text(
+                    'Importação',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: LarSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: onOpenImport,
+                    icon: const Icon(Icons.file_upload_outlined),
+                    label: const Text('Importar OFX'),
+                  ),
+                ],
                 const SizedBox(height: LarSpacing.xl),
                 OutlinedButton.icon(
                   onPressed: state.isSubmitting ? null : controller.logout,

@@ -21,6 +21,8 @@ import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/secure_token_store.dart';
 import 'features/auth/domain/session.dart';
 import 'features/home/data/home_repository.dart';
+import 'features/imports/data/import_repository.dart';
+import 'features/imports/data/ofx_file_picker.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,6 +61,7 @@ Future<void> main() async {
     onSessionExpired: controller.expireSession,
   );
   final homeRepository = DriftHomeRepository(database);
+  final importRepository = DjangoImportRepository(sessionTransport);
   runApp(
     MyApp(
       appConfig: config,
@@ -66,6 +69,7 @@ Future<void> main() async {
       syncCoordinator: syncCoordinator,
       homeRepository: homeRepository,
       valueVisibilityController: valueVisibilityController,
+      importRepository: importRepository,
     ),
   );
 }
@@ -77,6 +81,8 @@ class MyApp extends StatelessWidget {
     this.syncCoordinator,
     this.homeRepository,
     this.valueVisibilityController,
+    this.importRepository,
+    this.ofxFilePicker,
     AppConfig? appConfig,
   }) : appConfig = appConfig ?? AppConfig.fromEnvironment(),
        router = createAppRouter(
@@ -85,6 +91,8 @@ class MyApp extends StatelessWidget {
          syncCoordinator: syncCoordinator,
          homeRepository: homeRepository,
          valueVisibilityController: valueVisibilityController,
+         importRepository: importRepository,
+         ofxFilePicker: ofxFilePicker,
        );
 
   final AppConfig appConfig;
@@ -92,6 +100,8 @@ class MyApp extends StatelessWidget {
   final LedgerSyncCoordinator? syncCoordinator;
   final HomeRepository? homeRepository;
   final ValueVisibilityController? valueVisibilityController;
+  final ImportRepository? importRepository;
+  final OfxFilePicker? ofxFilePicker;
   final GoRouter router;
 
   @override
