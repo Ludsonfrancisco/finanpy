@@ -18,23 +18,26 @@ sintéticos. Ele atravessa login, escolha de responsável, bootstrap, Home,
 reabertura offline pelo mesmo arquivo Drift, retomada com delta, refresh único
 de access token e logout com cache financeiro retido e credenciais removidas.
 
-A suíte local aprovou 180 testes Flutter e um teste integrado Windows. O backend
+A suíte local aprovou 185 testes Flutter e um teste integrado Windows. O backend
 permaneceu verde com 461 testes, Ruff, checks Django/deploy/migrations e 97% de
 cobertura.
 
 ## Performance
 
-O cache quente foi medido em Flutter profile no Windows, abrindo um banco Drift
-de 20 contas, 50 categorias e 10.000 transações em cada uma das dez amostras. Em
+O cache quente foi medido em Flutter profile no Windows com 20 contas, 50
+categorias e 10.000 transações. O seed ocorre no aquecimento e fica fora da
+janela; cada uma das dez amostras abre um novo processo do executável e mede até
+o primeiro frame da Home real populada. Em
 um Ryzen 5 7500F com 31,6 GiB RAM, Flutter 3.47.0/Dart 3.13.0 e Windows 11 Pro
-10.0.26200, a mediana bootstrap→primeiro frame populado foi 42,063 ms e o p95
-67,737 ms. O critério de mediana abaixo de 2 s foi atendido. A medida não afirma
-performance em Android/iOS.
+10.0.26200, a mediana foi 1.401,891 ms e o p95 1.576,466 ms. O critério de
+mediana abaixo de 2 s foi atendido. A medida não afirma performance em
+Android/iOS.
 
 ## Builds privados
 
-O build local Windows release e o Android APK release passaram com o endpoint
-sintético `example.invalid`. O artefato MSIX da CI tem 14.902.744 bytes e
+O build local Windows release e o Android APK release usam o endpoint público
+`https://financeiro.palmbook.online/api/v1`; nenhuma credencial é embutida. O
+artefato MSIX da CI anterior tem 14.902.744 bytes e
 SHA-256
 `6219ED0AFFD43D230097A0276E3062495C8A1F4BB504721682576062DD79F27D`.
 
@@ -62,15 +65,22 @@ compatível com `CN=Lar Finance Private`.
 
 ## CI e limites
 
-A [CI 31856052144](https://github.com/Ludsonfrancisco/finanpy/actions/runs/31856052144)
-aprovou as seis frentes: Django, secret scan, Ubuntu format/analyze/testes,
-Windows release/MSIX/hash/goldens, Ubuntu Android APK e macOS com testes e build
-iOS release sem assinatura. Todos leem a versão Flutter fixada e não recebem
-credenciais reais. Goldens pixel a pixel rodam somente no rasterizador canônico
-Windows; Linux e macOS executam os demais 172 testes.
+A [CI 31856531422](https://github.com/Ludsonfrancisco/finanpy/actions/runs/31856531422)
+aprovou as seis frentes antes da última onda de revisão. A matriz final também
+executa a jornada integrada no Windows e gera Windows, Android e iOS com o
+endpoint público real; a execução final do novo HEAD será registrada no
+relatório. Todos os jobs leem a versão Flutter fixada e não recebem credenciais.
+Goldens pixel a pixel rodam somente no rasterizador canônico Windows.
 
-Não houve deploy nem mudança no backend ou nos dados. Para rollback, reverta o
-commit de fechamento da Sprint 4; não há migration ou operação externa a desfazer.
+Não houve deploy nem mudança de dados. A Task 2 desta Sprint ajustou o contrato
+de login do backend para aceitar o responsável `self` implícito, sem migration;
+a Task 9 alterou somente cliente, CI, testes e documentação.
+
+Para rollback apenas da Task 9, reverta os commits no intervalo
+`06ea7234074fb2fbbabc70720e7b32c120726e65..HEAD`. Para rollback integral da
+Sprint 4, use o intervalo `31552fa..HEAD` e coordene também a reversão da
+compatibilidade de login no backend. Nenhum dos dois procedimentos desfaz
+deploy, migration ou dado externo porque essas operações não ocorreram.
 
 O relatório detalhado e a matriz de gates estão em
-`.superpowers/sdd/flutter-task-9-report.md`.
+[`sprint-4-task-9-report.md`](sprint-4-task-9-report.md).

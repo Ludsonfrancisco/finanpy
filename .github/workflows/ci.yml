@@ -135,7 +135,8 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter test --tags=golden
-      - run: flutter build windows --release --dart-define=LAR_FINANCE_API_BASE_URL=https://example.invalid/api/v1
+      - run: flutter test integration_test/auth_sync_home_test.dart -d windows
+      - run: flutter build windows --release --dart-define=LAR_FINANCE_API_BASE_URL=https://financeiro.palmbook.online/api/v1
       - run: dart run msix:create --install-certificate false
       - name: Create MSIX SHA-256
         shell: pwsh
@@ -173,7 +174,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build apk --release --dart-define=LAR_FINANCE_API_BASE_URL=https://example.invalid/api/v1
+      - run: flutter build apk --release --dart-define=LAR_FINANCE_API_BASE_URL=https://financeiro.palmbook.online/api/v1
       - name: Upload Android artifact
         uses: actions/upload-artifact@v4
         with:
@@ -202,4 +203,4 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter test --exclude-tags=golden
-      - run: flutter build ios --release --no-codesign --dart-define=LAR_FINANCE_API_BASE_URL=https://example.invalid/api/v1
+      - run: flutter build ios --release --no-codesign --dart-define=LAR_FINANCE_API_BASE_URL=https://financeiro.palmbook.online/api/v1

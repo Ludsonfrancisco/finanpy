@@ -192,6 +192,37 @@ void main() {
     );
 
     test(
+      'failed vault cleanup blocks restore and retries on next startup',
+      () async {
+        final transport = _AuthApiTransport();
+        final repository = _repository(database, tokenStore, transport);
+        await repository.login(email: 'ana@example.com', password: 'secret');
+        tokenStore.clearFailuresRemaining = 1;
+
+        await repository.logout();
+
+        expect(await tokenStore.read(), isNotNull);
+        expect(
+          await (database.select(database.localSettings)..where(
+                (row) => row.key.equals(AuthRepository.logoutPendingSettingKey),
+              ))
+              .getSingleOrNull(),
+          isNotNull,
+        );
+
+        expect(await repository.readSession(), isNull);
+        expect(await tokenStore.read(), isNull);
+        expect(
+          await (database.select(database.localSettings)..where(
+                (row) => row.key.equals(AuthRepository.logoutPendingSettingKey),
+              ))
+              .getSingleOrNull(),
+          isNull,
+        );
+      },
+    );
+
+    test(
       'logout cannot be undone by a refresh that was already in flight',
       () async {
         final releaseRefresh = Completer<void>();
@@ -447,9 +478,16 @@ final class _AuthApiTransport implements ApiTransport {
 
 final class _FakeTokenStore implements TokenStore {
   StoredTokens? value;
+  int clearFailuresRemaining = 0;
 
   @override
-  Future<void> clear() async => value = null;
+  Future<void> clear() async {
+    if (clearFailuresRemaining > 0) {
+      clearFailuresRemaining--;
+      throw StateError('synthetic vault failure');
+    }
+    value = null;
+  }
 
   @override
   Future<StoredTokens?> read() async => value;

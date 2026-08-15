@@ -233,6 +233,17 @@ final class AuthController extends ChangeNotifier {
     return true;
   }
 
+  void expireSession() {
+    _emit(
+      AuthState(
+        phase: AuthPhase.signedOut,
+        message: const SessionExpired().message,
+        deviceName: _state.deviceName,
+        lastSyncAt: _state.lastSyncAt,
+      ),
+    );
+  }
+
   Future<void> logout() {
     final logoutInFlight = _logoutInFlight;
     if (logoutInFlight != null) return logoutInFlight;

@@ -15,7 +15,7 @@ modernização incremental.
 - SQLite persistido em `/app/data/db.sqlite3` no container;
 - backup R2 diário ativo em produção, com agenda supervisionada, retenção
   `14/8/12`, idempotência após restart e restauração isolada comprovada;
-- 461 testes Django e 97% de cobertura; 180 testes Flutter e uma jornada de
+- 461 testes Django e 97% de cobertura; 185 testes Flutter e uma jornada de
   integração Windows; CI multiplataforma verde; gate backend mínimo de 90%;
 - cadastro público removido;
 - piloto de importação manual OFX Nubank de conta/cartão, com prévia, confirmação

@@ -10,10 +10,12 @@ final class LedgerSyncCoordinator {
     required SyncApi api,
     required LocalLedger ledger,
     required SessionAuthority sessionAuthority,
+    void Function()? onSessionExpired,
     DateTime Function()? now,
   }) : _api = api,
        _ledger = ledger,
        _sessionAuthority = sessionAuthority,
+       _onSessionExpired = onSessionExpired,
        _now = now ?? DateTime.now {
     state = SyncState(retry: synchronize);
   }
@@ -23,6 +25,7 @@ final class LedgerSyncCoordinator {
   final SyncApi _api;
   final LocalLedger _ledger;
   final SessionAuthority _sessionAuthority;
+  final void Function()? _onSessionExpired;
   final DateTime Function() _now;
   late final SyncState state;
   Future<SyncResult>? _inFlight;
@@ -166,6 +169,11 @@ final class LedgerSyncCoordinator {
           : expectedSession == null
           ? SyncResult.failed
           : SyncResult.noCacheOffline;
+    } on SessionExpired {
+      _lastSuccessfulSession = null;
+      state.markFailed(null);
+      _onSessionExpired?.call();
+      return SyncResult.failed;
     } catch (_) {
       state.markFailed(hasValidCache ? metadata?.lastSuccessAt : null);
       return SyncResult.failed;

@@ -116,7 +116,7 @@ implementados.
 
 | Camada | Direção | Estado |
 |---|---|---|
-| Cliente | Flutter 3.47.0 stable e Dart 3.13.0, um código-base para iOS, Android e Windows | workspace e lockfile entregues na Sprint 4; Windows/Android/iOS comprovados pela CI 31856052144 |
+| Cliente | Flutter 3.47.0 stable e Dart 3.13.0, um código-base para iOS, Android e Windows | workspace e lockfile entregues na Sprint 4; Windows/Android/iOS comprovados pela CI multiplataforma |
 | Backend | Django preservado e transformado em API versionada | API v1 entregue na Sprint 2 |
 | API | Django REST Framework 3.17.1 | entregue na Sprint 2 |
 | Banco servidor | PostgreSQL | aprovado como direção; versão/imagem EasyPanel `[INVESTIGAR]` |
@@ -319,7 +319,7 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 ## 10. Cobertura de testes atual
 
 Na branch da Sprint 4, 461 testes Django passaram com 97% de cobertura (8.925
-statements, 228 não cobertos), e 180 testes Flutter mais uma jornada integrada
+statements, 228 não cobertos), e 185 testes Flutter mais uma jornada integrada
 Windows passaram. Ruff com a configuração oficial, warnings/deprecations,
 Django check, migrations check, deploy check estrito, format e análise Flutter
 também passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de
@@ -437,7 +437,7 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
   rate limit persistente, alertas e rollback por imagem imutável.
 - [x] Sprint 2: API v1, autenticação e contrato de sincronização — concluída após revisão independente final sem achados.
 - [x] Sprint 3: piloto OFX Nubank, deduplicação, prévia e confirmação atômica.
-- [x] Sprint 4: fundação Flutter concluída; CI 31856052144 comprovou Windows, Android e iOS sem assinatura.
+- [x] Sprint 4: fundação Flutter concluída; CI comprovou Windows, Android e iOS sem assinatura.
 - [ ] Sprint 5: movimentações, contas, importação e rotina diária no Flutter.
 - [ ] Sprint 6: cartões, faturas, limites e parcelamentos.
 - [ ] Sprint 7: orçamento, recorrências, calendário e metas.

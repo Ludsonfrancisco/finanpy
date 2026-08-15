@@ -57,6 +57,7 @@ final class AuthRepository implements AuthGateway {
 
   static const selectedOwnerSettingKey = 'device.default_owner_uuid';
   static const deviceNameSettingKey = 'device.name';
+  static const logoutPendingSettingKey = 'auth.logout_pending';
 
   final ApiTransport _publicTransport;
   final SessionTransport _sessionTransport;
@@ -91,6 +92,7 @@ final class AuthRepository implements AuthGateway {
     final session = _parseSession(response.data);
     try {
       await _sessionAuthority.write(session);
+      await _deleteSetting(logoutPendingSettingKey);
       await _writeSetting(deviceNameSettingKey, _deviceName);
       final owners = await loadOwners();
       return LoginResult(session: session, owners: owners);
@@ -148,10 +150,18 @@ final class AuthRepository implements AuthGateway {
   @override
   Future<void> logout() async {
     StoredTokens? session;
+    var markerPersisted = false;
+    try {
+      await _writeSetting(logoutPendingSettingKey, '1');
+      markerPersisted = true;
+    } catch (_) {
+      // Vault cleanup is still attempted if the local marker cannot be written.
+    }
     try {
       session = await _sessionAuthority.clearAndRead();
+      if (markerPersisted) await _deleteSetting(logoutPendingSettingKey);
     } catch (_) {
-      // Settings cleanup and the signed-out UI still proceed on vault failure.
+      // A persisted marker keeps restore fail-closed until cleanup can retry.
     }
     try {
       await _sessionTransport.postEmptyWithSession('/auth/logout/', session);
@@ -201,6 +211,15 @@ final class AuthRepository implements AuthGateway {
   @override
   Future<StoredTokens?> readSession() async {
     try {
+      if (await _readSetting(logoutPendingSettingKey) != null) {
+        try {
+          await _sessionAuthority.clear();
+          await _deleteSetting(logoutPendingSettingKey);
+        } catch (_) {
+          // Keep the marker and retry cleanup on a future restore.
+        }
+        return null;
+      }
       return await _sessionTransport.restoreSession();
     } on SessionExpired {
       return null;
@@ -248,6 +267,10 @@ final class AuthRepository implements AuthGateway {
   Future<String?> _readSetting(String key) async => (await (_database.select(
     _database.localSettings,
   )..where((row) => row.key.equals(key))).getSingleOrNull())?.value;
+
+  Future<void> _deleteSetting(String key) => (_database.delete(
+    _database.localSettings,
+  )..where((row) => row.key.equals(key))).go();
 
   Future<void> _clearTokensSafely() async {
     try {

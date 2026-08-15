@@ -79,6 +79,27 @@ void main() {
   });
 
   test(
+    'session expiration hides authenticated UI without deleting cache',
+    () async {
+      final gateway = _FakeAuthGateway(
+        restoredSession: _sessionFor(_deviceUuid),
+        selectedOwnerUuid: _selfUuid,
+        syncedDeviceUuid: _deviceUuid,
+      );
+      final controller = AuthController(gateway);
+      await controller.initialize();
+      expect(controller.state.phase, AuthPhase.authenticated);
+
+      controller.expireSession();
+
+      expect(controller.state.phase, AuthPhase.signedOut);
+      expect(controller.state.message, const SessionExpired().message);
+      expect(gateway.logoutCalls, 0);
+      expect(controller.state.lastSyncAt, isNotNull);
+    },
+  );
+
+  test(
     'logout hides authenticated UI before remote or vault I/O completes',
     () async {
       final release = Completer<void>();

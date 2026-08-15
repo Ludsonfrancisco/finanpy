@@ -158,7 +158,7 @@ Plano técnico: [implementação da fundação Flutter](superpowers/plans/2026-0
 - [x] build iOS release sem assinatura comprovado no runner macOS da CI.
 
 Aceite: usuário entra, sincroniza, consulta a Home pelo cache offline e retoma
-com delta; nenhuma escrita offline entra nesta sprint. A CI 31856052144 aprovou
+com delta; nenhuma escrita offline entra nesta sprint. A CI multiplataforma aprovou
 Linux, Windows/MSIX, Android/APK e macOS/iOS sem assinatura.
 
 Riscos: ferramentas ausentes, pacote sem suporte Windows ou cache local inconsistente. Mitigação: prova do ambiente na primeira task, versões fixadas e testes de migração/atomicidade.

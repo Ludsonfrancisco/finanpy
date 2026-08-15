@@ -56,6 +56,7 @@ Future<void> main() async {
     api: DjangoSyncApi(sessionTransport),
     ledger: DriftLocalLedger(database),
     sessionAuthority: sessionAuthority,
+    onSessionExpired: controller.expireSession,
   );
   final homeRepository = DriftHomeRepository(database);
   runApp(

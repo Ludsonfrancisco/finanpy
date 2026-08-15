@@ -24,6 +24,7 @@ const benchmarkIterationCount = 10;
 const benchmarkAcceptance = Duration(seconds: 2);
 
 Future<void> main() async {
+  final launchStopwatch = Stopwatch()..start();
   WidgetsFlutterBinding.ensureInitialized();
   if (kDebugMode) {
     stderr.writeln(
@@ -44,13 +45,15 @@ Future<void> main() async {
     '${Directory.systemTemp.path}${Platform.pathSeparator}'
     'lar_finance_task9_benchmark.sqlite',
   );
-  if (databaseFile.existsSync()) databaseFile.deleteSync();
-  final dataset = buildBenchmarkDataset(benchmarkDate);
-  await seedBenchmarkDatabase(databaseFile, dataset, benchmarkDate);
+  if (!databaseFile.existsSync()) {
+    final dataset = buildBenchmarkDataset(benchmarkDate);
+    await seedBenchmarkDatabase(databaseFile, dataset, benchmarkDate);
+  }
   runApp(
     _BenchmarkApplication(
       databaseFile: databaseFile,
       benchmarkDate: benchmarkDate,
+      launchStopwatch: launchStopwatch,
     ),
   );
 }
@@ -238,17 +241,19 @@ final class _BenchmarkApplication extends StatefulWidget {
   const _BenchmarkApplication({
     required this.databaseFile,
     required this.benchmarkDate,
+    required this.launchStopwatch,
   });
 
   final File databaseFile;
   final DateTime benchmarkDate;
+  final Stopwatch launchStopwatch;
 
   @override
   State<_BenchmarkApplication> createState() => _BenchmarkApplicationState();
 }
 
 final class _BenchmarkApplicationState extends State<_BenchmarkApplication> {
-  Widget _home = const _BenchmarkProgress(iteration: 0);
+  Widget _home = const _BenchmarkProgress();
   bool _started = false;
 
   @override
@@ -268,96 +273,55 @@ final class _BenchmarkApplicationState extends State<_BenchmarkApplication> {
   Future<void> _run() async {
     if (_started) return;
     _started = true;
-    final samples = <Duration>[];
-    for (var iteration = 0; iteration < benchmarkIterationCount; iteration++) {
-      if (!mounted) return;
-      final stopwatch = Stopwatch()..start();
-      final database = AppDatabase(NativeDatabase(widget.databaseFile));
-      final syncState = SyncState(retry: () async => SyncResult.current)
-        ..markCurrent(widget.benchmarkDate.toUtc());
-      final controller = HomeController(
-        repository: DriftHomeRepository(database),
-        syncState: syncState,
-        now: () => widget.benchmarkDate,
-      );
-      final populatedFrame = Completer<void>();
-      var frameScheduled = false;
-      void onHomeChanged() {
-        if (frameScheduled || controller.state.snapshot == null) return;
-        frameScheduled = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!populatedFrame.isCompleted) populatedFrame.complete();
-        });
-      }
-
-      controller.addListener(onHomeChanged);
-      setState(() => _home = HomeScreen(controller: controller));
-      await populatedFrame.future.timeout(const Duration(seconds: 20));
-      stopwatch.stop();
-      samples.add(stopwatch.elapsed);
-
-      setState(() => _home = _BenchmarkProgress(iteration: iteration + 1));
-      await WidgetsBinding.instance.endOfFrame;
-      controller.removeListener(onHomeChanged);
-      controller.dispose();
-      syncState.dispose();
-      await database.close();
+    if (!mounted) return;
+    final database = AppDatabase(NativeDatabase(widget.databaseFile));
+    final syncState = SyncState(retry: () async => SyncResult.current)
+      ..markCurrent(widget.benchmarkDate.toUtc());
+    final controller = HomeController(
+      repository: DriftHomeRepository(database),
+      syncState: syncState,
+      now: () => widget.benchmarkDate,
+    );
+    final populatedFrame = Completer<void>();
+    var frameScheduled = false;
+    void onHomeChanged() {
+      if (frameScheduled || controller.state.snapshot == null) return;
+      frameScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!populatedFrame.isCompleted) populatedFrame.complete();
+      });
     }
 
-    final summary = summarizeBenchmark(samples);
-    final output = <String, Object?>{
-      ...summary.toJson(samples: samples),
-      'accounts': benchmarkAccountCount,
-      'categories': benchmarkCategoryCount,
-      'transactions': benchmarkTransactionCount,
-      'build_mode': kReleaseMode ? 'release' : 'profile',
-      'flutter_version': const String.fromEnvironment(
-        'LAR_FINANCE_FLUTTER_VERSION',
-        defaultValue: 'not supplied',
-      ),
-      'operating_system': Platform.operatingSystemVersion,
-      'processors': Platform.numberOfProcessors,
-    };
-    stdout.writeln('LAR_FINANCE_BENCHMARK=${jsonEncode(output)}');
-    if (mounted) {
-      setState(
-        () => _home = _BenchmarkResult(summary: summary, samples: samples),
-      );
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    exit(summary.accepted ? 0 : 1);
+    controller.addListener(onHomeChanged);
+    setState(() => _home = HomeScreen(controller: controller));
+    await populatedFrame.future.timeout(const Duration(seconds: 20));
+    widget.launchStopwatch.stop();
+    final marker = File(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}'
+      'lar_finance_task9_benchmark.ready.json',
+    );
+    await marker.writeAsString(
+      jsonEncode(<String, Object?>{
+        'ready': true,
+        'process_id': pid,
+        'internal_us': widget.launchStopwatch.elapsedMicroseconds,
+      }),
+      flush: true,
+    );
+    controller.removeListener(onHomeChanged);
+    controller.dispose();
+    syncState.dispose();
+    await database.close();
+    exit(0);
   }
 }
 
 final class _BenchmarkProgress extends StatelessWidget {
-  const _BenchmarkProgress({required this.iteration});
-
-  final int iteration;
+  const _BenchmarkProgress();
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Center(
-      child: Text('Benchmark warm-cache: $iteration/$benchmarkIterationCount'),
-    ),
-  );
-}
-
-final class _BenchmarkResult extends StatelessWidget {
-  const _BenchmarkResult({required this.summary, required this.samples});
-
-  final BenchmarkSummary summary;
-  final List<Duration> samples;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Center(
-      child: Text(
-        'Mediana ${summary.median.inMilliseconds} ms · '
-        'p95 ${summary.p95.inMilliseconds} ms · '
-        '${summary.accepted ? 'ACEITO' : 'REPROVADO'}',
-      ),
-    ),
-  );
+  Widget build(BuildContext context) =>
+      Scaffold(body: Center(child: Text('Preparando Home do benchmark')));
 }
 
 String _syntheticUuid(int family, int index) =>

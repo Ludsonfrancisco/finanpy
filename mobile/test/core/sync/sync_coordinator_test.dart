@@ -85,6 +85,30 @@ void main() {
     });
 
     test(
+      'session expiry invalidates authentication and preserves cache',
+      () async {
+        await _seedBootstrap(ledger, bootstrap);
+        var expirations = 0;
+        final coordinator = _coordinator(
+          ledger,
+          _FakeSyncApi(changeError: const SessionExpired()),
+          onSessionExpired: () => expirations++,
+        );
+
+        final result = await coordinator.synchronize();
+
+        expect(result, SyncResult.failed);
+        expect(expirations, 1);
+        expect(
+          await database.select(database.transactions).get(),
+          hasLength(3),
+        );
+        expect((await ledger.readSyncMetadata())?.cursor, bootstrap.cursor);
+        expect(coordinator.lastSuccessfulSession, isNull);
+      },
+    );
+
+    test(
       'preserves prior snapshot and cursor when replacement fails',
       () async {
         await ledger.replaceBootstrap(
@@ -700,6 +724,7 @@ LedgerSyncCoordinator _coordinator(
   LocalLedger ledger,
   SyncApi api, {
   SessionAuthority? sessionAuthority,
+  void Function()? onSessionExpired,
 }) {
   return LedgerSyncCoordinator(
     api: api,
@@ -707,6 +732,7 @@ LedgerSyncCoordinator _coordinator(
     sessionAuthority:
         sessionAuthority ??
         SessionAuthority.forStore(_MemoryTokenStore(_tokens())),
+    onSessionExpired: onSessionExpired,
     now: () => DateTime.utc(2026, 8, 14, 14),
   );
 }

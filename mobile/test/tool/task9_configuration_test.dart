@@ -34,6 +34,17 @@ void main() {
     expect(workflow, contains('flutter build apk --release'));
     expect(workflow, contains('flutter build ios --release --no-codesign'));
     expect(
+      workflow,
+      contains(
+        'flutter test integration_test/auth_sync_home_test.dart -d windows',
+      ),
+    );
+    expect(
+      'https://financeiro.palmbook.online/api/v1'.allMatches(workflow),
+      hasLength(3),
+    );
+    expect(workflow, isNot(contains('https://example.invalid/api/v1')));
+    expect(
       'flutter test --exclude-tags=golden'.allMatches(workflow),
       hasLength(2),
     );
@@ -73,5 +84,30 @@ void main() {
 
     expect(rootIgnore, contains('!/mobile/windows/runner/runner.exe.manifest'));
     expect(File('windows/runner/runner.exe.manifest').existsSync(), isTrue);
+  });
+
+  test('Android release manifest grants Internet access', () {
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+
+    expect(
+      manifest,
+      contains('<uses-permission android:name="android.permission.INTERNET"/>'),
+    );
+  });
+
+  test('Windows benchmark measures ten complete process launches', () {
+    final harness = File(
+      'tool/run_windows_home_benchmark.ps1',
+    ).readAsStringSync();
+    final application = File('tool/benchmark_home.dart').readAsStringSync();
+
+    expect(harness, contains('Start-Process'));
+    expect(harness, contains(r'$iterationCount = 10'));
+    expect(harness, contains('build windows --profile'));
+    expect(harness, contains('median_ms'));
+    expect(application, contains('lar_finance_task9_benchmark.ready.json'));
+    expect(application, isNot(contains('for (var iteration = 0;')));
   });
 }
