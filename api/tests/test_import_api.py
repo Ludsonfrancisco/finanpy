@@ -67,9 +67,10 @@ class ImportApiTest(TestCase):
                 'is_repeated_file',
             },
         )
-        self.assertEqual(body['status'], ImportBatch.NEEDS_ACCOUNT_LINK)
+        self.assertEqual(body['status'], ImportBatch.PREVIEW_READY)
         self.assertTrue(body['expires_at'].endswith('Z'))
-        self.assertIsNone(body['account_uuid'])
+        self.assertIsNotNone(body['account_uuid'])
+        self.assertEqual(body['financial_owner_uuid'], str(self.owner.uuid))
         serialized = repr(body)
         for forbidden in (
             'synthetic-account-001',
@@ -86,6 +87,17 @@ class ImportApiTest(TestCase):
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.json()['uuid'], batch_uuid)
 
+        batch = ImportBatch.objects.get(uuid=batch_uuid)
+        batch.account.import_account_links.filter(
+            household=self.household,
+            provider='nubank',
+            product_type='bank_account',
+        ).delete()
+        ImportBatch.objects.filter(pk=batch.pk).update(
+            account=None,
+            financial_owner=None,
+            status=ImportBatch.NEEDS_ACCOUNT_LINK,
+        )
         bound = self.client.post(
             self._bind_url(batch_uuid),
             {'account_uuid': str(self.account.uuid)},
@@ -116,13 +128,6 @@ class ImportApiTest(TestCase):
 
     def test_sqlite_contention_returns_stable_domain_error_instead_of_500(self):
         batch_uuid = self._preview().json()['uuid']
-        bound = self.client.post(
-            self._bind_url(batch_uuid),
-            {'account_uuid': str(self.account.uuid)},
-            content_type='application/json',
-            **self.auth,
-        )
-        self.assertEqual(bound.status_code, 200)
 
         with patch(
             'api.import_views.confirm_preview',
