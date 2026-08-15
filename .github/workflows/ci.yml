@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - codex/sprint-4-flutter-foundation
 
 permissions:
   contents: read
@@ -87,8 +88,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: "false"
 
-  flutter:
-    name: Flutter checks
+  flutter_checks:
+    name: Flutter format, analyze, and tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -99,7 +100,7 @@ jobs:
       - name: Read pinned Flutter version
         id: flutter-version
         shell: bash
-        run: echo "version=$(python -c 'import json; print(json.load(open("tool/flutter-version.json"))["frameworkVersion"])')" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(jq -r '.frameworkVersion' tool/flutter-version.json)" >> "$GITHUB_OUTPUT"
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -110,3 +111,94 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test
+
+  flutter_windows:
+    name: Flutter Windows release and MSIX
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Read pinned Flutter version
+        id: flutter-version
+        shell: pwsh
+        run: |
+          $version = (Get-Content tool/flutter-version.json | ConvertFrom-Json).frameworkVersion
+          "version=$version" >> $env:GITHUB_OUTPUT
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter-version.outputs.version }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release --dart-define=LAR_FINANCE_API_BASE_URL=https://example.invalid/api/v1
+      - run: dart run msix:create --install-certificate false
+      - name: Create MSIX SHA-256
+        shell: pwsh
+        run: |
+          $msix = Get-ChildItem -Path build -Filter *.msix -Recurse | Select-Object -First 1
+          if ($null -eq $msix) { throw "MSIX artifact was not created." }
+          $hash = (Get-FileHash -LiteralPath $msix.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($msix.Name)" | Set-Content -Encoding ascii build/msix-sha256.txt
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lar-finance-windows-msix-${{ github.sha }}
+          path: |
+            mobile/build/**/*.msix
+            mobile/build/msix-sha256.txt
+          if-no-files-found: error
+
+  flutter_android:
+    name: Flutter Android release APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Read pinned Flutter version
+        id: flutter-version
+        shell: bash
+        run: echo "version=$(jq -r '.frameworkVersion' tool/flutter-version.json)" >> "$GITHUB_OUTPUT"
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter-version.outputs.version }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build apk --release --dart-define=LAR_FINANCE_API_BASE_URL=https://example.invalid/api/v1
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lar-finance-android-apk-${{ github.sha }}
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+  flutter_ios:
+    name: Flutter iOS no-codesign build and tests
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Read pinned Flutter version
+        id: flutter-version
+        shell: bash
+        run: echo "version=$(jq -r '.frameworkVersion' tool/flutter-version.json)" >> "$GITHUB_OUTPUT"
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter-version.outputs.version }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test
+      - run: flutter build ios --release --no-codesign --dart-define=LAR_FINANCE_API_BASE_URL=https://example.invalid/api/v1

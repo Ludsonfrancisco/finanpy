@@ -1,14 +1,14 @@
 # Lar Finance — PRD do estado atual e evolução do produto
 
-> Fonte única de verdade do produto. Atualizado em 13/08/2026 a partir da branch
-> `main`, após o piloto OFX Nubank, configuração Docker, direção Casa de Valores e
-> validação real já registrada no EasyPanel/R2.
+> Fonte única de verdade do produto. Atualizado em 14/08/2026 após a validação
+> local da fundação Flutter; produção permanece no estado EasyPanel/R2 já
+> registrado, sem deploy da Sprint 4.
 
 ## Status e convenções
 
 - **Nome oficial:** Lar Finance.
 - **Nome técnico legado:** Finanpy, mantido temporariamente no repositório, módulos Django e implantação até uma migração segura.
-- **Estado atual:** aplicação web Django privada, com Lar compartilhado, membros, responsáveis financeiros, contas, categorias, transações, dashboard consolidado, API privada v1 com sincronização incremental e piloto OFX Nubank de prévia/confirmação.
+- **Estado atual:** aplicação web Django privada e cliente Flutter somente leitura, com Lar compartilhado, responsáveis financeiros, API privada v1, sincronização incremental, cache offline, Home Casa de Valores e piloto OFX Nubank de prévia/confirmação.
 - **Produto alvo:** aplicativo Flutter para iOS, Android e Windows, sincronizado com o backend Django no servidor Linux/EasyPanel.
 - **Estratégia de dados aprovada:** importação de arquivos primeiro; integração paga automática somente após o produto estar maduro e em uso.
 - **Usuários do produto:** uma família no mesmo Lar, com um único login compartilhado nesta fase. Cada dispositivo terá sessão própria e revogável. O domínio mantém credenciais de acesso separadas dos responsáveis financeiros `Eu`, `Esposa` e `Conjunto`, permitindo dois logins no futuro sem migrar o ledger.
@@ -107,22 +107,27 @@ flowchart LR
 | Container | Docker multi-stage + Docker Compose | arquivos raiz |
 | Produção informada | Linux em EasyPanel, servidor doméstico | informação do proprietário; configuração externa não versionada `[INVESTIGAR]` |
 
-Nenhuma dependência Flutter, PostgreSQL, fila ou provedor financeiro está presente. A API REST privada usa Django REST Framework. Há parser OFX interno e restrito ao piloto Nubank; CSV e demais fontes não foram implementados.
+Flutter está instalado no workspace `mobile/`; PostgreSQL, fila e provedor
+financeiro continuam ausentes. A API REST privada usa Django REST Framework. Há
+parser OFX interno e restrito ao piloto Nubank; CSV e demais fontes não foram
+implementados.
 
-### 3.2 Stack alvo, ainda não instalada
+### 3.2 Stack cliente e direções ainda pendentes
 
 | Camada | Direção | Estado |
 |---|---|---|
-| Cliente | Flutter, um código-base para iOS, Android e Windows | aprovado; versão exata será fixada na primeira task da Sprint 4 `[INVESTIGAR]` |
+| Cliente | Flutter 3.47.0 stable e Dart 3.13.0, um código-base para iOS, Android e Windows | workspace e lockfile entregues na Sprint 4; Windows/Android locais comprovados, iOS aguarda CI macOS |
 | Backend | Django preservado e transformado em API versionada | API v1 entregue na Sprint 2 |
 | API | Django REST Framework 3.17.1 | entregue na Sprint 2 |
 | Banco servidor | PostgreSQL | aprovado como direção; versão/imagem EasyPanel `[INVESTIGAR]` |
-| Banco local | SQLite com camada reativa e fila de sincronização | aprovado; pacote `[INVESTIGAR]` |
-| Autenticação | login familiar único; token opaco e renovação rotativa por dispositivo | backend entregue: access 15 minutos, refresh 30 dias; storage seguro no cliente ainda não existe |
+| Banco local | SQLite com Drift 2.34.3/drift_flutter 0.3.1 e pull atômico | entregue na Sprint 4; nenhuma escrita offline |
+| Autenticação | login familiar único; token opaco e renovação rotativa por dispositivo | backend e cliente entregues; tokens no secure storage nativo, dados financeiros no Drift |
 | Importação | OFX Nubank de conta/cartão; CSV/PDF/XLSX por adaptadores futuros | piloto OFX entregue |
 | Automação futura | adaptador de provedor, inicialmente candidato Pierre | contratação e suporte a dois CPFs `[INVESTIGAR]` |
 
-Não há versões exatas para componentes ainda não adicionados ao repositório. Inventá-las agora violaria a política de evidência; a primeira task da Sprint 4 cria o lockfile e registra as versões escolhidas.
+Versões do cliente são fixadas em `mobile/tool/flutter-version.json`,
+`mobile/pubspec.yaml` e `mobile/pubspec.lock`. Componentes ainda ausentes, como
+PostgreSQL, continuam sem versão inventada.
 
 ## 4. Arquitetura
 
@@ -242,7 +247,10 @@ O prefixo entregue é `/api/v1/`, com 21 rotas para health, login/refresh/logout
 
 Access tokens duram 15 minutos e refresh tokens 30 dias; ambos são opacos, rotacionados e persistidos somente como digest. Login usa throttle de 5/minuto e refresh 30/minuto. Push aceita de 1 a 100 operações idempotentes com versão otimista e retorna resultados/estado/versão sem cursor. O cliente preserva o cursor anterior e só o avança com o cursor de um pull bem-sucedido, após aplicar atomicamente a página; cada pull retorna até 100 mudanças e tombstones após cursor assinado vinculado ao Lar.
 
-Instituições, cartões/faturas completos, transferências, tags, recorrências, orçamentos/metas, empréstimos, investimentos/patrimônio, CSV/outros bancos e conciliação continuam fora da API atual. O app Flutter não existe e não consome estas rotas ainda.
+Instituições, cartões/faturas completos, transferências, tags, recorrências,
+orçamentos/metas, empréstimos, investimentos/patrimônio, CSV/outros bancos e
+conciliação continuam fora da API atual. O cliente Flutter consome autenticação,
+bootstrap, recursos de leitura e sync pull; não chama sync push nesta Sprint.
 
 ### 6.3 Comandos atuais
 
@@ -287,7 +295,7 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 | Resolvido operacionalmente | job nativo do EasyPanel incompatível com o volume Docker legado | perda de backups automáticos | scheduler supervisionado ativo usa a API do SQLite, confirma o objeto no R2, aplica retenção `14/8/12` e teve restart/idempotência/restauração comprovados em 2026-08-13 |
 | Alto `[INVESTIGAR]` | EasyPanel acompanha `main` sem digest de imagem selecionável registrado | rollback de código pode depender de rebuild de referência mutável | materializar e ensaiar rollback por digest/tag imutável |
 | Alto | SQLite com múltiplos clientes e sincronização futura | concorrência, lock e backup frágil | PostgreSQL incremental |
-| Resolvido no backend | API privada v1 e OpenAPI 1.0.0 entregues | Flutter ainda inexistente | manter testes de contrato e compatibilidade |
+| Resolvido no backend e cliente read-only | API privada v1/OpenAPI 1.0.0 e fundação Flutter entregues | escrita Flutter permanece fora do escopo | manter testes de contrato, integração sintética e compatibilidade |
 | Alto | modelo mistura cartão e conta | saldos/faturas incorretos | separar agregados antes da importação completa |
 | Resolvido no piloto | ausência de importação/deduplicação | trabalho manual e dados duplicados | pipeline OFX Nubank idempotente; outras fontes e auditoria de negócio permanecem pendentes |
 | Médio | documentação de arquitetura diz que só `/admin/` existe | onboarding e operação incorretos | documentação atualizada neste PRD |
@@ -310,10 +318,11 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-Na branch da Sprint 3, 454 testes Django passaram com 97% de
-cobertura (8.430 statements, 161 não cobertos). Ruff com a configuração oficial,
-warnings/deprecations, Django check, migrations check e deploy check estrito também
-passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de
+Na branch da Sprint 4, 461 testes Django passaram com 97% de cobertura (8.925
+statements, 228 não cobertos), e 178 testes Flutter mais uma jornada integrada
+Windows passaram. Ruff com a configuração oficial, warnings/deprecations,
+Django check, migrations check, deploy check estrito, format e análise Flutter
+também passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de
 refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI,
 observabilidade, migrations fresh/legadas/rollback/replay, backup consistente,
 gateway R2, retenção, scheduler, concorrência e logs sanitizados.
@@ -322,8 +331,8 @@ Sem cobertura comprovada:
 
 - rollback por digest imutável da imagem no EasyPanel real;
 - concorrência além da topologia suportada de uma réplica/um worker;
-- CSV/outros bancos, cartões/faturas completos, offline e Flutter, pois não existem;
-- armazenamento seguro e ciclo de tokens em um cliente mobile/desktop real;
+- CSV/outros bancos, cartões/faturas completos e escrita offline Flutter;
+- build iOS, até a primeira evidência do job macOS da CI;
 - testes end-to-end autenticados no EasyPanel; a prova atual cobre health e login
   público, processos, integridade e backup, sem navegar nos dados financeiros;
 - rate limit persistente de `POST /login/` e alertas externos de backup.
@@ -412,7 +421,8 @@ Offline-first:
 
 - GitHub Actions para lint, testes Django, migrations, segurança de dependências, testes Flutter e builds por plataforma.
 - Imagens do backend identificadas por commit e implantadas no EasyPanel com migração controlada.
-- Windows: pacote assinado/instalável `[INVESTIGAR certificado]`.
+- Windows: MSIX piloto gerado com certificado de teste; distribuição ainda exige
+  certificado privado compatível com `CN=Lar Finance Private`.
 - Android: distribuição privada primeiro; Play Store depois se fizer sentido `[INVESTIGAR conta e política]`.
 - iOS: instalação privada exige Apple Developer/TestFlight ou alternativa permitida; custo e método serão confirmados antes do Sprint de distribuição `[INVESTIGAR]`.
 - Segredos ficam no ambiente/secret store, nunca no repositório ou no app.
@@ -427,7 +437,7 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
   rate limit persistente, alertas e rollback por imagem imutável.
 - [x] Sprint 2: API v1, autenticação e contrato de sincronização — concluída após revisão independente final sem achados.
 - [x] Sprint 3: piloto OFX Nubank, deduplicação, prévia e confirmação atômica.
-- [ ] Sprint 4: fundação Flutter, Casa de Valores, login, storage seguro, sincronização, cache offline e Home real somente leitura.
+- [ ] Sprint 4: fundação Flutter local concluída; aguarda apenas evidência iOS da primeira CI macOS antes do fechamento integral.
 - [ ] Sprint 5: movimentações, contas, importação e rotina diária no Flutter.
 - [ ] Sprint 6: cartões, faturas, limites e parcelamentos.
 - [ ] Sprint 7: orçamento, recorrências, calendário e metas.
@@ -487,13 +497,12 @@ Pendentes:
 
 ## 21. Decisões pendentes `[INVESTIGAR]`
 
-- Design system final do Lar Finance, incluindo claro/escuro, paleta, tipografia, ícones e motion.
 - Arquivos reais exportados por cada instituição e campos disponíveis.
 - Titularidade exata das sete conexões e nomes dos cartões adicionais.
 - Política de retenção dos arquivos originais.
 - SLA doméstico, mecanismo de rollback por digest e rate limit persistente no
   EasyPanel/Cloudflare.
-- Versões/pacotes do Flutter, SQLite local e PostgreSQL.
+- Versão/imagem do PostgreSQL.
 - Estratégia de resolução de conflitos no cliente e retenção de tombstones.
 - Método/custo de distribuição privada no iPhone.
 - Cobertura, preço e regra familiar de Pierre no momento do piloto.

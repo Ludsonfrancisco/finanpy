@@ -15,6 +15,8 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
   manual entregue, com escopo, rollback e riscos explícitos.
 - [Sprint 4 — Fundação Flutter e Casa de Valores](superpowers/specs/2026-08-13-lar-finance-flutter-foundation-design.md):
   direção aprovada, escopo, arquitetura adaptativa e critérios de aceite.
+- [Entrega da Sprint 4 — Fundação Flutter](sprints/sprint-4-flutter-foundation.md):
+  evidências locais, performance, pacote piloto, limites e rollback.
 - [Backup automático no R2](sprints/automatic-r2-backup.md): configuração,
   operação, interpretação de resultados, restauração e rollback.
 

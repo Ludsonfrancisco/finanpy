@@ -49,6 +49,7 @@ dev_dependencies:
   build_runner: 2.15.3
   drift_dev: 2.34.5
   flutter_lints: 6.0.0
+  msix: 3.18.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -91,3 +92,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+msix_config:
+  display_name: Lar Finance
+  identity_name: online.palmbook.larfinance
+  publisher_display_name: Lar Finance
+  publisher: CN=Lar Finance Private
+  msix_version: 0.1.0.0
+  capabilities: internetClient
+  install_certificate: false

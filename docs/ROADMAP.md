@@ -141,22 +141,25 @@ Objetivo: instalar o primeiro cliente Flutter, provar login/sincronização/cach
 Especificação aprovada: [Fundação Flutter e Casa de Valores](superpowers/specs/2026-08-13-lar-finance-flutter-foundation-design.md).
 Plano técnico: [implementação da fundação Flutter](superpowers/plans/2026-08-13-lar-finance-flutter-foundation-implementation.md).
 
-- [ ] verificar/instalar Flutter, Android SDK e ferramentas Windows;
-- [ ] criar workspace com targets Windows/Android/iOS e fixar versões;
-- [ ] implementar arquitetura simples por features e repositories;
-- [ ] SQLite local com migrations e atualizações atômicas;
-- [ ] API client, timeout, refresh coordenado e retry controlado;
-- [ ] secure storage nativo para tokens;
-- [ ] login/logout e sessão por dispositivo;
-- [ ] sync inicial/incremental e estados offline/stale;
-- [ ] shell adaptativo e temas claro/escuro Casa de Valores;
-- [ ] Home real somente leitura com `Lar`/`Eu`/`Esposa`;
-- [ ] ocultar valores e proteção no app switcher quando suportado;
-- [ ] testes unitários, widget, golden e integração;
-- [ ] benchmark de abertura <2s com cache;
-- [ ] primeiro instalável Windows e builds de validação Android/iOS aplicáveis.
+- [x] verificar/instalar Flutter, Android SDK e ferramentas Windows;
+- [x] criar workspace com targets Windows/Android/iOS e fixar versões;
+- [x] implementar arquitetura simples por features e repositories;
+- [x] SQLite local com migrations e atualizações atômicas;
+- [x] API client, timeout, refresh coordenado e retry controlado;
+- [x] secure storage nativo para tokens;
+- [x] login/logout e sessão por dispositivo;
+- [x] sync inicial/incremental e estados offline/stale;
+- [x] shell adaptativo e temas claro/escuro Casa de Valores;
+- [x] Home real somente leitura com `Lar`/`Eu`/`Esposa`;
+- [x] ocultar valores e proteção no app switcher quando suportado;
+- [x] testes unitários, widget, golden e integração;
+- [x] benchmark de abertura <2s com cache;
+- [x] primeiro instalável Windows e build de validação Android;
+- [ ] build iOS no-codesign aguardando evidência macOS da primeira CI.
 
-Aceite: usuário entra, sincroniza, consulta a Home pelo cache offline e vê os mesmos dados ao acessar outro dispositivo; nenhuma escrita offline entra nesta sprint.
+Aceite local: usuário entra, sincroniza, consulta a Home pelo cache offline e
+retoma com delta; nenhuma escrita offline entra nesta sprint. Windows/Android
+estão comprovados localmente; iOS permanece pendente até a CI macOS.
 
 Riscos: ferramentas ausentes, pacote sem suporte Windows ou cache local inconsistente. Mitigação: prova do ambiente na primeira task, versões fixadas e testes de migração/atomicidade.
 

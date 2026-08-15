@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
@@ -135,14 +136,7 @@ const _spouseUuid = '20000000-0000-4000-8000-000000000002';
 final _syncedAt = DateTime(2026, 8, 14, 11);
 
 Future<void> _loadFixedGoldenFont() async {
-  final candidates = <String>[
-    r'C:\Windows\Fonts\segoeui.ttf',
-    '${Platform.environment['FLUTTER_ROOT'] ?? ''}${Platform.pathSeparator}bin${Platform.pathSeparator}cache${Platform.pathSeparator}artifacts${Platform.pathSeparator}material_fonts${Platform.pathSeparator}Roboto-Regular.ttf',
-  ];
-  final file = candidates
-      .map(File.new)
-      .where((item) => item.existsSync())
-      .first;
+  final file = _flutterMaterialFont('Roboto-Regular.ttf');
   final bytes = Uint8List.fromList(file.readAsBytesSync());
   final loader = FontLoader(_goldenFontFamily)
     ..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
@@ -150,11 +144,7 @@ Future<void> _loadFixedGoldenFont() async {
 }
 
 Future<void> _loadMaterialIcons() async {
-  final flutterRoot =
-      Platform.environment['FLUTTER_ROOT'] ?? r'C:\Users\ludso\develop\flutter';
-  final file = File(
-    '$flutterRoot${Platform.pathSeparator}bin${Platform.pathSeparator}cache${Platform.pathSeparator}artifacts${Platform.pathSeparator}material_fonts${Platform.pathSeparator}materialicons-regular.otf',
-  );
+  final file = _flutterMaterialFont('materialicons-regular.otf');
   final bytes = Uint8List.fromList(file.readAsBytesSync());
   final loader = FontLoader('MaterialIcons')
     ..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
@@ -162,12 +152,9 @@ Future<void> _loadMaterialIcons() async {
 }
 
 Future<void> _loadCupertinoIcons() async {
-  final pubCache = Platform.environment['LOCALAPPDATA'];
-  if (pubCache == null) {
-    throw StateError('LOCALAPPDATA is required for the golden font fixture.');
-  }
-  final file = File(
-    '$pubCache${Platform.pathSeparator}Pub${Platform.pathSeparator}Cache${Platform.pathSeparator}hosted${Platform.pathSeparator}pub.dev${Platform.pathSeparator}cupertino_icons-1.0.9${Platform.pathSeparator}assets${Platform.pathSeparator}CupertinoIcons.ttf',
+  final file = _packageAsset(
+    packageName: 'cupertino_icons',
+    assetPath: 'assets/CupertinoIcons.ttf',
   );
   final bytes = Uint8List.fromList(file.readAsBytesSync());
   final effectiveFamily = const TextStyle(
@@ -177,6 +164,48 @@ Future<void> _loadCupertinoIcons() async {
   final loader = FontLoader(effectiveFamily)
     ..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
   await loader.load();
+}
+
+File _flutterMaterialFont(String name) {
+  final configuredRoot = Platform.environment['FLUTTER_ROOT'];
+  final inferredRoot = File(
+    Platform.resolvedExecutable,
+  ).parent.parent.parent.parent.parent.path;
+  final root = configuredRoot == null || configuredRoot.isEmpty
+      ? inferredRoot
+      : configuredRoot;
+  final file = File(
+    '$root${Platform.pathSeparator}bin${Platform.pathSeparator}cache'
+    '${Platform.pathSeparator}artifacts${Platform.pathSeparator}material_fonts'
+    '${Platform.pathSeparator}$name',
+  );
+  if (!file.existsSync()) {
+    throw StateError('Flutter golden font not found: ${file.path}');
+  }
+  return file;
+}
+
+File _packageAsset({required String packageName, required String assetPath}) {
+  final packageConfig = File('.dart_tool/package_config.json');
+  final decoded = jsonDecode(packageConfig.readAsStringSync());
+  final packages = (decoded as Map<String, Object?>)['packages'];
+  if (packages is! List) {
+    throw StateError('Invalid Dart package configuration.');
+  }
+  final package = packages.cast<Map>().singleWhere(
+    (candidate) => candidate['name'] == packageName,
+  );
+  final rootUri = package['rootUri'];
+  if (rootUri is! String) {
+    throw StateError('Package $packageName has no root URI.');
+  }
+  final normalizedRootUri = rootUri.endsWith('/') ? rootUri : '$rootUri/';
+  final resolvedRoot = packageConfig.parent.uri.resolve(normalizedRootUri);
+  final file = File.fromUri(resolvedRoot.resolve(assetPath));
+  if (!file.existsSync()) {
+    throw StateError('Package asset not found: ${file.path}');
+  }
+  return file;
 }
 
 final class _GoldenFixture {

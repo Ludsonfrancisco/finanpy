@@ -15,10 +15,13 @@ modernização incremental.
 - SQLite persistido em `/app/data/db.sqlite3` no container;
 - backup R2 diário ativo em produção, com agenda supervisionada, retenção
   `14/8/12`, idempotência após restart e restauração isolada comprovada;
-- 454 testes e 97% de cobertura; gate mínimo de 90%;
+- 461 testes Django e 97% de cobertura; 178 testes Flutter e uma jornada de
+  integração local; gate backend mínimo de 90%;
 - cadastro público removido;
 - piloto de importação manual OFX Nubank de conta/cartão, com prévia, confirmação
-  explícita, deduplicação e sincronização; aplicativo Flutter ainda não implementado.
+  explícita, deduplicação e sincronização;
+- cliente Flutter somente leitura com login, cache offline, sincronização pull,
+  Home Casa de Valores e builds locais Windows/Android comprovados.
 
 O backend será preservado e evoluído por sprints. Não há proposta de rewrite
 total.
@@ -38,6 +41,7 @@ total.
 - [Sprint 1 — Household Ledger](docs/sprints/sprint-1-household-ledger.md)
 - [Sprint 2 — API privada e sincronização](docs/sprints/sprint-2-api-sync.md)
 - [Sprint 3 — Importação OFX Nubank](docs/sprints/sprint-3-ofx-import.md)
+- [Sprint 4 — Fundação Flutter e Home Casa de Valores](docs/sprints/sprint-4-flutter-foundation.md)
 
 ## Acesso privado e criação do Lar
 
@@ -89,8 +93,8 @@ tokens são opacos, rotacionados e persistidos somente como digest. Login aceita
 Também há cinco rotas privadas de importação OFX Nubank: criar e consultar
 prévia, vincular conta, confirmar e cancelar. O arquivo é limitado a 10 MiB,
 descartado após normalização e só cria lançamentos depois da confirmação. Veja
-[a documentação de importação](docs/imports-and-sync.md). Não existe cliente
-Flutter nesta Sprint.
+[a documentação de importação](docs/imports-and-sync.md). O cliente Flutter da
+Sprint 4 consome somente leitura e não chama `/sync/push/`.
 
 ## Desenvolvimento local
 
@@ -103,6 +107,17 @@ cp .env.example .env
 # Ajuste SQLITE_PATH para um caminho absoluto válido nesta máquina.
 python manage.py migrate
 python manage.py runserver
+```
+
+O cliente fica em `mobile/`. Flutter 3.47.0 está fixado em
+`mobile/tool/flutter-version.json`:
+
+```bash
+cd mobile
+flutter pub get
+flutter analyze
+flutter test
+flutter run --dart-define=LAR_FINANCE_API_BASE_URL=https://seu-host/api/v1
 ```
 
 ## Backup e auditoria
