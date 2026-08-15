@@ -94,6 +94,9 @@ o MSIX tem 14.904.294 bytes e SHA-256
 ## Rollback
 
 Para reverter somente a Task 9, reverta
-`06ea7234074fb2fbbabc70720e7b32c120726e65..HEAD`. Para toda a Sprint 4, reverta
-`31552fa..HEAD`, incluindo o fallback compatível do login no backend. Não houve
+`06ea7234074fb2fbbabc70720e7b32c120726e65..b1d3b6c6e327450d7e49757341211da82121ea4b`.
+Para toda a Sprint 4 funcional, reverta
+`31552fa16911973424b5c1902b14d885ebe2866c..b1d3b6c6e327450d7e49757341211da82121ea4b`,
+incluindo o fallback compatível do login no backend. O commit documental
+`0df688a9a69c78f496652330ae882d66d55f380f` não altera runtime. Não houve
 migration, deploy ou alteração externa de dados nesta Task 9.

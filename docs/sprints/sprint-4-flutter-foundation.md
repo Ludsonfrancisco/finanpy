@@ -76,10 +76,13 @@ de login do backend para aceitar o responsável `self` implícito, sem migration
 a Task 9 alterou somente cliente, CI, testes e documentação.
 
 Para rollback apenas da Task 9, reverta os commits no intervalo
-`06ea7234074fb2fbbabc70720e7b32c120726e65..HEAD`. Para rollback integral da
-Sprint 4, use o intervalo `31552fa..HEAD` e coordene também a reversão da
-compatibilidade de login no backend. Nenhum dos dois procedimentos desfaz
-deploy, migration ou dado externo porque essas operações não ocorreram.
+`06ea7234074fb2fbbabc70720e7b32c120726e65..b1d3b6c6e327450d7e49757341211da82121ea4b`.
+Para rollback funcional integral da Sprint 4, use
+`31552fa16911973424b5c1902b14d885ebe2866c..b1d3b6c6e327450d7e49757341211da82121ea4b`
+e coordene também a reversão da compatibilidade de login no backend. O commit
+`0df688a9a69c78f496652330ae882d66d55f380f` e seus sucessores desta revisão
+alteram somente documentação. Nenhum procedimento desfaz deploy, migration ou
+dado externo porque essas operações não ocorreram.
 
 O relatório detalhado e a matriz de gates estão em
 [`sprint-4-task-9-report.md`](sprint-4-task-9-report.md).
