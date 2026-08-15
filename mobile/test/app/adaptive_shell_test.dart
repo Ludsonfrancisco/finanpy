@@ -90,7 +90,7 @@ void main() {
       find.byType(MaterialApp),
       matchesGoldenFile('../goldens/casa_de_valores_dark.png'),
     );
-  });
+  }, tags: 'golden');
 
   testWidgets('Casa de Valores desktop shell is stable in light mode', (
     tester,
@@ -104,7 +104,7 @@ void main() {
       find.byType(MaterialApp),
       matchesGoldenFile('../goldens/casa_de_valores_light.png'),
     );
-  });
+  }, tags: 'golden');
 }
 
 Widget _goldenApp(ThemeData theme) => MaterialApp(

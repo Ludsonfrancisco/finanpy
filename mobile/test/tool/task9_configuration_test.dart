@@ -33,6 +33,11 @@ void main() {
     );
     expect(workflow, contains('flutter build apk --release'));
     expect(workflow, contains('flutter build ios --release --no-codesign'));
+    expect(
+      'flutter test --exclude-tags=golden'.allMatches(workflow),
+      hasLength(2),
+    );
+    expect(workflow, contains('flutter test --tags=golden'));
     expect('tool/flutter-version.json'.allMatches(workflow), hasLength(4));
     expect(workflow, isNot(contains('/sync/push/')));
     expect(workflow, isNot(contains('LAR_FINANCE_EMAIL')));
@@ -45,7 +50,28 @@ void main() {
     ).readAsStringSync();
 
     expect(goldenTest, contains('.dart_tool/package_config.json'));
+    expect(goldenTest, contains("_packageRoot('flutter')"));
+    expect(goldenTest, isNot(contains("environment['FLUTTER_ROOT']")));
     expect(goldenTest, isNot(contains("environment['LOCALAPPDATA']")));
     expect(goldenTest, isNot(contains(r'C:\Windows\Fonts')));
+  });
+
+  test('goldens are isolated to their canonical Windows renderer', () {
+    final homeGoldens = File(
+      'test/features/home/home_goldens_test.dart',
+    ).readAsStringSync();
+    final shellGoldens = File(
+      'test/app/adaptive_shell_test.dart',
+    ).readAsStringSync();
+
+    expect(homeGoldens, contains("tags: 'golden'"));
+    expect("tags: 'golden'".allMatches(shellGoldens), hasLength(2));
+  });
+
+  test('Windows runner manifest is committed despite the Python ignore', () {
+    final rootIgnore = File('../.gitignore').readAsStringSync();
+
+    expect(rootIgnore, contains('!/mobile/windows/runner/runner.exe.manifest'));
+    expect(File('windows/runner/runner.exe.manifest').existsSync(), isTrue);
   });
 }

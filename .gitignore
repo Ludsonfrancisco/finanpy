@@ -279,3 +279,4 @@ pyrightconfig.json
 /mobile/coverage/
 !/mobile/lib/
 !/mobile/lib/**
+!/mobile/windows/runner/runner.exe.manifest

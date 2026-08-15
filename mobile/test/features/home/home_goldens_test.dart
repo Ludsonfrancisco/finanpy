@@ -126,7 +126,7 @@ void main() {
         find.byType(MaterialApp),
         matchesGoldenFile(fixture.file),
       );
-    });
+    }, tags: 'golden');
   }
 }
 
@@ -167,25 +167,36 @@ Future<void> _loadCupertinoIcons() async {
 }
 
 File _flutterMaterialFont(String name) {
-  final configuredRoot = Platform.environment['FLUTTER_ROOT'];
-  final inferredRoot = File(
-    Platform.resolvedExecutable,
-  ).parent.parent.parent.parent.parent.path;
-  final root = configuredRoot == null || configuredRoot.isEmpty
-      ? inferredRoot
-      : configuredRoot;
-  final file = File(
-    '$root${Platform.pathSeparator}bin${Platform.pathSeparator}cache'
-    '${Platform.pathSeparator}artifacts${Platform.pathSeparator}material_fonts'
-    '${Platform.pathSeparator}$name',
+  final flutterRoot = _packageRoot('flutter').parent.parent;
+  final materialFonts = Directory(
+    '${flutterRoot.path}${Platform.pathSeparator}bin'
+    '${Platform.pathSeparator}cache${Platform.pathSeparator}artifacts'
+    '${Platform.pathSeparator}material_fonts',
   );
+  final matches = materialFonts
+      .listSync()
+      .whereType<File>()
+      .where(
+        (candidate) =>
+            candidate.uri.pathSegments.last.toLowerCase() == name.toLowerCase(),
+      )
+      .toList();
+  if (matches.length != 1) {
+    throw StateError('Flutter golden font not found: $name');
+  }
+  return matches.single;
+}
+
+File _packageAsset({required String packageName, required String assetPath}) {
+  final root = _packageRoot(packageName);
+  final file = File.fromUri(root.uri.resolve(assetPath));
   if (!file.existsSync()) {
-    throw StateError('Flutter golden font not found: ${file.path}');
+    throw StateError('Package asset not found: ${file.path}');
   }
   return file;
 }
 
-File _packageAsset({required String packageName, required String assetPath}) {
+Directory _packageRoot(String packageName) {
   final packageConfig = File('.dart_tool/package_config.json');
   final decoded = jsonDecode(packageConfig.readAsStringSync());
   final packages = (decoded as Map<String, Object?>)['packages'];
@@ -201,11 +212,11 @@ File _packageAsset({required String packageName, required String assetPath}) {
   }
   final normalizedRootUri = rootUri.endsWith('/') ? rootUri : '$rootUri/';
   final resolvedRoot = packageConfig.parent.uri.resolve(normalizedRootUri);
-  final file = File.fromUri(resolvedRoot.resolve(assetPath));
-  if (!file.existsSync()) {
-    throw StateError('Package asset not found: ${file.path}');
+  final directory = Directory.fromUri(resolvedRoot);
+  if (!directory.existsSync()) {
+    throw StateError('Package root not found: $packageName');
   }
-  return file;
+  return directory;
 }
 
 final class _GoldenFixture {
