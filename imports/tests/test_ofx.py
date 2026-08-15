@@ -1,3 +1,4 @@
+import re
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -13,6 +14,7 @@ from imports.ofx import (
 )
 
 FIXTURES_DIR = Path(__file__).parent / 'fixtures'
+_LINE_END = rb'\r?\n'
 
 
 class ParseNubankOfxTest(SimpleTestCase):
@@ -90,9 +92,8 @@ class ParseNubankOfxTest(SimpleTestCase):
         self.assertEqual(parsed.product_type, 'bank_account')
 
     def test_preserves_legacy_cp1252_header_without_encoding(self):
-        content = self._fixture_bytes('nubank-account.ofx').replace(
-            b'ENCODING:USASCII\n',
-            b'',
+        content = self._without_header(
+            self._fixture_bytes('nubank-account.ofx'), b'ENCODING:USASCII'
         )
 
         parsed = parse_nubank_ofx(content)
@@ -158,9 +159,9 @@ class ParseNubankOfxTest(SimpleTestCase):
                 parse_nubank_ofx(content)
 
     def test_does_not_accept_encoding_declaration_spoofed_inside_ofx_body(self):
-        content = self._fixture_bytes('nubank-account-utf8-none.ofx').replace(
-            b'ENCODING:UTF-8\n',
-            b'',
+        content = self._without_header(
+            self._fixture_bytes('nubank-account-utf8-none.ofx'),
+            b'ENCODING:UTF-8',
         )
         content = content.replace(
             b'<MEMO>Compra ',
@@ -239,6 +240,14 @@ class ParseNubankOfxTest(SimpleTestCase):
     @staticmethod
     def _fixture_bytes(name):
         return (FIXTURES_DIR / name).read_bytes()
+
+    @staticmethod
+    def _without_header(content, header):
+        """Drop a header line whatever line ending the checkout produced."""
+        stripped = re.sub(re.escape(header) + _LINE_END, b'', content)
+        if stripped == content:
+            raise AssertionError('The fixture has no such header line.')
+        return stripped
 
     @staticmethod
     def _transaction(**kwargs):
