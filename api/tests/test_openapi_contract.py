@@ -35,6 +35,7 @@ REQUIRED_SCHEMAS = {
     'SyncChange',
     'DeltaPage',
     'ImportBatch',
+    'ImportRecordPreview',
 }
 
 OPENAPI_HTTP_METHODS = {'get', 'post', 'put', 'patch', 'delete'}
@@ -279,3 +280,56 @@ class OpenApiContractTest(SimpleTestCase):
                 'description': 'Preview is actionable for at most 23 hours.',
             },
         )
+
+    def test_preview_pagination_is_documented_without_banking_identifiers(self):
+        detail = self.contract['paths']['/imports/{batch_uuid}/']['get']
+        parameters = {
+            parameter['name']: parameter for parameter in detail['parameters']
+        }
+
+        self.assertEqual(parameters['after']['schema'], {'type': 'integer', 'minimum': 0})
+        self.assertEqual(
+            parameters['limit']['schema'],
+            {'type': 'integer', 'minimum': 1, 'maximum': 100, 'default': 50},
+        )
+        self.assertEqual(
+            detail['responses']['400']['x-error-codes'], ['invalid_import_page']
+        )
+
+        batch_schema = self.contract['components']['schemas']['ImportBatch']
+        record_schema = self.contract['components']['schemas']['ImportRecordPreview']
+
+        for field in (
+            'record_count',
+            'pending_count',
+            'income_total',
+            'expense_total',
+            'records',
+            'next_cursor',
+        ):
+            with self.subTest(field=field):
+                self.assertIn(field, batch_schema['required'])
+                self.assertIn(field, batch_schema['properties'])
+        self.assertEqual(
+            batch_schema['properties']['records']['items'],
+            {'$ref': '#/components/schemas/ImportRecordPreview'},
+        )
+        self.assertEqual(
+            batch_schema['properties']['records']['maxItems'],
+            100,
+        )
+        self.assertEqual(
+            set(record_schema['properties']),
+            {
+                'uuid',
+                'posted_on',
+                'description',
+                'amount',
+                'transaction_type',
+                'outcome',
+            },
+        )
+        self.assertFalse(record_schema['additionalProperties'])
+        for forbidden in ('fitid', 'external_id', 'fingerprint', 'line_number'):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, json.dumps(record_schema).lower())

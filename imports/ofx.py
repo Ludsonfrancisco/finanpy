@@ -16,6 +16,9 @@ OFX_DATE_PATTERN = re.compile(
     r')?'
 )
 CP1252_CHARSETS = {b'1252', b'CP1252', b'WINDOWS-1252'}
+CP1252_ENCODINGS = {None, b'ASCII', b'USASCII'}
+UTF8_ENCODINGS = {b'UTF-8', b'UTF8'}
+UTF8_CHARSETS = {b'NONE', b'UTF-8', b'UTF8'}
 
 
 class OfxParseError(ValueError):
@@ -95,15 +98,27 @@ def _decode(content: bytes) -> str:
     try:
         if content.startswith(b'\xef\xbb\xbf'):
             return content.decode('utf-8-sig')
-        if b'<OFX>' not in content.upper():
+        ofx_start = content.upper().find(b'<OFX>')
+        if ofx_start < 0:
             return content.decode('cp1252')
-        charset_match = re.search(br'(?im)^CHARSET\s*:\s*([^\r\n]+)', content)
-        charset = charset_match.group(1).strip().upper() if charset_match else None
-        if charset not in CP1252_CHARSETS:
-            raise OfxParseError('OFX content has an unsupported encoding.')
-        return content.decode('cp1252')
+        header = content[:ofx_start]
+        encoding = _header_value(header, b'ENCODING')
+        charset = _header_value(header, b'CHARSET')
+        if encoding in UTF8_ENCODINGS and charset in UTF8_CHARSETS:
+            return content.decode('utf-8')
+        if encoding in CP1252_ENCODINGS and charset in CP1252_CHARSETS:
+            return content.decode('cp1252')
+        raise OfxParseError('OFX content has an unsupported encoding.')
     except UnicodeDecodeError as error:
         raise OfxParseError('OFX content has an unsupported encoding.') from error
+
+
+def _header_value(content: bytes, name: bytes) -> bytes | None:
+    match = re.search(
+        rb'(?im)^' + re.escape(name) + rb'\s*[:=]\s*([^\r\n]+)',
+        content,
+    )
+    return match.group(1).strip().upper() if match else None
 
 
 def _parse_ofx(text: str) -> ElementTree.Element:
@@ -142,6 +157,7 @@ def _parse_sgml(text: str) -> ElementTree.Element:
         'CCSTMTRS',
         'CCACCTFROM',
     }
+    pending_leaf_tag = None
 
     while position < len(text):
         tag_start = text.find('<', position)
@@ -156,13 +172,16 @@ def _parse_sgml(text: str) -> ElementTree.Element:
             continue
         if token.startswith('/'):
             closing_tag = token[1:].strip().upper()
-            while len(stack) > 1 and stack[-1].tag != closing_tag:
-                stack.pop()
-            if len(stack) == 1:
+            if pending_leaf_tag == closing_tag:
+                pending_leaf_tag = None
+                continue
+            pending_leaf_tag = None
+            if closing_tag not in container_tags or stack[-1].tag != closing_tag:
                 raise OfxParseError('OFX markup is malformed.')
             stack.pop()
             continue
 
+        pending_leaf_tag = None
         tag = token.split()[0].upper()
         element = ElementTree.SubElement(stack[-1], tag)
         if tag not in container_tags:
@@ -174,6 +193,7 @@ def _parse_sgml(text: str) -> ElementTree.Element:
                 value = text[position:next_tag]
                 position = next_tag
             element.text = value.strip()
+            pending_leaf_tag = tag
         else:
             stack.append(element)
 

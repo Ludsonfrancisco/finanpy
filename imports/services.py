@@ -8,14 +8,16 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, OperationalError, connection, transaction
-from django.db.models import Q
+from django.db import IntegrityError, OperationalError, connection, models, transaction
+from django.db.models import Count, Q, Sum, Value
+from django.db.models.functions import Abs, Coalesce
 from django.utils import timezone
 from filelock import FileLock, Timeout
 
 from accounts.models import Account
 from api.models import DeviceSession
 from categories.models import Category
+from households.models import FinancialOwner
 from sync.context import capture_sync_context
 from transactions.models import Transaction
 
@@ -47,6 +49,13 @@ PREVIEW_TTL = timedelta(hours=23)
 DEFAULT_IMPORT_LOCK_TIMEOUT_SECONDS = 5.0
 DEFAULT_IMPORT_LOCK_RETRIES = 3
 DEFAULT_IMPORT_LOCK_RETRY_DELAY_SECONDS = 0.05
+DEFAULT_ACCOUNT_SPECS = {
+    'bank_account': ('Nubank — Conta', Account.CHECKING),
+    'credit_card': ('Nubank — Cartão', Account.CREDIT),
+}
+DEFAULT_RECORD_PAGE_LIMIT = 50
+MAX_RECORD_PAGE_LIMIT = 100
+TOTAL_OUTPUT_FIELD = models.DecimalField(max_digits=14, decimal_places=2)
 
 
 def create_preview(*, household, device_session, content: bytes) -> ImportBatch:
@@ -67,31 +76,44 @@ def _create_preview(*, household, device_session, content: bytes) -> ImportBatch
 
     parsed = parse_nubank_ofx(content)
     file_sha256 = hashlib.sha256(content).hexdigest()
-    link = (
-        ImportAccountLink.objects.select_related('account__financial_owner')
-        .filter(
-            household=household,
-            provider='nubank',
-            product_type=parsed.product_type,
-            external_account_id=parsed.external_account_id,
-        )
-        .first()
-    )
-    repeated = ImportBatch.objects.filter(
-        household=household,
-        file_sha256=file_sha256,
-        status=ImportBatch.COMPLETED,
-    ).exists()
-    if link and not _account_is_compatible(parsed.product_type, link.account):
-        raise ImportStateError(
-            'The selected account is incompatible with this preview.'
-        )
     with transaction.atomic():
+        link = (
+            ImportAccountLink.objects.select_for_update()
+            .select_related('account__financial_owner')
+            .filter(
+                household=household,
+                provider='nubank',
+                product_type=parsed.product_type,
+                external_account_id=parsed.external_account_id,
+            )
+            .first()
+        )
+        if link is None:
+            account = _get_or_create_default_account(
+                household=household,
+                device_session=device_session,
+                product_type=parsed.product_type,
+            )
+            link = _get_or_create_account_link(
+                household=household,
+                account=account,
+                product_type=parsed.product_type,
+                external_account_id=parsed.external_account_id,
+            )
+        if not _account_is_compatible(parsed.product_type, link.account):
+            raise ImportStateError(
+                'The selected account is incompatible with this preview.'
+            )
+        repeated = ImportBatch.objects.filter(
+            household=household,
+            file_sha256=file_sha256,
+            status=ImportBatch.COMPLETED,
+        ).exists()
         batch = ImportBatch(
             household=household,
             device_session=device_session,
-            account=link.account if link else None,
-            financial_owner=link.account.financial_owner if link else None,
+            account=link.account,
+            financial_owner=link.account.financial_owner,
             provider='nubank',
             product_type=parsed.product_type,
             external_account_id=parsed.external_account_id,
@@ -99,9 +121,7 @@ def _create_preview(*, household, device_session, content: bytes) -> ImportBatch
             statement_start=parsed.statement_start,
             statement_end=parsed.statement_end,
             expires_at=timezone.now() + PREVIEW_TTL,
-            status=ImportBatch.PREVIEW_READY
-            if link or repeated
-            else ImportBatch.NEEDS_ACCOUNT_LINK,
+            status=ImportBatch.PREVIEW_READY,
             duplicate_count=len(parsed.transactions) if repeated else 0,
             is_repeated_file=repeated,
         )
@@ -112,12 +132,85 @@ def _create_preview(*, household, device_session, content: bytes) -> ImportBatch
             record = _record_from_parsed(
                 batch=batch, line_number=line_number, item=item
             )
-            if link:
-                _classify_record(record, link.account)
+            _classify_record(record, link.account)
             _save(record)
-        if link:
-            _update_counts(batch)
+        _update_counts(batch)
         return batch
+
+
+def _get_or_create_default_account(*, household, device_session, product_type):
+    try:
+        name, account_type = DEFAULT_ACCOUNT_SPECS[product_type]
+    except KeyError as error:
+        raise ImportStateError('Import product is unsupported.') from error
+    owner = (
+        FinancialOwner.objects.select_for_update()
+        .filter(
+            household=household,
+            type=FinancialOwner.SELF,
+            is_active=True,
+        )
+        .first()
+    )
+    if owner is None:
+        raise ImportStateError('Default financial owner is unavailable.')
+    candidates = list(
+        Account.objects.select_for_update()
+        .filter(
+            household=household,
+            financial_owner=owner,
+            name=name,
+            type=account_type,
+            currency='BRL',
+        )
+        .order_by('pk')[:2]
+    )
+    if len(candidates) > 1:
+        raise ImportStateError('Default import account is ambiguous.')
+    if candidates:
+        return candidates[0]
+    account = Account(
+        user=device_session.user,
+        household=household,
+        financial_owner=owner,
+        name=name,
+        type=account_type,
+        initial_balance=Decimal('0.00'),
+        currency='BRL',
+    )
+    with capture_sync_context(device_session=device_session, operation_id=None):
+        _save(account)
+    return account
+
+
+def _get_or_create_account_link(
+    *, household, account, product_type, external_account_id
+):
+    try:
+        with transaction.atomic():
+            link = ImportAccountLink(
+                household=household,
+                account=account,
+                provider='nubank',
+                product_type=product_type,
+                external_account_id=external_account_id,
+            )
+            _save(link)
+            return link
+    except IntegrityError:
+        link = (
+            ImportAccountLink.objects.select_related('account__financial_owner')
+            .filter(
+                household=household,
+                provider='nubank',
+                product_type=product_type,
+                external_account_id=external_account_id,
+            )
+            .first()
+        )
+        if link is None or link.account_id != account.id:
+            raise ImportStateError('Account link could not be created safely.')
+        return link
 
 
 def bind_preview_account(*, batch: ImportBatch, account: Account) -> ImportBatch:
@@ -303,6 +396,41 @@ def get_batch_for_household(*, household, batch_uuid) -> ImportBatch:
         raise ImportAccessError(
             'Import batch is not available for this household.'
         ) from error
+
+
+def read_preview_page(*, batch, after=None, limit=None) -> dict:
+    """Return one stable page of preview records with the totals of the batch."""
+    limit = DEFAULT_RECORD_PAGE_LIMIT if limit is None else limit
+    records = batch.records.order_by('line_number', 'pk')
+    if after is not None:
+        records = records.filter(line_number__gt=after)
+    page = list(records[: limit + 1])
+    next_cursor = None
+    if len(page) > limit:
+        page = page[:limit]
+        next_cursor = str(page[-1].line_number)
+    return {
+        **_summarize_records(batch),
+        'records': page,
+        'next_cursor': next_cursor,
+    }
+
+
+def _summarize_records(batch) -> dict:
+    return batch.records.aggregate(
+        record_count=Count('pk'),
+        pending_count=Count('pk', filter=Q(outcome=ImportRecord.PENDING)),
+        income_total=_absolute_total('income'),
+        expense_total=_absolute_total('expense'),
+    )
+
+
+def _absolute_total(transaction_type):
+    return Coalesce(
+        Sum(Abs('amount'), filter=Q(transaction_type=transaction_type)),
+        Value(Decimal('0.00')),
+        output_field=TOTAL_OUTPUT_FIELD,
+    )
 
 
 def purge_preview_records(*, now=None) -> int:

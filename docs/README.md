@@ -17,6 +17,8 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
   direção aprovada, escopo, arquitetura adaptativa e critérios de aceite.
 - [Entrega da Sprint 4 — Fundação Flutter](sprints/sprint-4-flutter-foundation.md):
   evidências locais, performance, pacote piloto, limites e rollback.
+- [Sprint 5 — Importação OFX no Flutter](sprints/sprint-5-ofx-flutter-import.md):
+  fluxo manual entregue no app, evidências, limites e validação real pendente.
 - [Backup automático no R2](sprints/automatic-r2-backup.md): configuração,
   operação, interpretação de resultados, restauração e rollback.
 

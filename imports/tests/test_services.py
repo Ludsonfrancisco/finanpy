@@ -37,7 +37,9 @@ from imports.services import (
 )
 from imports.tests.process_workers import (
     confirm_process,
+    create_preview_process,
     purge_process,
+    seed_auto_link_race_database,
     seed_process_database,
     wait_until_process_finishes,
 )
@@ -62,6 +64,183 @@ class ImportPreviewServiceTest(TestCase):
             self.other_device,
         ) = self._setup_household('other-preview@example.com')
 
+    def test_first_account_preview_creates_default_checking_account_owned_by_self(
+        self,
+    ):
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+
+        self.assertEqual(batch.status, ImportBatch.PREVIEW_READY)
+        self.assertEqual(batch.account.name, 'Nubank — Conta')
+        self.assertEqual(batch.account.type, Account.CHECKING)
+        self.assertEqual(batch.account.currency, 'BRL')
+        self.assertEqual(batch.account.initial_balance, Decimal('0.00'))
+        self.assertEqual(batch.financial_owner, self.owner)
+        self.assertEqual(batch.account.financial_owner, self.owner)
+        self.assertEqual(batch.created_count, 2)
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_first_card_preview_creates_credit_account_and_cancel_keeps_it(self):
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.card_content,
+        )
+        account_id = batch.account_id
+
+        cancelled = cancel_preview(batch=batch)
+
+        account = Account.objects.get(pk=account_id)
+        self.assertEqual(cancelled.status, ImportBatch.CANCELLED)
+        self.assertEqual(account.name, 'Nubank — Cartão')
+        self.assertEqual(account.type, Account.CREDIT)
+        self.assertEqual(account.financial_owner, self.owner)
+
+    def test_next_preview_reuses_link_and_does_not_duplicate_default_account(self):
+        first = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+
+        second = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content + b'\n',
+        )
+
+        self.assertEqual(second.account_id, first.account_id)
+        self.assertEqual(
+            Account.objects.filter(
+                household=self.household,
+                name='Nubank — Conta',
+                type=Account.CHECKING,
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            ImportAccountLink.objects.filter(
+                household=self.household,
+                provider='nubank',
+                product_type='bank_account',
+            ).count(),
+            1,
+        )
+
+    def test_unique_exact_existing_default_account_is_reused(self):
+        existing = Account.objects.create(
+            user=self.user,
+            household=self.household,
+            financial_owner=self.owner,
+            name='Nubank — Conta',
+            type=Account.CHECKING,
+            currency='BRL',
+            initial_balance=Decimal('10.00'),
+        )
+
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+
+        self.assertEqual(batch.account_id, existing.id)
+        self.assertEqual(batch.account.initial_balance, Decimal('10.00'))
+
+    def test_inactive_self_owner_fails_without_partial_state(self):
+        self.owner.is_active = False
+        self.owner.save(update_fields=['is_active'])
+
+        with self.assertRaises(ImportStateError):
+            create_preview(
+                household=self.household,
+                device_session=self.device,
+                content=self.content,
+            )
+
+        self.assertFalse(ImportBatch.objects.exists())
+        self.assertFalse(ImportAccountLink.objects.exists())
+        self.assertFalse(Account.objects.filter(name='Nubank — Conta').exists())
+
+    def test_missing_self_owner_fails_without_partial_state(self):
+        user, household, owner, account, device = self._setup_household(
+            'missing-owner@example.com'
+        )
+        shared = get_financial_owner(household, FinancialOwner.SHARED)
+        account.financial_owner = shared
+        account.save(update_fields=['financial_owner'])
+        device.default_owner = shared
+        device.save(update_fields=['default_owner'])
+        owner.delete()
+
+        with self.assertRaises(ImportStateError):
+            create_preview(
+                household=household,
+                device_session=device,
+                content=self.content,
+            )
+
+        self.assertFalse(ImportBatch.objects.filter(household=household).exists())
+        self.assertFalse(ImportAccountLink.objects.filter(household=household).exists())
+        self.assertFalse(
+            Account.objects.filter(household=household, name='Nubank — Conta').exists()
+        )
+
+    def test_ambiguous_existing_default_accounts_fail_instead_of_picking_one(self):
+        for suffix in ('A', 'B'):
+            Account.objects.create(
+                user=self.user,
+                household=self.household,
+                financial_owner=self.owner,
+                name='Nubank — Conta',
+                type=Account.CHECKING,
+                currency='BRL',
+                initial_balance=Decimal('1.00' if suffix == 'B' else '0.00'),
+            )
+
+        with self.assertRaises(ImportStateError):
+            create_preview(
+                household=self.household,
+                device_session=self.device,
+                content=self.content,
+            )
+
+        self.assertFalse(ImportBatch.objects.exists())
+        self.assertFalse(ImportAccountLink.objects.exists())
+
+    def test_created_default_account_emits_sync_change_for_import_device(self):
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+
+        change = SyncChange.objects.get(
+            entity_type='account',
+            entity_uuid=batch.account.uuid,
+        )
+        self.assertEqual(change.household, self.household)
+        self.assertEqual(change.device_session, self.device)
+
+    def test_same_source_in_another_household_creates_an_independent_account(self):
+        first = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content,
+        )
+        second = create_preview(
+            household=self.other_household,
+            device_session=self.other_device,
+            content=self.content,
+        )
+
+        self.assertNotEqual(first.account_id, second.account_id)
+        self.assertEqual(first.account.household, self.household)
+        self.assertEqual(second.account.household, self.other_household)
+
     def test_recognized_account_creates_preview_records_without_transactions(self):
         ImportAccountLink.objects.create(
             household=self.household,
@@ -85,48 +264,32 @@ class ImportPreviewServiceTest(TestCase):
         )
         self.assertFalse(hasattr(batch, 'raw_content'))
 
-    def test_unknown_account_requires_link_then_recalculates_outcomes(self):
+    def test_automatic_link_cannot_be_overwritten_by_manual_bind(self):
         batch = create_preview(
             household=self.household, device_session=self.device, content=self.content
         )
 
-        self.assertEqual(batch.status, ImportBatch.NEEDS_ACCOUNT_LINK)
-        self.assertIsNone(batch.account)
-        self.assertEqual(batch.records.count(), 2)
-        self.assertEqual(batch.created_count, 0)
-
-        batch = bind_preview_account(batch=batch, account=self.account)
-
         self.assertEqual(batch.status, ImportBatch.PREVIEW_READY)
-        self.assertEqual(batch.financial_owner, self.owner)
+        self.assertEqual(batch.account.name, 'Nubank — Conta')
+        self.assertEqual(batch.records.count(), 2)
         self.assertEqual(batch.created_count, 2)
-        self.assertTrue(
-            ImportAccountLink.objects.filter(
-                household=self.household,
-                account=self.account,
-                external_account_id='synthetic-account-001',
-            ).exists()
-        )
+        with self.assertRaises(ImportStateError):
+            bind_preview_account(batch=batch, account=self.account)
+        batch.refresh_from_db()
+        self.assertEqual(batch.account.name, 'Nubank — Conta')
 
-    def test_credit_card_preview_requires_credit_account(self):
+    def test_credit_card_preview_is_auto_linked_only_to_credit_account(self):
         batch = create_preview(
             household=self.household,
             device_session=self.device,
             content=self.card_content,
         )
 
+        self.assertEqual(batch.status, ImportBatch.PREVIEW_READY)
+        self.assertEqual(batch.account.name, 'Nubank — Cartão')
+        self.assertEqual(batch.account.type, Account.CREDIT)
         with self.assertRaises(ImportStateError):
             bind_preview_account(batch=batch, account=self.account)
-
-        card = Account.objects.create(
-            user=self.user,
-            household=self.household,
-            financial_owner=self.owner,
-            name='Synthetic card',
-            type=Account.CREDIT,
-        )
-        batch = bind_preview_account(batch=batch, account=card)
-        self.assertEqual(batch.account, card)
 
     def test_recognized_credit_card_rejects_a_non_credit_account_link(self):
         ImportAccountLink.objects.create(
@@ -205,26 +368,29 @@ class ImportPreviewServiceTest(TestCase):
                 )
 
     def test_cancel_reloads_batch_accepts_linked_preview_and_rejects_completed(self):
-        stale_unlinked = create_preview(
+        stale_linked = create_preview(
             household=self.household,
             device_session=self.device,
             content=self.content,
         )
-        linked = bind_preview_account(batch=stale_unlinked, account=self.account)
 
-        cancelled = cancel_preview(batch=stale_unlinked)
+        cancelled = cancel_preview(batch=stale_linked)
         self.assertEqual(
-            ImportBatch.objects.get(pk=linked.pk).status,
+            ImportBatch.objects.get(pk=stale_linked.pk).status,
             ImportBatch.CANCELLED,
         )
         self.assertEqual(cancelled.status, ImportBatch.CANCELLED)
         self.assertFalse(cancelled.records.exists())
 
-        same_receipt = cancel_preview(batch=stale_unlinked)
+        same_receipt = cancel_preview(batch=stale_linked)
         self.assertEqual(same_receipt.pk, cancelled.pk)
         self.assertEqual(same_receipt.status, ImportBatch.CANCELLED)
 
-        stale_linked = self._bound_preview(content=self.content + b'\n')
+        stale_linked = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.content + b'\n',
+        )
         confirm_preview(batch=stale_linked, device_session=self.device)
         with self.assertRaises(ImportStateError):
             cancel_preview(batch=stale_linked)
@@ -234,11 +400,6 @@ class ImportPreviewServiceTest(TestCase):
         )
 
     def test_account_link_unique_race_returns_domain_error_not_integrity_error(self):
-        batch = create_preview(
-            household=self.household,
-            device_session=self.device,
-            content=self.content,
-        )
         original_save = services._save
 
         def race_save(instance):
@@ -248,7 +409,13 @@ class ImportPreviewServiceTest(TestCase):
 
         with patch('imports.services._save', side_effect=race_save):
             with self.assertRaises(ImportStateError):
-                bind_preview_account(batch=batch, account=self.account)
+                create_preview(
+                    household=self.household,
+                    device_session=self.device,
+                    content=self.content,
+                )
+        self.assertFalse(ImportBatch.objects.exists())
+        self.assertFalse(Account.objects.filter(name='Nubank — Conta').exists())
 
     def test_fitid_duplicate_is_limited_to_the_linked_account(self):
         ImportAccountLink.objects.create(
@@ -339,7 +506,9 @@ class ImportPreviewServiceTest(TestCase):
             device_session=self.other_device,
             content=self.content,
         )
-        self.assertEqual(other.status, ImportBatch.NEEDS_ACCOUNT_LINK)
+        self.assertEqual(other.status, ImportBatch.PREVIEW_READY)
+        self.assertEqual(other.account.name, 'Nubank — Conta')
+        self.assertEqual(other.account.household, self.other_household)
 
     @patch('imports.services.timezone.now')
     def test_preview_expires_in_23_hours_and_does_not_log_financial_data(self, now):
@@ -740,7 +909,7 @@ class ImportPreviewServiceTest(TestCase):
         )
         self.assertFalse(cancelled.records.exists())
 
-    def test_unlinked_repeated_file_receipt_can_be_cancelled(self):
+    def test_auto_linked_repeated_file_receipt_can_be_cancelled(self):
         completed = self._completed_batch()
         completed.file_sha256 = self._sha256(self.content)
         completed.save(update_fields=['file_sha256'])
@@ -750,7 +919,8 @@ class ImportPreviewServiceTest(TestCase):
             content=self.content,
         )
         self.assertEqual(repeated.status, ImportBatch.PREVIEW_READY)
-        self.assertIsNone(repeated.account_id)
+        self.assertIsNotNone(repeated.account_id)
+        self.assertEqual(repeated.account.name, 'Nubank — Conta')
 
         cancelled = cancel_preview(batch=repeated)
 
@@ -824,12 +994,18 @@ class ImportPreviewServiceTest(TestCase):
         )
 
     def _bound_preview(self, content=None):
-        batch = create_preview(
+        ImportAccountLink.objects.get_or_create(
+            household=self.household,
+            account=self.account,
+            provider='nubank',
+            product_type='bank_account',
+            external_account_id='synthetic-account-001',
+        )
+        return create_preview(
             household=self.household,
             device_session=self.device,
             content=content or self.content,
         )
-        return bind_preview_account(batch=batch, account=self.account)
 
     def _transaction(self, user, household, owner, account):
         category = Category.objects.create(
@@ -865,6 +1041,84 @@ class ImportMutationSerializationTest(SimpleTestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)
         self.lock_path = str(Path(self.temp_dir.name) / 'imports.lock')
+
+    def test_concurrent_first_previews_create_one_default_account_and_link(self):
+        context = multiprocessing.get_context('spawn')
+        db_path = str(Path(self.temp_dir.name) / 'auto-link.sqlite3')
+        metadata_path = str(Path(self.temp_dir.name) / 'auto-link-metadata.json')
+        seed = context.Process(
+            target=seed_auto_link_race_database,
+            args=(db_path, self.lock_path, metadata_path),
+        )
+        seed.start()
+        wait_until_process_finishes(seed)
+        self.assertEqual(seed.exitcode, 0)
+        metadata = json.loads(Path(metadata_path).read_text(encoding='utf-8'))
+
+        start = context.Event()
+        ready_events = [context.Event(), context.Event()]
+        result_paths = [
+            str(Path(self.temp_dir.name) / f'auto-link-result-{index}.json')
+            for index in range(2)
+        ]
+        processes = [
+            context.Process(
+                target=create_preview_process,
+                args=(
+                    db_path,
+                    self.lock_path,
+                    str(FIXTURES / 'nubank-account.ofx'),
+                    metadata['household_id'],
+                    metadata['device_id'],
+                    ready_events[index],
+                    start,
+                    result_paths[index],
+                ),
+            )
+            for index in range(2)
+        ]
+        for process in processes:
+            process.start()
+        try:
+            for ready in ready_events:
+                self.assertTrue(ready.wait(timeout=10))
+            start.set()
+            for process in processes:
+                wait_until_process_finishes(process)
+        finally:
+            start.set()
+            for process in processes:
+                if process.is_alive():
+                    process.terminate()
+                process.join(timeout=5)
+
+        self.assertEqual([process.exitcode for process in processes], [0, 0])
+        results = [
+            json.loads(Path(path).read_text(encoding='utf-8'))
+            for path in result_paths
+        ]
+        self.assertEqual(results[0]['account_id'], results[1]['account_id'])
+        self.assertEqual(
+            [result['status'] for result in results],
+            [ImportBatch.PREVIEW_READY, ImportBatch.PREVIEW_READY],
+        )
+        with closing(sqlite3.connect(db_path)) as database:
+            account_count = database.execute(
+                'SELECT COUNT(*) FROM accounts_account '
+                'WHERE household_id = ? AND name = ? AND type = ?',
+                (
+                    metadata['household_id'],
+                    'Nubank — Conta',
+                    Account.CHECKING,
+                ),
+            ).fetchone()[0]
+            link_count = database.execute(
+                'SELECT COUNT(*) FROM imports_importaccountlink '
+                'WHERE household_id = ? AND provider = ? AND product_type = ?',
+                (metadata['household_id'], 'nubank', 'bank_account'),
+            ).fetchone()[0]
+        self.assertEqual(account_count, 1)
+        self.assertEqual(link_count, 1)
 
     def test_purge_and_confirmation_cannot_enter_write_sections_together(self):
         context = multiprocessing.get_context('spawn')

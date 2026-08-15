@@ -57,7 +57,7 @@ void main() {
 
   test('golden font fixtures resolve from portable tool metadata', () {
     final goldenTest = File(
-      'test/features/home/home_goldens_test.dart',
+      'test/support/golden_fonts.dart',
     ).readAsStringSync();
 
     expect(goldenTest, contains('.dart_tool/package_config.json'));
@@ -75,7 +75,12 @@ void main() {
       'test/app/adaptive_shell_test.dart',
     ).readAsStringSync();
 
+    final importGoldens = File(
+      'test/features/imports/import_goldens_test.dart',
+    ).readAsStringSync();
+
     expect(homeGoldens, contains("tags: 'golden'"));
+    expect(importGoldens, contains("tags: 'golden'"));
     expect("tags: 'golden'".allMatches(shellGoldens), hasLength(2));
   });
 

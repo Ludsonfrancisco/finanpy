@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lar_finance/core/network/api_error.dart';
 import 'package:lar_finance/core/network/dio_transport.dart';
@@ -513,6 +514,198 @@ void main() {
       },
     );
   });
+
+  group('SessionTransport server errors', () {
+    test('postObject sends multipart payloads unchanged', () async {
+      final fake = _FakeApiTransport(
+        (request) async => const ApiResponse(
+          statusCode: 201,
+          data: <String, Object?>{'ok': 1},
+        ),
+      );
+      final client = SessionTransport(
+        transport: fake,
+        tokenStore: _FakeTokenStore(_tokens()),
+      );
+      final form = FormData.fromMap(<String, Object?>{
+        'file': MultipartFile.fromBytes(const <int>[
+          1,
+          2,
+          3,
+        ], filename: 'statement.ofx'),
+      });
+
+      final body = await client.postObject('/imports/ofx/preview/', data: form);
+
+      expect(body, <String, Object?>{'ok': 1});
+      expect(fake.requests.single.method, 'POST');
+      expect(fake.requests.single.path, '/imports/ofx/preview/');
+      final sent = fake.requests.single.data! as FormData;
+      expect(sent.files.single.value.filename, 'statement.ofx');
+    });
+
+    test('a retried multipart upload is never a consumed stream', () async {
+      final fake = _FakeApiTransport((request) async {
+        if (request.path == '/auth/refresh/') {
+          return ApiResponse(statusCode: 200, data: _tokenPayload());
+        }
+        if (request.bearerToken == 'access-new') {
+          return const ApiResponse(
+            statusCode: 201,
+            data: <String, Object?>{'ok': 1},
+          );
+        }
+        return const ApiResponse(statusCode: 401, data: <String, Object?>{});
+      });
+      final client = SessionTransport(
+        transport: fake,
+        tokenStore: _FakeTokenStore(_tokens()),
+      );
+      final form = FormData.fromMap(<String, Object?>{
+        'file': MultipartFile.fromBytes(const <int>[
+          1,
+          2,
+          3,
+        ], filename: 'statement.ofx'),
+      });
+
+      await client.postObject('/imports/ofx/preview/', data: form);
+
+      final uploads = fake.requests
+          .where((request) => request.path == '/imports/ofx/preview/')
+          .map((request) => request.data! as FormData)
+          .toList();
+      expect(uploads, hasLength(2));
+      expect(identical(uploads.first, uploads.last), isFalse);
+      expect(uploads.last.files.single.value.filename, 'statement.ofx');
+      expect(await uploads.last.readAsBytes(), isNotEmpty);
+    });
+
+    test('an error envelope becomes a ServerFailure with its code', () async {
+      final fake = _FakeApiTransport(
+        (request) async => const ApiResponse(
+          statusCode: 400,
+          data: <String, Object?>{
+            'error': <String, Object?>{
+              'code': 'unsupported_ofx',
+              'message': 'mensagem remota',
+              'fields': null,
+            },
+            'request_id': '33333333-3333-4333-8333-333333333333',
+          },
+        ),
+      );
+      final client = SessionTransport(
+        transport: fake,
+        tokenStore: _FakeTokenStore(_tokens()),
+      );
+
+      final failure = await _captureError(
+        client.postObject(
+          '/imports/ofx/preview/',
+          data: const <String, Object?>{},
+        ),
+      );
+
+      expect(failure, isA<ServerFailure>());
+      final server = failure! as ServerFailure;
+      expect(server.code, 'unsupported_ofx');
+      expect(server.statusCode, 400);
+      expect(server.toString(), isNot(contains('mensagem remota')));
+      expect(server.toString(), isNot(contains('33333333')));
+    });
+
+    test('a body without a usable code still fails safely', () async {
+      final fake = _FakeApiTransport(
+        (request) async =>
+            const ApiResponse(statusCode: 500, data: 'texto solto'),
+      );
+      final client = SessionTransport(
+        transport: fake,
+        tokenStore: _FakeTokenStore(_tokens()),
+      );
+
+      final failure = await _captureError(
+        client.getObject('/imports/x/', surfaceServerErrors: true),
+      );
+
+      expect(failure, isA<ServerFailure>());
+      expect((failure! as ServerFailure).code, isEmpty);
+      expect((failure as ServerFailure).statusCode, 500);
+    });
+
+    test('surfaced errors still refresh a single time on 401', () async {
+      final fake = _FakeApiTransport((request) async {
+        if (request.path == '/auth/refresh/') {
+          return ApiResponse(statusCode: 200, data: _tokenPayload());
+        }
+        if (request.bearerToken == 'access-new') {
+          return const ApiResponse(
+            statusCode: 400,
+            data: <String, Object?>{
+              'error': <String, Object?>{'code': 'invalid_import_state'},
+            },
+          );
+        }
+        return const ApiResponse(statusCode: 401, data: <String, Object?>{});
+      });
+      final client = SessionTransport(
+        transport: fake,
+        tokenStore: _FakeTokenStore(_tokens()),
+      );
+
+      final failure = await _captureError(
+        client.postObject('/imports/x/confirm/'),
+      );
+
+      expect((failure! as ServerFailure).code, 'invalid_import_state');
+      expect(fake.refreshCalls, 1);
+    });
+
+    test('offline transport errors are not converted into codes', () async {
+      final fake = _FakeApiTransport((request) async {
+        throw const OfflineFailure();
+      });
+      final client = SessionTransport(
+        transport: fake,
+        tokenStore: _FakeTokenStore(_tokens()),
+      );
+
+      await expectLater(
+        client.postObject('/imports/ofx/preview/'),
+        throwsA(isA<OfflineFailure>()),
+      );
+    });
+
+    test('callers that do not opt in keep the opaque failure', () async {
+      final fake = _FakeApiTransport(
+        (request) async => const ApiResponse(
+          statusCode: 400,
+          data: <String, Object?>{
+            'error': <String, Object?>{'code': 'unsupported_ofx'},
+          },
+        ),
+      );
+      final client = SessionTransport(
+        transport: fake,
+        tokenStore: _FakeTokenStore(_tokens()),
+      );
+
+      final failure = await _captureError(client.getObject('/bootstrap/'));
+
+      expect(failure, isA<RequestFailure>());
+      expect(failure, isNot(isA<ServerFailure>()));
+    });
+  });
+}
+
+Future<Object?> _captureError(Future<Object?> future) async {
+  try {
+    await future;
+  } catch (error) {
+    return error;
+  }
+  return null;
 }
 
 StoredTokens _tokens() => StoredTokens(

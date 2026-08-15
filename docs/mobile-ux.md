@@ -84,6 +84,15 @@ Valor, descrição original e editada, datas, proprietário, conta/cartão, cate
 
 Stepper curto, progresso persistente, resumo antes de confirmar e problemas priorizados. Cada erro indica linha/campo e ação possível. Um lote nunca apresenta apenas “falhou”.
 
+Entregue na Sprint 5 para OFX Nubank, em `Mais › Importar OFX`. A tela mostra,
+nesta ordem, o produto detectado com a ressalva de que o rótulo não prova a
+origem, o período do extrato, a validade da prévia, o resumo de contagens e
+totais e a lista item a item com entrada/saída e novo/duplicado/aviso. As
+ações Confirmar e Cancelar ficam num rodapé persistente no mobile e num painel
+lateral no Windows a partir de 900 px, sem cobrir o conteúdo. Confirmar fica
+bloqueado para prévia vazia, arquivo repetido ou página ainda pendente.
+`Escape` cancela e o foco vai sozinho para a recuperação quando há erro.
+
 ### Cartões e faturas
 
 Cada cartão mostra proprietário, instituição, final opcional, limite e data de referência. Fatura mostra status, total calculado/informado, fechamento, vencimento, parcelas futuras e pagamento conciliado. “Não informado” substitui zeros artificiais.

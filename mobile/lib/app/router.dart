@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../design_system/components/sync_status.dart';
@@ -12,6 +14,10 @@ import '../features/auth/presentation/more_screen.dart';
 import '../features/home/application/home_controller.dart';
 import '../features/home/data/home_repository.dart';
 import '../features/home/presentation/home_screen.dart';
+import '../features/imports/application/import_controller.dart';
+import '../features/imports/data/import_repository.dart';
+import '../features/imports/data/ofx_file_picker.dart';
+import '../features/imports/presentation/import_screen.dart';
 import 'adaptive_shell.dart';
 import 'app_config.dart';
 import 'privacy_shield.dart';
@@ -23,6 +29,8 @@ GoRouter createAppRouter(
   LedgerSyncCoordinator? syncCoordinator,
   HomeRepository? homeRepository,
   ValueVisibilityController? valueVisibilityController,
+  ImportRepository? importRepository,
+  OfxFilePicker? ofxFilePicker,
 }) {
   config.validate();
   return GoRouter(
@@ -60,7 +68,7 @@ GoRouter createAppRouter(
       ),
       ShellRoute(
         builder: (context, state, child) {
-          final index = state.uri.path == '/more' ? 1 : 0;
+          final index = state.uri.path.startsWith('/more') ? 1 : 0;
           return PrivacyShield(
             onInactive: valueVisibilityController
                 ?.protectBeforeFirstReadForInactiveReturn,
@@ -87,7 +95,23 @@ GoRouter createAppRouter(
           ),
           GoRoute(
             path: '/more',
-            builder: (context, state) => const MoreScreen(),
+            builder: (context, state) => MoreScreen(
+              onOpenImport: importRepository == null
+                  ? null
+                  : () => context.go('/more/import-ofx'),
+            ),
+            routes: <RouteBase>[
+              GoRoute(
+                path: 'import-ofx',
+                builder: (context, state) => importRepository == null
+                    ? const _RouteNotice(title: 'Importação OFX')
+                    : _ImportShell(
+                        repository: importRepository,
+                        picker: ofxFilePicker ?? FilePickerOfxPicker(),
+                        syncCoordinator: syncCoordinator,
+                      ),
+              ),
+            ],
           ),
         ],
       ),
@@ -220,6 +244,75 @@ SyncVisualState _visualState(SyncPhase phase) => switch (phase) {
   SyncPhase.offline => SyncVisualState.offline,
   SyncPhase.failed => SyncVisualState.failed,
 };
+
+/// Hosts the import controller for the route. Task 6 replaces the body with
+/// the Casa de Valores screen; the ownership of the controller stays here.
+final class _ImportShell extends StatefulWidget {
+  const _ImportShell({
+    required this.repository,
+    required this.picker,
+    required this.syncCoordinator,
+  });
+
+  final ImportRepository repository;
+  final OfxFilePicker picker;
+  final LedgerSyncCoordinator? syncCoordinator;
+
+  @override
+  State<_ImportShell> createState() => _ImportShellState();
+}
+
+final class _ImportShellState extends State<_ImportShell> {
+  late ImportController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = _createController();
+  }
+
+  @override
+  void didUpdateWidget(_ImportShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.repository == widget.repository &&
+        oldWidget.picker == widget.picker &&
+        oldWidget.syncCoordinator == widget.syncCoordinator) {
+      return;
+    }
+    _controller.dispose();
+    _controller = _createController();
+  }
+
+  ImportController _createController() {
+    final coordinator = widget.syncCoordinator;
+    return ImportController(
+      picker: widget.picker,
+      repository: widget.repository,
+      synchronize: coordinator == null
+          ? () async {}
+          : () async => coordinator.synchronize(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (context, _) => ImportScreen(
+      state: _controller.state,
+      onSelect: () => unawaited(_controller.selectFile()),
+      onConfirm: () => unawaited(_controller.confirm()),
+      onCancel: () => unawaited(_controller.cancel()),
+      onRetry: () => unawaited(_controller.retry()),
+      onLoadMore: () => unawaited(_controller.loadMore()),
+    ),
+  );
+}
 
 final class _RouteNotice extends StatelessWidget {
   const _RouteNotice({required this.title});

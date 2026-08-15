@@ -453,8 +453,13 @@
       "get": {
         "operationId": "getImportPreview",
         "security": [{"opaqueBearer": []}],
+        "parameters": [
+          {"name": "after", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 0}, "description": "Last line_number already received. The cursor is never a banking identifier."},
+          {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50}}
+        ],
         "responses": {
           "200": {"description": "Private normalized import preview", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ImportBatch"}}}},
+          "400": {"$ref": "#/components/responses/BadRequest", "x-error-codes": ["invalid_import_page"]},
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "403": {"$ref": "#/components/responses/Forbidden"},
           "404": {"$ref": "#/components/responses/NotFound"},
@@ -792,9 +797,22 @@
           }
         }
       },
+      "ImportRecordPreview": {
+        "type": "object",
+        "required": ["uuid", "posted_on", "description", "amount", "transaction_type", "outcome"],
+        "properties": {
+          "uuid": {"type": "string", "format": "uuid"},
+          "posted_on": {"type": "string", "format": "date"},
+          "description": {"type": "string", "maxLength": 255},
+          "amount": {"type": "string", "pattern": "^\\d+\\.\\d{2}$", "description": "Absolute BRL magnitude; the direction is carried by transaction_type."},
+          "transaction_type": {"type": "string", "enum": ["income", "expense"]},
+          "outcome": {"type": "string", "enum": ["pending", "duplicate", "warning", "created"]}
+        },
+        "additionalProperties": false
+      },
       "ImportBatch": {
         "type": "object",
-        "required": ["uuid", "status", "provider", "product_type", "statement_start", "statement_end", "expires_at", "account_uuid", "financial_owner_uuid", "created_count", "duplicate_count", "warning_count", "is_repeated_file"],
+        "required": ["uuid", "status", "provider", "product_type", "statement_start", "statement_end", "expires_at", "account_uuid", "financial_owner_uuid", "created_count", "duplicate_count", "warning_count", "record_count", "pending_count", "income_total", "expense_total", "is_repeated_file", "records", "next_cursor"],
         "properties": {
           "uuid": {"type": "string", "format": "uuid"},
           "status": {"type": "string", "enum": ["preview_ready", "needs_account_link", "completed", "failed", "cancelled"]},
@@ -808,7 +826,13 @@
           "created_count": {"type": "integer", "minimum": 0},
           "duplicate_count": {"type": "integer", "minimum": 0},
           "warning_count": {"type": "integer", "minimum": 0},
-          "is_repeated_file": {"type": "boolean"}
+          "record_count": {"type": "integer", "minimum": 0},
+          "pending_count": {"type": "integer", "minimum": 0},
+          "income_total": {"type": "string", "pattern": "^\\d+\\.\\d{2}$"},
+          "expense_total": {"type": "string", "pattern": "^\\d+\\.\\d{2}$"},
+          "is_repeated_file": {"type": "boolean"},
+          "records": {"type": "array", "maxItems": 100, "items": {"$ref": "#/components/schemas/ImportRecordPreview"}},
+          "next_cursor": {"type": ["string", "null"], "pattern": "^\\d+$", "description": "Last line_number of the page; null on the last page."}
         },
         "additionalProperties": false
       },

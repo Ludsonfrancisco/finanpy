@@ -94,7 +94,12 @@ nulo e o mesmo request ID, sem expor o texto da exceção.
 - PDF/OCR isolado se adotado;
 - CSV exportado neutraliza formula injection (`=`, `+`, `-`, `@`);
 - falhas não retornam stack trace nem payload completo;
-- hash antes do processamento.
+- hash antes do processamento;
+- no cliente, o arquivo escolhido existe apenas em memória entre o seletor e o
+  upload, o nome real nunca sai do adapter e o multipart usa o nome constante
+  `statement.ofx`;
+- os logs de importação carregam somente rota, status, request ID, duração e
+  código de erro, sem identificador de dispositivo, descrição, valor ou hash.
 
 ## Backup 3-2-1 proporcional
 

@@ -27,11 +27,10 @@ def seed_process_database(db_path, lock_path, fixture_path, metadata_path):
     from django.core.management import call_command
     from django.utils import timezone
 
-    from accounts.models import Account
     from api.models import DeviceSession
     from households.models import FinancialOwner
     from households.services import ensure_household_for_user, get_financial_owner
-    from imports.services import bind_preview_account, create_preview
+    from imports.services import create_preview
 
     call_command('migrate', verbosity=0, interactive=False)
     user = get_user_model().objects.create_user(
@@ -39,13 +38,6 @@ def seed_process_database(db_path, lock_path, fixture_path, metadata_path):
     )
     household = ensure_household_for_user(user)
     owner = get_financial_owner(household, FinancialOwner.SELF)
-    account = Account.objects.create(
-        user=user,
-        household=household,
-        financial_owner=owner,
-        name='Process test account',
-        type=Account.CHECKING,
-    )
     device = DeviceSession.objects.create(
         user=user,
         household=household,
@@ -58,13 +50,10 @@ def seed_process_database(db_path, lock_path, fixture_path, metadata_path):
         refresh_expires_at=timezone.now() + timedelta(days=1),
     )
     content = Path(fixture_path).read_bytes()
-    confirm_batch = bind_preview_account(
-        batch=create_preview(
-            household=household,
-            device_session=device,
-            content=content,
-        ),
-        account=account,
+    confirm_batch = create_preview(
+        household=household,
+        device_session=device,
+        content=content,
     )
     expired_batch = create_preview(
         household=household,
@@ -79,6 +68,85 @@ def seed_process_database(db_path, lock_path, fixture_path, metadata_path):
                 'confirm_batch_id': str(confirm_batch.pk),
                 'expired_batch_id': str(expired_batch.pk),
                 'device_id': str(device.pk),
+            }
+        ),
+        encoding='utf-8',
+    )
+
+
+def seed_auto_link_race_database(db_path, lock_path, metadata_path):
+    _setup(db_path, lock_path)
+
+    from django.contrib.auth import get_user_model
+    from django.core.management import call_command
+    from django.utils import timezone
+
+    from api.models import DeviceSession
+    from households.models import FinancialOwner
+    from households.services import ensure_household_for_user, get_financial_owner
+
+    call_command('migrate', verbosity=0, interactive=False)
+    user = get_user_model().objects.create_user(
+        email='auto-link-race@example.test',
+        password='Strong-pass-123',
+    )
+    household = ensure_household_for_user(user)
+    owner = get_financial_owner(household, FinancialOwner.SELF)
+    device = DeviceSession.objects.create(
+        user=user,
+        household=household,
+        default_owner=owner,
+        platform=DeviceSession.WINDOWS,
+        name='Auto-link race device',
+        access_token_digest='c' * 64,
+        access_expires_at=timezone.now() + timedelta(hours=2),
+        refresh_token_digest='d' * 64,
+        refresh_expires_at=timezone.now() + timedelta(days=1),
+    )
+    Path(metadata_path).write_text(
+        json.dumps(
+            {
+                'household_id': household.pk,
+                'device_id': str(device.pk),
+            }
+        ),
+        encoding='utf-8',
+    )
+
+
+def create_preview_process(
+    db_path,
+    lock_path,
+    fixture_path,
+    household_id,
+    device_id,
+    ready_event,
+    start_event,
+    result_path,
+):
+    _setup(db_path, lock_path)
+
+    from api.models import DeviceSession
+    from households.models import Household
+    from imports.services import create_preview
+
+    household = Household.objects.get(pk=household_id)
+    device = DeviceSession.objects.get(pk=device_id)
+    content = Path(fixture_path).read_bytes()
+    ready_event.set()
+    if not start_event.wait(timeout=10):
+        raise RuntimeError('auto-link race process was not released')
+    batch = create_preview(
+        household=household,
+        device_session=device,
+        content=content,
+    )
+    Path(result_path).write_text(
+        json.dumps(
+            {
+                'account_id': batch.account_id,
+                'batch_id': batch.pk,
+                'status': batch.status,
             }
         ),
         encoding='utf-8',

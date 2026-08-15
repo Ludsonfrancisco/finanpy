@@ -17,17 +17,27 @@ o rótulo interno `nubank` indica o perfil de compatibilidade, não autentica a
 origem. O parser exige `CURDEF=BRL`, estrutura conta/cartão e limites que cabem
 nos models; outro banco com estrutura idêntica pode ser aceito.
 
-A conta é encontrada pelo identificador OFX vinculado. Sem vínculo, a prévia
-fica aguardando que o usuário selecione uma conta do mesmo Lar; o responsável
-financeiro é herdado dessa conta. A confirmação cria lançamentos de modo
+A conta é encontrada pelo identificador OFX vinculado. Sem vínculo, o servidor
+cria de forma idempotente a conta padrão do produto detectado —
+`Nubank — Conta` (`checking`) ou `Nubank — Cartão` (`credit`), em BRL, com
+saldo inicial zero e responsável ativo `Eu`. Uma conta já existente só é
+reaproveitada quando há exatamente um candidato idêntico; dois candidatos
+param a importação em vez de escolher. A rota de vínculo manual permanece
+para compatibilidade e não é usada pelo app. O responsável financeiro é
+sempre o da conta. A confirmação cria lançamentos de modo
 atômico, referências de origem e eventos de sincronização. Categorias
 `Não categorizado` são separadas para receita e despesa dentro do Lar.
 
 A deduplicação é feita por SHA do arquivo por Lar, FITID por conta/provedor e
 aviso por fingerprint. Arquivo/FITID repetido é ignorado; fingerprint semelhante
 é só aviso e requer confirmação. A API privada oferece criar prévia, consultar,
-vincular conta, confirmar e cancelar; seus payloads resumidos não trazem linhas
-ou dados financeiros. O contrato está em `docs/openapi-v1.yaml`.
+vincular conta, confirmar e cancelar. A consulta aceita `after` e `limit`
+(padrão 50, máximo 100) e devolve uma página estável ordenada por
+`line_number, pk`, com `next_cursor` decimal, contagens e totais. Cada item
+traz apenas UUID, data, descrição, magnitude, tipo e resultado; FITID,
+identificador da conta, fingerprint, hash e número de linha nunca saem. Cursor
+ou limite inválidos recebem `invalid_import_page`. O contrato está em
+`docs/openapi-v1.yaml`.
 
 Cancelar remove imediatamente as linhas normalizadas, mantendo apenas o recibo
 técnico do lote. Linhas de previews expirados são removidas no início de
@@ -43,9 +53,16 @@ limitadas; a API responde `503 import_temporarily_unavailable` sem expor detalhe
 do banco, e o scheduler tenta novamente em 60 segundos. A validade de 23 horas
 reserva a margem do polling para remover linhas normalizadas em até 24 horas.
 
+O cliente Flutter usa essas mesmas rotas: seleciona o arquivo pelo seletor
+nativo de documentos, recusa extensão diferente de `.ofx` e tamanho acima de
+10 MiB antes da rede, envia o multipart com o nome constante `statement.ofx` e
+descarta os bytes assim que o upload termina. Ele não interpreta OFX, não
+deduplica e não cria lançamento local; após a confirmação, o pull existente
+atualiza o cache e a Home.
+
 Fora deste piloto: CSV, outros bancos, Open Finance, limite, fatura futura,
-parcelas, empréstimos, categorização inteligente e Flutter. Campos ausentes não
-são inferidos.
+parcelas, empréstimos, categorização inteligente e conciliação de
+transferências. Campos ausentes não são inferidos.
 
 ## O que cada fonte pode trazer
 

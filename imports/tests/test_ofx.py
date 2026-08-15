@@ -66,6 +66,51 @@ class ParseNubankOfxTest(SimpleTestCase):
 
         self.assertEqual(parsed.external_account_id, 'synthetic-fi-account-004')
 
+    def test_parses_utf8_none_account_statement(self):
+        parsed = parse_nubank_ofx(
+            self._fixture_bytes('nubank-account-utf8-none.ofx')
+        )
+
+        self.assertEqual(parsed.product_type, 'bank_account')
+        self.assertEqual(parsed.external_account_id, 'synthetic-utf8-account-005')
+        self.assertEqual(
+            parsed.transactions[0].description,
+            'Compra sintética ação',
+        )
+
+    def test_parses_equals_separated_utf8_none_header(self):
+        content = self._fixture_bytes('nubank-account-utf8-none.ofx').replace(
+            b'ENCODING:UTF-8',
+            b'ENCODING=UTF-8',
+        )
+        content = content.replace(b'CHARSET:NONE', b'CHARSET=NONE')
+
+        parsed = parse_nubank_ofx(content)
+
+        self.assertEqual(parsed.product_type, 'bank_account')
+
+    def test_preserves_legacy_cp1252_header_without_encoding(self):
+        content = self._fixture_bytes('nubank-account.ofx').replace(
+            b'ENCODING:USASCII\n',
+            b'',
+        )
+
+        parsed = parse_nubank_ofx(content)
+
+        self.assertEqual(parsed.external_account_id, 'synthetic-account-001')
+
+    def test_parses_sgml_card_with_explicit_leaf_closing_tags(self):
+        parsed = parse_nubank_ofx(
+            self._fixture_bytes('nubank-card-explicit-leaf-closing.ofx')
+        )
+
+        self.assertEqual(parsed.product_type, 'credit_card')
+        self.assertEqual(parsed.external_account_id, 'synthetic-explicit-card-006')
+        self.assertEqual(
+            parsed.transactions[0].external_id,
+            'synthetic-explicit-card-fitid-001',
+        )
+
     def test_rejects_bomless_utf8_declared_by_ofx_header(self):
         content = self._fixture_bytes('nubank-account.ofx').replace(
             b'CHARSET:1252', b'CHARSET:UTF-8'
@@ -96,6 +141,30 @@ class ParseNubankOfxTest(SimpleTestCase):
     def test_rejects_malformed_xml_without_sgml_header_fallback(self):
         content = self._fixture_bytes('nubank-account.ofx').replace(
             b'DATA:OFXSGML', b'DATA:OFXXML'
+        )
+
+        with self.assertRaises(OfxParseError):
+            parse_nubank_ofx(content)
+
+    def test_rejects_unknown_encoding_and_mismatched_sgml_closing_tag(self):
+        fixture = self._fixture_bytes('nubank-account-utf8-none.ofx')
+        invalid_documents = (
+            fixture.replace(b'ENCODING:UTF-8', b'ENCODING:UTF-16'),
+            fixture.replace(b'</STMTTRN>', b'</BANKTRANLIST>', 1),
+        )
+
+        for content in invalid_documents:
+            with self.subTest(content=content[:80]), self.assertRaises(OfxParseError):
+                parse_nubank_ofx(content)
+
+    def test_does_not_accept_encoding_declaration_spoofed_inside_ofx_body(self):
+        content = self._fixture_bytes('nubank-account-utf8-none.ofx').replace(
+            b'ENCODING:UTF-8\n',
+            b'',
+        )
+        content = content.replace(
+            b'<MEMO>Compra ',
+            b'<MEMO>\nENCODING:UTF-8\nCompra ',
         )
 
         with self.assertRaises(OfxParseError):

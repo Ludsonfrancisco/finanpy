@@ -1,10 +1,11 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TransactionTestCase
+from django.utils import timezone
 
 
 class ImportsSchemaMigrationTest(TransactionTestCase):
@@ -117,3 +118,145 @@ class ImportsSchemaMigrationTest(TransactionTestCase):
         Transaction = apps.get_model('transactions', 'Transaction')
         self.assertTrue(Account.objects.filter(pk=self.account_id).exists())
         self.assertTrue(Transaction.objects.filter(pk=self.transaction_id).exists())
+
+
+class ImportRecordUuidMigrationTest(TransactionTestCase):
+    base_migrations = ImportsSchemaMigrationTest.base_migrations
+    migrate_from = [*base_migrations, ('imports', '0003_import_batch_preview_metadata')]
+    migrate_to = [*base_migrations, ('imports', '0004_import_record_uuid')]
+
+    def setUp(self):
+        super().setUp()
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_from)
+        apps = executor.loader.project_state(self.migrate_from).apps
+
+        User = apps.get_model('users', 'User')
+        Household = apps.get_model('households', 'Household')
+        Owner = apps.get_model('households', 'FinancialOwner')
+        Account = apps.get_model('accounts', 'Account')
+        DeviceSession = apps.get_model('api', 'DeviceSession')
+        ImportBatch = apps.get_model('imports', 'ImportBatch')
+        ImportRecord = apps.get_model('imports', 'ImportRecord')
+
+        user = User.objects.create(email='migration-records@example.com')
+        household = Household.objects.create(name='Lar de migration de registros')
+        owner = Owner.objects.create(household=household, type='self', name='Eu')
+        account = Account.objects.create(
+            user=user,
+            household=household,
+            financial_owner=owner,
+            name='Conta de migration',
+            initial_balance=Decimal('0.00'),
+        )
+        now = timezone.now()
+        device = DeviceSession.objects.create(
+            user=user,
+            household=household,
+            default_owner=owner,
+            platform='windows',
+            name='Dispositivo de migration',
+            access_token_digest='e' * 64,
+            access_expires_at=now + timedelta(hours=2),
+            refresh_token_digest='f' * 64,
+            refresh_expires_at=now + timedelta(days=1),
+        )
+        batch = ImportBatch.objects.create(
+            uuid=uuid.uuid4(),
+            household=household,
+            device_session=device,
+            account=account,
+            financial_owner=owner,
+            provider='nubank',
+            product_type='bank_account',
+            external_account_id='synthetic-migration-account',
+            file_sha256='0' * 64,
+            statement_start=date(2026, 8, 1),
+            statement_end=date(2026, 8, 12),
+            expires_at=now + timedelta(hours=23),
+        )
+        self.record_ids = [
+            ImportRecord.objects.create(
+                batch=batch,
+                line_number=line_number,
+                external_id=None,
+                posted_on=date(2026, 8, 10),
+                amount=Decimal('-10.00'),
+                description=f'Registro preservado {line_number}',
+                transaction_type='expense',
+                fingerprint=f'{line_number}' * 8,
+                outcome='pending',
+            ).pk
+            for line_number in (1, 2)
+        ]
+
+    def tearDown(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        super().tearDown()
+
+    def _record_uuids(self, apps):
+        ImportRecord = apps.get_model('imports', 'ImportRecord')
+        return [
+            ImportRecord.objects.get(pk=record_id).uuid
+            for record_id in self.record_ids
+        ]
+
+    def _uuid_column(self):
+        with connection.cursor() as cursor:
+            columns = {
+                column.name: column
+                for column in connection.introspection.get_table_description(
+                    cursor, 'imports_importrecord'
+                )
+            }
+            constraints = connection.introspection.get_constraints(
+                cursor, 'imports_importrecord'
+            )
+        unique = any(
+            constraint['columns'] == ['uuid'] and constraint['unique']
+            for constraint in constraints.values()
+        )
+        return columns['uuid'], unique
+
+    def test_existing_records_receive_distinct_unique_uuids(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_to)
+
+        uuids = self._record_uuids(executor.loader.project_state(self.migrate_to).apps)
+        column, unique = self._uuid_column()
+
+        self.assertEqual(len(set(uuids)), len(self.record_ids))
+        self.assertNotIn(None, uuids)
+        self.assertFalse(column.null_ok)
+        self.assertTrue(unique)
+
+    def test_rollback_drops_the_column_and_reapplication_backfills_again(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_to)
+        first_uuids = self._record_uuids(
+            executor.loader.project_state(self.migrate_to).apps
+        )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_from)
+
+        with connection.cursor() as cursor:
+            columns = {
+                column.name
+                for column in connection.introspection.get_table_description(
+                    cursor, 'imports_importrecord'
+                )
+            }
+        self.assertNotIn('uuid', columns)
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_to)
+        second_uuids = self._record_uuids(
+            executor.loader.project_state(self.migrate_to).apps
+        )
+        _, unique = self._uuid_column()
+
+        self.assertEqual(len(set(second_uuids)), len(self.record_ids))
+        self.assertTrue(unique)
+        self.assertFalse(set(first_uuids) & set(second_uuids))
