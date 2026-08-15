@@ -15,13 +15,15 @@ modernização incremental.
 - SQLite persistido em `/app/data/db.sqlite3` no container;
 - backup R2 diário ativo em produção, com agenda supervisionada, retenção
   `14/8/12`, idempotência após restart e restauração isolada comprovada;
-- 461 testes Django e 97% de cobertura; 185 testes Flutter e uma jornada de
-  integração Windows; CI multiplataforma verde; gate backend mínimo de 90%;
+- 487 testes Django e cobertura acima do gate de 90%; 285 testes Flutter e
+  duas jornadas de integração Windows; CI multiplataforma verde;
 - cadastro público removido;
 - piloto de importação manual OFX Nubank de conta/cartão, com prévia, confirmação
   explícita, deduplicação e sincronização;
-- cliente Flutter somente leitura com login, cache offline, sincronização pull,
-  Home Casa de Valores e builds Windows/Android/iOS comprovados pela CI.
+- cliente Flutter com login, cache offline, sincronização pull, Home Casa de
+  Valores e builds Windows/Android/iOS comprovados pela CI;
+- importação manual de OFX Nubank pelo próprio app, com prévia paginada e
+  confirmação explícita; nenhuma escrita offline entrou no cliente.
 
 O backend será preservado e evoluído por sprints. Não há proposta de rewrite
 total.
@@ -42,6 +44,7 @@ total.
 - [Sprint 2 — API privada e sincronização](docs/sprints/sprint-2-api-sync.md)
 - [Sprint 3 — Importação OFX Nubank](docs/sprints/sprint-3-ofx-import.md)
 - [Sprint 4 — Fundação Flutter e Home Casa de Valores](docs/sprints/sprint-4-flutter-foundation.md)
+- [Sprint 5 — Importação OFX no Flutter](docs/sprints/sprint-5-ofx-flutter-import.md)
 
 ## Acesso privado e criação do Lar
 
@@ -93,8 +96,9 @@ tokens são opacos, rotacionados e persistidos somente como digest. Login aceita
 Também há cinco rotas privadas de importação OFX Nubank: criar e consultar
 prévia, vincular conta, confirmar e cancelar. O arquivo é limitado a 10 MiB,
 descartado após normalização e só cria lançamentos depois da confirmação. Veja
-[a documentação de importação](docs/imports-and-sync.md). O cliente Flutter da
-Sprint 4 consome somente leitura e não chama `/sync/push/`.
+[a documentação de importação](docs/imports-and-sync.md). A consulta da prévia
+aceita `after` e `limit` e devolve os itens por página com `next_cursor`. O
+cliente Flutter importa por essas rotas e nunca chama `/sync/push/`.
 
 ## Desenvolvimento local
 

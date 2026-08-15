@@ -8,7 +8,7 @@
 
 - **Nome oficial:** Lar Finance.
 - **Nome técnico legado:** Finanpy, mantido temporariamente no repositório, módulos Django e implantação até uma migração segura.
-- **Estado atual:** aplicação web Django privada e cliente Flutter somente leitura, com Lar compartilhado, responsáveis financeiros, API privada v1, sincronização incremental, cache offline, Home Casa de Valores e piloto OFX Nubank de prévia/confirmação.
+- **Estado atual:** aplicação web Django privada e cliente Flutter com Lar compartilhado, responsáveis financeiros, API privada v1, sincronização incremental, cache offline, Home Casa de Valores e importação manual de OFX Nubank feita pelo próprio app, com prévia paginada e confirmação explícita. O cliente continua sem escrita offline.
 - **Produto alvo:** aplicativo Flutter para iOS, Android e Windows, sincronizado com o backend Django no servidor Linux/EasyPanel.
 - **Estratégia de dados aprovada:** importação de arquivos primeiro; integração paga automática somente após o produto estar maduro e em uso.
 - **Usuários do produto:** uma família no mesmo Lar, com um único login compartilhado nesta fase. Cada dispositivo terá sessão própria e revogável. O domínio mantém credenciais de acesso separadas dos responsáveis financeiros `Eu`, `Esposa` e `Conjunto`, permitindo dois logins no futuro sem migrar o ledger.
@@ -318,9 +318,8 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-Na branch da Sprint 4, 461 testes Django passaram com 97% de cobertura (8.925
-statements, 228 não cobertos), e 185 testes Flutter mais uma jornada integrada
-Windows passaram. Ruff com a configuração oficial, warnings/deprecations,
+Na branch da Sprint 5, 487 testes Django passaram com cobertura acima do gate
+de 90%, e 285 testes Flutter mais duas jornadas integradas Windows passaram. Ruff com a configuração oficial, warnings/deprecations,
 Django check, migrations check, deploy check estrito, format e análise Flutter
 também passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de
 refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI,
@@ -438,7 +437,9 @@ O roteiro completo, dependências, riscos e critérios de aceite estão em [ROAD
 - [x] Sprint 2: API v1, autenticação e contrato de sincronização — concluída após revisão independente final sem achados.
 - [x] Sprint 3: piloto OFX Nubank, deduplicação, prévia e confirmação atômica.
 - [x] Sprint 4: fundação Flutter concluída; CI comprovou Windows, Android e iOS sem assinatura.
-- [ ] Sprint 5: movimentações, contas, importação e rotina diária no Flutter.
+- [~] Sprint 5: importação OFX no Flutter entregue e validada por testes
+  sintéticos; lista de movimentações, contas, escritas offline e conciliação
+  continuam pendentes.
 - [ ] Sprint 6: cartões, faturas, limites e parcelamentos.
 - [ ] Sprint 7: orçamento, recorrências, calendário e metas.
 - [ ] Sprint 8: empréstimos, financiamentos e dívidas.

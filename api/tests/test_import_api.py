@@ -1,3 +1,4 @@
+import json
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -381,6 +382,56 @@ class ImportApiTest(TestCase):
         output = '\n'.join(record.getMessage() for record in captured.records)
         self.assertNotIn('private-value-987.65', output)
         self.assertNotIn(str(self.device.uuid), output)
+
+    def test_successful_import_logs_carry_no_statement_content(self):
+        with self.assertLogs('lar_finance.api', level='INFO') as captured:
+            batch_uuid = self._preview(content=self.multi_content).json()['uuid']
+            self.client.get(self._detail_url(batch_uuid), **self.auth)
+            self.client.post(
+                self._confirm_url(batch_uuid),
+                {},
+                content_type='application/json',
+                **self.auth,
+            )
+
+        events = [json.loads(record.getMessage()) for record in captured.records]
+        import_events = [
+            event
+            for event in events
+            if event['route'] in {'ofx-preview', 'import-detail', 'import-confirm'}
+        ]
+        self.assertEqual(len(import_events), 3)
+        for event in import_events:
+            with self.subTest(route=event['route']):
+                self.assertEqual(
+                    set(event),
+                    {
+                        'timestamp',
+                        'level',
+                        'service',
+                        'request_id',
+                        'method',
+                        'route',
+                        'status',
+                        'duration_ms',
+                        'authenticated',
+                        'device_uuid',
+                        'error_code',
+                    },
+                )
+                self.assertIsNone(event['device_uuid'])
+        serialized = '\n'.join(
+            record.getMessage() for record in captured.records
+        )
+        for forbidden in (
+            'Synthetic paged expense one',
+            'synthetic-account-multi',
+            'synthetic-fitid-101',
+            sha256(self.multi_content).hexdigest(),
+            '10.00',
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, serialized)
 
     def test_unsupported_ofx_uses_its_stable_error_code(self):
         response = self.client.post(

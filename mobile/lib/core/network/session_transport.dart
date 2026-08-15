@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
+
 import '../../features/auth/domain/session.dart';
 import 'api_error.dart';
 import 'dio_transport.dart';
@@ -135,7 +137,7 @@ final class SessionTransport {
     final response = await _transport.request(
       path,
       method: method,
-      data: data,
+      data: _sendable(data),
       bearerToken: tokens.accessToken,
     );
     if (response.statusCode == 401) {
@@ -286,6 +288,9 @@ final class SessionTransport {
   bool _isRefreshingFor(SessionSnapshot session) =>
       _refreshingForAccess == session.tokens.accessToken &&
       _refreshingGeneration == session.generation;
+
+  /// A multipart body is a stream that a retry cannot consume twice.
+  Object? _sendable(Object? data) => data is FormData ? data.clone() : data;
 
   String _serverErrorCode(Object? body) {
     if (body is! Map) return '';

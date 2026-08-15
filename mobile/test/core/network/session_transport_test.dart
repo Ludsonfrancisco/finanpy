@@ -540,7 +540,45 @@ void main() {
       expect(body, <String, Object?>{'ok': 1});
       expect(fake.requests.single.method, 'POST');
       expect(fake.requests.single.path, '/imports/ofx/preview/');
-      expect(identical(fake.requests.single.data, form), isTrue);
+      final sent = fake.requests.single.data! as FormData;
+      expect(sent.files.single.value.filename, 'statement.ofx');
+    });
+
+    test('a retried multipart upload is never a consumed stream', () async {
+      final fake = _FakeApiTransport((request) async {
+        if (request.path == '/auth/refresh/') {
+          return ApiResponse(statusCode: 200, data: _tokenPayload());
+        }
+        if (request.bearerToken == 'access-new') {
+          return const ApiResponse(
+            statusCode: 201,
+            data: <String, Object?>{'ok': 1},
+          );
+        }
+        return const ApiResponse(statusCode: 401, data: <String, Object?>{});
+      });
+      final client = SessionTransport(
+        transport: fake,
+        tokenStore: _FakeTokenStore(_tokens()),
+      );
+      final form = FormData.fromMap(<String, Object?>{
+        'file': MultipartFile.fromBytes(const <int>[
+          1,
+          2,
+          3,
+        ], filename: 'statement.ofx'),
+      });
+
+      await client.postObject('/imports/ofx/preview/', data: form);
+
+      final uploads = fake.requests
+          .where((request) => request.path == '/imports/ofx/preview/')
+          .map((request) => request.data! as FormData)
+          .toList();
+      expect(uploads, hasLength(2));
+      expect(identical(uploads.first, uploads.last), isFalse);
+      expect(uploads.last.files.single.value.filename, 'statement.ofx');
+      expect(await uploads.last.readAsBytes(), isNotEmpty);
     });
 
     test('an error envelope becomes a ServerFailure with its code', () async {

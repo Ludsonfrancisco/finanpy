@@ -170,12 +170,17 @@ Objetivo: tornar o Flutter útil para acompanhamento diário.
 - [ ] lista e detalhe de contas com origem/freshness;
 - [ ] lista paginada, busca e filtros;
 - [ ] detalhe/edição/categorização;
-- [ ] fluxo de importação e conciliação mobile;
+- [x] fluxo de importação OFX no app, com prévia paginada e confirmação
+  explícita; conciliação de transferências e estornos segue pendente;
 - [ ] escritas offline com outbox e conflito demonstrável;
-- [ ] visualização adaptativa Windows;
-- [ ] loading/vazio/erro/offline/conflito;
-- [ ] acessibilidade e teclado;
+- [x] visualização adaptativa Windows da importação;
+- [x] loading/vazio/erro/offline na importação; conflito segue pendente;
+- [x] acessibilidade e teclado da importação;
 - [ ] teste com volume realista.
+
+Entregue: [Sprint 5 — Importação OFX no Flutter](sprints/sprint-5-ofx-flutter-import.md).
+A importação manual pelo app está pronta e testada com dados sintéticos; a
+rotina diária completa ainda depende de listas, edição e escrita offline.
 
 Aceite: rotina diária completa pode ser feita no app sem recorrer ao web, exceto administração avançada documentada.
 
