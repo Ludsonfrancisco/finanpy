@@ -1,6 +1,6 @@
 # Lar Finance — Importação OFX Nubank no Flutter
 
-**Status:** aguardando revisão final do proprietário
+**Status:** aprovado pelo proprietário em 15/08/2026
 
 **Data:** 15/08/2026
 
