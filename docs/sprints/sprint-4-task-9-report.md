@@ -66,7 +66,11 @@ O APK release local final tem 60.147.300 bytes e SHA-256
 `40A903BB33B77231C361C094618D66F004896162C2EF1837C49B49F8973095C6`.
 O MSIX local final tem 14.836.461 bytes e SHA-256
 `C8D20F6109FB858F55E9ECFF27EAA36453DC7AF45EE76FB83E45ED3954AF0D32`.
-Hashes dos artefatos finais de CI serão registrados após o novo HEAD concluir.
+
+Na CI final, o APK tem 60.147.284 bytes e SHA-256
+`8ED6D700444DEE97201C156589BB60508742E817807EFC4ACC0901C5069B0DC8`;
+o MSIX tem 14.904.294 bytes e SHA-256
+`0B41DBB6CD14086EACA5768D90F3A142952A02773EE8CB28CA4808296C85F4EF`.
 
 ## Evidência de CI
 
@@ -74,7 +78,8 @@ Hashes dos artefatos finais de CI serão registrados após o novo HEAD concluir.
   goldens dependentes do rasterizador;
 - run corretivo `31856052144`: seis jobs verdes;
 - run documental `31856531422`: seis jobs verdes;
-- run do HEAD final desta revisão: pendente antes do commit/push final.
+- run `31857659911`: seis jobs verdes no commit `b1d3b6c`, incluindo a jornada
+  integrada Windows, builds Windows/MSIX, Android/APK e iOS sem assinatura.
 
 ## Riscos residuais
 

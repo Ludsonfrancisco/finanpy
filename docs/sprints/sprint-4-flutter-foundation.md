@@ -65,12 +65,11 @@ compatível com `CN=Lar Finance Private`.
 
 ## CI e limites
 
-A [CI 31856531422](https://github.com/Ludsonfrancisco/finanpy/actions/runs/31856531422)
-aprovou as seis frentes antes da última onda de revisão. A matriz final também
-executa a jornada integrada no Windows e gera Windows, Android e iOS com o
-endpoint público real; a execução final do novo HEAD será registrada no
-relatório. Todos os jobs leem a versão Flutter fixada e não recebem credenciais.
-Goldens pixel a pixel rodam somente no rasterizador canônico Windows.
+A [CI 31857659911](https://github.com/Ludsonfrancisco/finanpy/actions/runs/31857659911)
+aprovou as seis frentes. A matriz final executa a jornada integrada no Windows e
+gera Windows, Android e iOS com o endpoint público real. Todos os jobs leem a
+versão Flutter fixada e não recebem credenciais. Goldens pixel a pixel rodam
+somente no rasterizador canônico Windows.
 
 Não houve deploy nem mudança de dados. A Task 2 desta Sprint ajustou o contrato
 de login do backend para aceitar o responsável `self` implícito, sem migration;
