@@ -18,7 +18,7 @@ sintéticos. Ele atravessa login, escolha de responsável, bootstrap, Home,
 reabertura offline pelo mesmo arquivo Drift, retomada com delta, refresh único
 de access token e logout com cache financeiro retido e credenciais removidas.
 
-A suíte local aprovou 178 testes Flutter e um teste integrado Windows. O backend
+A suíte local aprovou 180 testes Flutter e um teste integrado Windows. O backend
 permaneceu verde com 461 testes, Ruff, checks Django/deploy/migrations e 97% de
 cobertura.
 
@@ -34,8 +34,9 @@ performance em Android/iOS.
 ## Builds privados
 
 O build local Windows release e o Android APK release passaram com o endpoint
-sintético `example.invalid`. O MSIX final local tem 14.834.443 bytes e SHA-256
-`D4629C1A4B54CE4143C98E0B53B04527FFEB37C900D10B1DBE720E191433FC0D`.
+sintético `example.invalid`. O artefato MSIX da CI tem 14.902.744 bytes e
+SHA-256
+`6219ED0AFFD43D230097A0276E3062495C8A1F4BB504721682576062DD79F27D`.
 
 O projeto fixa [`msix` 3.18.0](https://pub.dev/packages/msix/versions/3.18.0) e
 mantém no manifesto-fonte `publisher: CN=Lar Finance Private`. Como não há
@@ -61,11 +62,12 @@ compatível com `CN=Lar Finance Private`.
 
 ## CI e limites
 
-A CI versionada prepara quatro evidências Flutter: Ubuntu para formatação,
-análise e testes; Windows para release/MSIX/hash; Ubuntu para APK; macOS para
-testes e build iOS release sem assinatura. Todos leem a versão Flutter fixada e
-não recebem credenciais reais. A primeira URL/status será anexada após o push; até
-lá, iOS permanece explicitamente não validado.
+A [CI 31856052144](https://github.com/Ludsonfrancisco/finanpy/actions/runs/31856052144)
+aprovou as seis frentes: Django, secret scan, Ubuntu format/analyze/testes,
+Windows release/MSIX/hash/goldens, Ubuntu Android APK e macOS com testes e build
+iOS release sem assinatura. Todos leem a versão Flutter fixada e não recebem
+credenciais reais. Goldens pixel a pixel rodam somente no rasterizador canônico
+Windows; Linux e macOS executam os demais 172 testes.
 
 Não houve deploy nem mudança no backend ou nos dados. Para rollback, reverta o
 commit de fechamento da Sprint 4; não há migration ou operação externa a desfazer.

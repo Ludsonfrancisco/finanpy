@@ -155,11 +155,11 @@ Plano técnico: [implementação da fundação Flutter](superpowers/plans/2026-0
 - [x] testes unitários, widget, golden e integração;
 - [x] benchmark de abertura <2s com cache;
 - [x] primeiro instalável Windows e build de validação Android;
-- [ ] build iOS no-codesign aguardando evidência macOS da primeira CI.
+- [x] build iOS release sem assinatura comprovado no runner macOS da CI.
 
-Aceite local: usuário entra, sincroniza, consulta a Home pelo cache offline e
-retoma com delta; nenhuma escrita offline entra nesta sprint. Windows/Android
-estão comprovados localmente; iOS permanece pendente até a CI macOS.
+Aceite: usuário entra, sincroniza, consulta a Home pelo cache offline e retoma
+com delta; nenhuma escrita offline entra nesta sprint. A CI 31856052144 aprovou
+Linux, Windows/MSIX, Android/APK e macOS/iOS sem assinatura.
 
 Riscos: ferramentas ausentes, pacote sem suporte Windows ou cache local inconsistente. Mitigação: prova do ambiente na primeira task, versões fixadas e testes de migração/atomicidade.
 
