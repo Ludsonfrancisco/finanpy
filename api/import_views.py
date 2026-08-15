@@ -21,11 +21,13 @@ from imports.services import (
     confirm_preview,
     create_preview,
     get_batch_for_household,
+    read_preview_page,
 )
 
 from .import_serializers import (
     BindImportAccountSerializer,
     EmptySerializer,
+    ImportPageSerializer,
     OfxPreviewSerializer,
     serialize_import_batch,
 )
@@ -52,6 +54,11 @@ class InvalidImportState(InvalidOfx):
 
 class ExpiredImportPreview(InvalidOfx):
     default_code = 'expired_import_preview'
+
+
+class InvalidImportPage(InvalidOfx):
+    default_detail = 'Página de prévia inválida.'
+    default_code = 'invalid_import_page'
 
 
 class ImportTemporarilyUnavailable(APIException):
@@ -88,6 +95,25 @@ class ImportView(APIView):
         except ImportAccessError as exc:
             raise NotFound() from exc
 
+    def batch_payload(self, batch, page_query=None):
+        after, limit = self.page_parameters(page_query)
+        return serialize_import_batch(
+            batch,
+            read_preview_page(batch=batch, after=after, limit=limit),
+        )
+
+    @staticmethod
+    def page_parameters(page_query):
+        if page_query is None:
+            return None, None
+        serializer = ImportPageSerializer(data=page_query)
+        if not serializer.is_valid():
+            raise InvalidImportPage()
+        return (
+            serializer.validated_data.get('after'),
+            serializer.validated_data.get('limit'),
+        )
+
     def handle_domain_error(self, error):
         if isinstance(error, ImportBusyError):
             raise ImportTemporarilyUnavailable() from error
@@ -116,12 +142,14 @@ class OfxPreviewView(ImportView):
             raise InvalidOfx() from error
         except (ImportStateError, ImportConflictError, ExpiredPreviewError) as error:
             self.handle_domain_error(error)
-        return Response(serialize_import_batch(batch), status=status.HTTP_201_CREATED)
+        return Response(self.batch_payload(batch), status=status.HTTP_201_CREATED)
 
 
 class ImportBatchDetailView(ImportView):
     def get(self, request, batch_uuid):
-        return Response(serialize_import_batch(self.get_batch(batch_uuid)))
+        return Response(
+            self.batch_payload(self.get_batch(batch_uuid), request.query_params)
+        )
 
 
 class BindImportAccountView(ImportView):
@@ -143,7 +171,7 @@ class BindImportAccountView(ImportView):
             self.handle_domain_error(error)
         except ImportAccessError as error:
             raise NotFound() from error
-        return Response(serialize_import_batch(batch))
+        return Response(self.batch_payload(batch))
 
 
 class ConfirmImportView(ImportView):
@@ -159,7 +187,7 @@ class ConfirmImportView(ImportView):
             self.handle_domain_error(error)
         except ImportAccessError as error:
             raise NotFound() from error
-        return Response(serialize_import_batch(batch))
+        return Response(self.batch_payload(batch))
 
 
 class CancelImportView(ImportView):
@@ -172,4 +200,4 @@ class CancelImportView(ImportView):
             self.handle_domain_error(error)
         except ImportAccessError as error:
             raise NotFound() from error
-        return Response(serialize_import_batch(batch))
+        return Response(self.batch_payload(batch))

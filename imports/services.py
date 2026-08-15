@@ -8,8 +8,9 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, OperationalError, connection, transaction
-from django.db.models import Q
+from django.db import IntegrityError, OperationalError, connection, models, transaction
+from django.db.models import Count, Q, Sum, Value
+from django.db.models.functions import Abs, Coalesce
 from django.utils import timezone
 from filelock import FileLock, Timeout
 
@@ -52,6 +53,9 @@ DEFAULT_ACCOUNT_SPECS = {
     'bank_account': ('Nubank — Conta', Account.CHECKING),
     'credit_card': ('Nubank — Cartão', Account.CREDIT),
 }
+DEFAULT_RECORD_PAGE_LIMIT = 50
+MAX_RECORD_PAGE_LIMIT = 100
+TOTAL_OUTPUT_FIELD = models.DecimalField(max_digits=14, decimal_places=2)
 
 
 def create_preview(*, household, device_session, content: bytes) -> ImportBatch:
@@ -392,6 +396,41 @@ def get_batch_for_household(*, household, batch_uuid) -> ImportBatch:
         raise ImportAccessError(
             'Import batch is not available for this household.'
         ) from error
+
+
+def read_preview_page(*, batch, after=None, limit=None) -> dict:
+    """Return one stable page of preview records with the totals of the batch."""
+    limit = DEFAULT_RECORD_PAGE_LIMIT if limit is None else limit
+    records = batch.records.order_by('line_number', 'pk')
+    if after is not None:
+        records = records.filter(line_number__gt=after)
+    page = list(records[: limit + 1])
+    next_cursor = None
+    if len(page) > limit:
+        page = page[:limit]
+        next_cursor = str(page[-1].line_number)
+    return {
+        **_summarize_records(batch),
+        'records': page,
+        'next_cursor': next_cursor,
+    }
+
+
+def _summarize_records(batch) -> dict:
+    return batch.records.aggregate(
+        record_count=Count('pk'),
+        pending_count=Count('pk', filter=Q(outcome=ImportRecord.PENDING)),
+        income_total=_absolute_total('income'),
+        expense_total=_absolute_total('expense'),
+    )
+
+
+def _absolute_total(transaction_type):
+    return Coalesce(
+        Sum(Abs('amount'), filter=Q(transaction_type=transaction_type)),
+        Value(Decimal('0.00')),
+        output_field=TOTAL_OUTPUT_FIELD,
+    )
 
 
 def purge_preview_records(*, now=None) -> int:

@@ -129,6 +129,8 @@ class ImportRecord(models.Model):
         (CREATED, 'Created'),
     ]
 
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
     batch = models.ForeignKey(
         ImportBatch,
         on_delete=models.CASCADE,
