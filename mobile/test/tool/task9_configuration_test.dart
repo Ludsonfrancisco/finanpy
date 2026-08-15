@@ -7,7 +7,7 @@ void main() {
     final pubspec = File('pubspec.yaml').readAsStringSync();
 
     expect(pubspec, contains('  msix: 3.18.0'));
-    expect(pubspec, contains('msix_config:\n'));
+    expect(pubspec, contains(RegExp(r'msix_config:\r?\n')));
     expect(pubspec, contains('  display_name: Lar Finance'));
     expect(pubspec, contains('  identity_name: online.palmbook.larfinance'));
     expect(pubspec, contains('  publisher_display_name: Lar Finance'));
