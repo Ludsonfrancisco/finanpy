@@ -136,27 +136,14 @@ def _parse_ofx(text: str) -> ElementTree.Element:
 
 
 def _parse_sgml(text: str) -> ElementTree.Element:
+    """Read OFX SGML, deciding aggregate from leaf by shape rather than by name.
+
+    A list of known aggregates cannot survive a real statement: every section
+    the institution adds that the list never heard of would read as malformed.
+    """
     root = ElementTree.Element('_ROOT')
     stack = [root]
     position = 0
-    container_tags = {
-        'OFX',
-        'SIGNONMSGSRSV1',
-        'SONRS',
-        'STATUS',
-        'FI',
-        'BANKMSGSRSV1',
-        'STMTTRNRS',
-        'STMTRS',
-        'BANKACCTFROM',
-        'BANKTRANLIST',
-        'STMTTRN',
-        'LEDGERBAL',
-        'CREDITCARDMSGSRSV1',
-        'CCSTMTTRNRS',
-        'CCSTMTRS',
-        'CCACCTFROM',
-    }
     pending_leaf_tag = None
 
     while position < len(text):
@@ -176,7 +163,7 @@ def _parse_sgml(text: str) -> ElementTree.Element:
                 pending_leaf_tag = None
                 continue
             pending_leaf_tag = None
-            if closing_tag not in container_tags or stack[-1].tag != closing_tag:
+            if stack[-1] is root or stack[-1].tag != closing_tag:
                 raise OfxParseError('OFX markup is malformed.')
             stack.pop()
             continue
@@ -184,22 +171,40 @@ def _parse_sgml(text: str) -> ElementTree.Element:
         pending_leaf_tag = None
         tag = token.split()[0].upper()
         element = ElementTree.SubElement(stack[-1], tag)
-        if tag not in container_tags:
-            next_tag = text.find('<', position)
-            if next_tag < 0:
-                value = text[position:]
-                position = len(text)
-            else:
-                value = text[position:next_tag]
-                position = next_tag
-            element.text = value.strip()
-            pending_leaf_tag = tag
-        else:
+        value, position = _sgml_content(text, position, tag)
+        if value is None:
             stack.append(element)
+        else:
+            element.text = value
+            pending_leaf_tag = tag
 
     if len(stack) != 1 or len(root) != 1 or root[0].tag != 'OFX':
         raise OfxParseError('OFX markup is malformed.')
     return root[0]
+
+
+def _sgml_content(text: str, position: int, tag: str) -> tuple[str | None, int]:
+    """Return the leaf text and the next position, or `None` for an aggregate.
+
+    SGML omits the closing tag of a leaf, so what follows the tag tells them
+    apart: text means a leaf, an opening tag means an aggregate. An empty leaf
+    is the one ambiguous case, and only one question separates it from an
+    aggregate — whether this tag is ever closed.
+    """
+    next_tag = text.find('<', position)
+    if next_tag < 0:
+        return text[position:].strip(), len(text)
+    value = text[position:next_tag].strip()
+    if value or text.startswith('</', next_tag):
+        return value, next_tag
+    if _closes_later(text, next_tag, tag):
+        return None, next_tag
+    return '', next_tag
+
+
+def _closes_later(text: str, position: int, tag: str) -> bool:
+    pattern = re.compile(r'<\s*/\s*' + re.escape(tag) + r'\s*>', re.IGNORECASE)
+    return pattern.search(text, position) is not None
 
 
 def _parse_transaction(item: ElementTree.Element) -> ParsedOfxTransaction:

@@ -112,6 +112,30 @@ class ParseNubankOfxTest(SimpleTestCase):
             'synthetic-explicit-card-fitid-001',
         )
 
+    def test_parses_account_statement_carrying_balance_aggregates(self):
+        parsed = parse_nubank_ofx(
+            self._fixture_bytes('nubank-account-balance-list.ofx')
+        )
+
+        self.assertEqual(parsed.product_type, 'bank_account')
+        self.assertEqual(
+            parsed.external_account_id, 'synthetic-balance-account-008'
+        )
+        self.assertEqual(parsed.statement_start, date(2026, 8, 1))
+        self.assertEqual(parsed.statement_end, date(2026, 8, 14))
+        self.assertEqual(len(parsed.transactions), 2)
+
+    def test_parses_aggregate_the_parser_was_never_told_about(self):
+        """Structure decides what is an aggregate, not a list of known tags."""
+        content = self._fixture_bytes('nubank-account-balance-list.ofx').replace(
+            b'</BALLIST>',
+            b'</BALLIST>\n<MKTGINFO>\n<SYNTHETICLEAF>0</SYNTHETICLEAF>\n</MKTGINFO>',
+        )
+
+        parsed = parse_nubank_ofx(content)
+
+        self.assertEqual(len(parsed.transactions), 2)
+
     def test_rejects_bomless_utf8_declared_by_ofx_header(self):
         content = self._fixture_bytes('nubank-account.ofx').replace(
             b'CHARSET:1252', b'CHARSET:UTF-8'
