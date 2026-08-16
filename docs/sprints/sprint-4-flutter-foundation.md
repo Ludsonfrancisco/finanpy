@@ -50,18 +50,42 @@ padrão. Isso é adequado somente a um piloto controlado, não a distribuição.
 
 ### Sideload controlado
 
+O certificado embarcado é autoassinado: `Subject` e `Issuer` são iguais, então
+ele é a própria raiz da cadeia. O `Add-AppxPackage` valida a raiz no store da
+**máquina**; o store do usuário não satisfaz essa verificação. Importar apenas em
+`Cert:\CurrentUser\TrustedPeople` mantém a instalação falhando com
+`HRESULT 0x80073CF0` e `0x800B0109`, comprovado em 2026-08-16. O passo exige
+elevação de administrador.
+
 1. Confirme o SHA-256 acima no arquivo exato.
 2. Confira que `Get-AuthenticodeSignature` retorna o subject e thumbprint acima.
-3. Registre se o thumbprint já existe em `Cert:\CurrentUser\TrustedPeople`.
-4. Exporte o certificado embutido e importe-o apenas em
-   `Cert:\CurrentUser\TrustedPeople`.
+3. Registre se o thumbprint já existe em `Cert:\LocalMachine\TrustedPeople`.
+   Sem esse registro não há como saber depois se a limpeza é sua obrigação.
+4. Exporte o certificado embutido e, em um PowerShell **como administrador**,
+   importe-o apenas em `Cert:\LocalMachine\TrustedPeople`.
 5. Instale com `Add-AppxPackage`.
 6. Se o certificado foi adicionado neste piloto, remova exatamente esse
    thumbprint do mesmo store depois da instalação.
 
-Não altere a confiança global do Windows, não habilite Developer Mode e não
-publique esse certificado. Um pacote de distribuição exige certificado próprio
-compatível com `CN=Lar Finance Private`.
+Não importe em `Cert:\LocalMachine\Root` nem em qualquer store de raiz: isso
+passaria a confiar em tudo assinado por esse certificado, que é público e
+compartilhado por qualquer projeto que use a ferramenta `msix`. Não altere a
+confiança global do Windows, não habilite Developer Mode e não publique esse
+certificado. Um pacote de distribuição exige certificado próprio compatível com
+`CN=Lar Finance Private`.
+
+### Alternativa sem certificado
+
+Para um piloto na própria máquina, o build portátil dispensa MSIX, certificado e
+elevação:
+
+```powershell
+flutter build windows --release --dart-define=LAR_FINANCE_API_BASE_URL=<endpoint>
+```
+
+Copie `build/windows/x64/runner/Release/` inteiro — o executável depende das DLLs
+e da pasta `data` ao lado dele — e execute `lar_finance.exe` direto. Esse caminho
+não instala nada e não altera confiança do sistema.
 
 ## CI e limites
 
