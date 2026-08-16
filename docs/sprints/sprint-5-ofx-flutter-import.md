@@ -111,14 +111,56 @@ segue o procedimento descrito na entrega da Sprint 4.
   fora do escopo e pertencem à Sprint 6;
 - o `flutter build windows` não roda de dentro de um worktree aninhado neste
   host por causa do limite de caminho do Windows; a prova foi feita a partir de
-  um caminho curto e a CI usa o checkout raiz.
+  um caminho curto e a CI usa o checkout raiz;
+- `invalid_import_state` cobre causas diferentes com uma mensagem só. Na
+  validação real ele apontou para uma prévia expirada quando o problema era
+  outro, e custou tempo de diagnóstico. Separar os casos continua em aberto.
 
-## Validação real pendente
+## Validação real
 
-Nada foi mesclado, implantado ou instalado por esta sprint, e nenhum arquivo
-real foi importado. A validação com os extratos reais exige, em sequência e com
-autorização separada para cada passo: merge em `main`, deploy com migrations
-controladas no EasyPanel, instalação do app Windows, seleção do OFX de conta,
-conferência da prévia antes de qualquer confirmação e, só então, a confirmação.
-O mesmo gate se repete para o arquivo de cartão. Se a prévia divergir, o
-caminho é cancelar — nunca corrigir dados direto no banco.
+A sprint foi mesclada em `main` (`e8eb8bf`), implantada no EasyPanel e usada
+para importar um extrato Nubank de conta corrente real. Cada passo teve
+autorização separada.
+
+O arquivo real derrubou três defeitos que nenhuma fixture sintética tinha
+alcançado. Os três só aparecem com o aparelho, o seletor nativo e o extrato do
+banco juntos — a razão de a sprint exigir esta etapa.
+
+| Defeito | Causa | Correção |
+| --- | --- | --- |
+| Seleção sumia sem erro | `PrivacyShield` trocava a subárvore ao receber `inactive`, e o diálogo nativo de arquivo deixa o app inativo: o controller era descartado no meio da importação | `7ff6376` |
+| `invalid_import_state` ao confirmar | duas linhas do cartão dividiam um FITID (compra e IOF), e a deduplicação tratava a segunda como repetição | `213e692` |
+| `OFX markup is malformed` em todo extrato de conta | o leitor SGML reconhecia agregados por uma lista fixa de nomes e não conhecia `BALLIST`/`BAL`, presentes no rodapé de saldos | `89a2fda` |
+
+O terceiro trocou a lista por uma regra estrutural: texto depois da tag é folha,
+tag de abertura é agregado, e a folha vazia se distingue do agregado por ser a
+única que nunca é fechada. Agregados futuros deixam de quebrar a leitura.
+
+Resultado da importação, conferido contra o arquivo antes da confirmação:
+
+| Medida | Servidor | Arquivo |
+| --- | --- | --- |
+| Lançamentos | 36 | 36 `STMTTRN` |
+| Entradas | 2 · R$ 6.015,00 | 2 créditos |
+| Saídas | 34 · R$ 8.224,59 | 34 débitos |
+| Período | 01/08 a 12/08 | último lançamento em 12/08 |
+
+A conta `Nubank — Conta` nasceu com saldo inicial zero, então o saldo exibido
+parte de `−2.209,59` e não do `LEDGERBAL` do extrato. A diferença é o saldo de
+abertura do período, que o arquivo não carrega. Preencher esse valor é decisão
+do operador, não do importador.
+
+O extrato de cartão continua sem confirmar por decisão de produto: enquanto a
+Sprint 6 não modelar fatura e pagamento, o pagamento aparece como despesa na
+conta e as compras como despesa no cartão, e o mesmo dinheiro conta duas vezes.
+
+Nenhum OFX real entrou no repositório. As fixtures continuam sintéticas, e o
+arquivo do banco só foi lido fora da árvore versionada.
+
+## Instalação usada no piloto
+
+O MSIX assinado pelo certificado de teste falhou com `0x800B0109` até o
+certificado ser confiado em `Cert:\LocalMachine\TrustedPeople`, que exige
+elevação. O piloto rodou com o build portátil de `flutter build windows
+--release`, que não depende de loja de certificados. O procedimento corrigido
+está na entrega da Sprint 4.
