@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:lar_finance/features/auth/application/auth_controller.dart';
 import 'package:lar_finance/features/auth/data/auth_repository.dart';
 import 'package:lar_finance/features/auth/domain/session.dart';
@@ -12,6 +13,8 @@ import 'package:lar_finance/features/imports/domain/import_preview.dart';
 import 'package:lar_finance/main.dart';
 
 void main() {
+  setUpAll(() => initializeDateFormatting('pt_BR'));
+
   testWidgets('an authenticated device opens the import route', (tester) async {
     await _pumpApp(tester);
 
@@ -55,6 +58,43 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Importação OFX'), findsOneWidget);
+  });
+
+  testWidgets('the focus lost to the file dialog keeps the selection alive', (
+    tester,
+  ) async {
+    // The native dialog steals the focus, which drives the app through
+    // inactive/resumed and rebuilds the route. That must not restart the
+    // import state and swallow the file the person chose.
+    final picked = Completer<SelectedOfx?>();
+    final repository = _FakeImportRepository(null);
+    final controller = AuthController(_AuthenticatedGateway());
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      MyApp(
+        authController: controller,
+        importRepository: repository,
+        ofxFilePicker: _DeferredPicker(() => picked.future),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Importar OFX'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Selecionar arquivo OFX'));
+    await tester.pump();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    picked.complete(SelectedOfx(Uint8List.fromList(const <int>[79, 70, 88])));
+    await tester.pumpAndSettle();
+
+    expect(repository.createCalls, 1);
+    expect(find.text('Nenhum arquivo selecionado'), findsNothing);
   });
 
   testWidgets('leaving during an upload does not start a second one', (
@@ -142,6 +182,15 @@ ImportPreview _preview() => ImportPreview(
   records: const <ImportRecordPreview>[],
   nextCursor: null,
 );
+
+final class _DeferredPicker implements OfxFilePicker {
+  const _DeferredPicker(this._pick);
+
+  final Future<SelectedOfx?> Function() _pick;
+
+  @override
+  Future<SelectedOfx?> pick() => _pick();
+}
 
 final class _AlwaysSelectingPicker implements OfxFilePicker {
   @override

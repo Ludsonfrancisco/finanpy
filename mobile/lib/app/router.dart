@@ -33,6 +33,9 @@ GoRouter createAppRouter(
   OfxFilePicker? ofxFilePicker,
 }) {
   config.validate();
+  // Built once: a picker rebuilt per frame would restart the import state
+  // every time the native dialog steals the focus.
+  final picker = ofxFilePicker ?? FilePickerOfxPicker();
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: authController,
@@ -107,7 +110,7 @@ GoRouter createAppRouter(
                     ? const _RouteNotice(title: 'Importação OFX')
                     : _ImportShell(
                         repository: importRepository,
-                        picker: ofxFilePicker ?? FilePickerOfxPicker(),
+                        picker: picker,
                         syncCoordinator: syncCoordinator,
                       ),
               ),
@@ -275,7 +278,6 @@ final class _ImportShellState extends State<_ImportShell> {
   void didUpdateWidget(_ImportShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.repository == widget.repository &&
-        oldWidget.picker == widget.picker &&
         oldWidget.syncCoordinator == widget.syncCoordinator) {
       return;
     }

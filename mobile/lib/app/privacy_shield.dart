@@ -71,24 +71,36 @@ final class _PrivacyShieldState extends State<PrivacyShield>
 
   @override
   Widget build(BuildContext context) {
-    if (!_covered) return widget.child;
-    return Semantics(
-      container: true,
-      label: 'Lar Finance protegido',
-      child: ExcludeSemantics(
-        child: ColoredBox(
-          color: const Color(0xFF091311),
-          child: Center(
-            child: Text(
-              'LAR FINANCE',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: const Color(0xFFE8E3D8),
-                letterSpacing: 1.8,
+    // The cover hides the content without discarding it. Replacing the subtree
+    // would dispose whatever it holds, and a file dialog makes the app
+    // inactive: an import in progress would silently lose its selection.
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        Offstage(
+          offstage: _covered,
+          child: TickerMode(enabled: !_covered, child: widget.child),
+        ),
+        if (_covered)
+          Semantics(
+            container: true,
+            label: 'Lar Finance protegido',
+            child: ExcludeSemantics(
+              child: ColoredBox(
+                color: const Color(0xFF091311),
+                child: Center(
+                  child: Text(
+                    'LAR FINANCE',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: const Color(0xFFE8E3D8),
+                      letterSpacing: 1.8,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
+      ],
     );
   }
 }
