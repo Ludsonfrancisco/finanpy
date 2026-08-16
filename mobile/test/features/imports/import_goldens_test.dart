@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:lar_finance/app/adaptive_shell.dart';
 import 'package:lar_finance/design_system/lar_theme.dart';
 import 'package:lar_finance/features/imports/application/import_controller.dart';
@@ -77,6 +78,7 @@ void main() {
               onCancel: () {},
               onRetry: () {},
               onLoadMore: () {},
+              formatExpiry: _fixedExpiry,
             ),
           ),
         ),
@@ -92,6 +94,11 @@ void main() {
     }, tags: 'golden');
   }
 }
+
+/// A golden cannot render the local wall clock: the machine that runs it
+/// would decide the pixels. This pins the instant to UTC.
+String _fixedExpiry(DateTime expiresAt) =>
+    DateFormat('dd/MM/yyyy, HH:mm', 'pt_BR').format(expiresAt.toUtc());
 
 final class _GoldenFixture {
   const _GoldenFixture({

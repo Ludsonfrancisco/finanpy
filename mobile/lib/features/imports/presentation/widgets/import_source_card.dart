@@ -9,9 +9,17 @@ import '../../domain/import_preview.dart';
 /// The label is the compatibility profile of the file, never a proof that the
 /// statement came from the institution it resembles.
 final class ImportSourceCard extends StatelessWidget {
-  const ImportSourceCard({required this.preview, super.key});
+  const ImportSourceCard({
+    required this.preview,
+    this.formatExpiry = formatLocalExpiry,
+    super.key,
+  });
 
   final ImportPreview preview;
+
+  /// Renders the expiry in the local zone of the device. A golden pins its own
+  /// formatter, because a wall clock would depend on the machine that runs it.
+  final String Function(DateTime expiresAt) formatExpiry;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +46,7 @@ final class ImportSourceCard extends StatelessWidget {
           Text(period, style: text.bodyLarge),
           const SizedBox(height: LarSpacing.md),
           Text(
-            'Prévia disponível até ${_expiry.format(preview.expiresAt.toLocal())}',
+            'Prévia disponível até ${formatExpiry(preview.expiresAt)}',
             style: text.bodySmall,
           ),
         ],
@@ -51,6 +59,9 @@ String productLabel(ImportProductType type) => switch (type) {
   ImportProductType.bankAccount => 'Nubank — Conta',
   ImportProductType.creditCard => 'Nubank — Cartão',
 };
+
+String formatLocalExpiry(DateTime expiresAt) =>
+    _expiry.format(expiresAt.toLocal());
 
 final DateFormat _day = DateFormat('dd MMM yyyy', 'pt_BR');
 final DateFormat _expiry = DateFormat('dd/MM/yyyy, HH:mm', 'pt_BR');

@@ -24,6 +24,7 @@ final class ImportScreen extends StatefulWidget {
     required this.onCancel,
     required this.onRetry,
     required this.onLoadMore,
+    this.formatExpiry = formatLocalExpiry,
     super.key,
   });
 
@@ -33,6 +34,9 @@ final class ImportScreen extends StatefulWidget {
   final VoidCallback onCancel;
   final VoidCallback onRetry;
   final VoidCallback onLoadMore;
+
+  /// Injected so a golden can render a wall clock that never moves.
+  final String Function(DateTime expiresAt) formatExpiry;
 
   @override
   State<ImportScreen> createState() => _ImportScreenState();
@@ -112,7 +116,10 @@ final class _ImportScreenState extends State<ImportScreen> {
           child: desktop && preview != null
               ? _DesktopLayout(
                   header: _Header(state: state),
-                  source: ImportSourceCard(preview: preview),
+                  source: ImportSourceCard(
+                    preview: preview,
+                    formatExpiry: widget.formatExpiry,
+                  ),
                   list: list!,
                   summary: summary!,
                   actions: actions,
@@ -122,7 +129,10 @@ final class _ImportScreenState extends State<ImportScreen> {
                   header: _Header(state: state),
                   source: preview == null
                       ? null
-                      : ImportSourceCard(preview: preview),
+                      : ImportSourceCard(
+                          preview: preview,
+                          formatExpiry: widget.formatExpiry,
+                        ),
                   summary: summary,
                   list: list,
                   loadMore: _loadMore(state),
