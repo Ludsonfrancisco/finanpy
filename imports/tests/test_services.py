@@ -53,6 +53,9 @@ class ImportPreviewServiceTest(TestCase):
     def setUp(self):
         self.content = (FIXTURES / 'nubank-account.ofx').read_bytes()
         self.card_content = (FIXTURES / 'nubank-card.ofx').read_bytes()
+        self.shared_fitid_content = (
+            FIXTURES / 'nubank-card-shared-fitid.ofx'
+        ).read_bytes()
         self.user, self.household, self.owner, self.account, self.device = (
             self._setup_household('preview@example.com')
         )
@@ -613,25 +616,23 @@ class ImportPreviewServiceTest(TestCase):
             ).exists()
         )
 
-    def test_repeated_fitid_inside_batch_rolls_back_before_any_write(self):
+    def test_repeated_fitid_over_different_entries_keeps_both(self):
         batch = self._bound_preview()
         second = batch.records.get(line_number=2)
         second.external_id = batch.records.get(line_number=1).external_id
         second.full_clean()
         second.save(update_fields=['external_id'])
 
-        with self.assertRaises(ImportConflictError):
-            confirm_preview(batch=batch, device_session=self.device)
+        confirmed = confirm_preview(batch=batch, device_session=self.device)
 
+        self.assertEqual(confirmed.status, ImportBatch.COMPLETED)
         self.assertEqual(
-            Transaction.objects.filter(household=self.household).count(), 0
+            Transaction.objects.filter(household=self.household).count(), 2
         )
+        references = SourceReference.objects.filter(account=self.account)
+        self.assertEqual(references.count(), 2)
         self.assertEqual(
-            SourceReference.objects.filter(account=self.account).count(), 0
-        )
-        self.assertEqual(
-            ImportBatch.objects.get(pk=batch.pk).status,
-            ImportBatch.PREVIEW_READY,
+            references.values_list('external_id', flat=True).distinct().count(), 2
         )
 
     def test_reconfirming_completed_preview_is_idempotent(self):
@@ -991,6 +992,69 @@ class ImportPreviewServiceTest(TestCase):
             statement_end=date(2026, 1, 31),
             expires_at='2027-01-01T00:00:00Z',
             status=ImportBatch.COMPLETED,
+        )
+
+    def test_shared_fitid_between_purchase_and_tax_still_imports_both(self):
+        """Nubank reuses one FITID for a purchase and its tax."""
+        batch = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.shared_fitid_content,
+        )
+
+        records = list(batch.records.order_by('line_number'))
+        self.assertEqual(
+            [record.outcome for record in records],
+            [
+                ImportRecord.WARNING,
+                ImportRecord.WARNING,
+                ImportRecord.PENDING,
+                ImportRecord.DUPLICATE,
+            ],
+        )
+
+        confirmed = confirm_preview(batch=batch, device_session=self.device)
+
+        self.assertEqual(confirmed.status, ImportBatch.COMPLETED)
+        self.assertEqual(
+            Transaction.objects.filter(account=confirmed.account).count(), 3
+        )
+        references = SourceReference.objects.filter(account=confirmed.account)
+        self.assertEqual(references.count(), 3)
+        self.assertEqual(
+            references.values_list('external_id', flat=True).distinct().count(), 3
+        )
+        self.assertEqual(
+            sorted(
+                str(amount)
+                for amount in Transaction.objects.filter(
+                    account=confirmed.account
+                ).values_list('amount', flat=True)
+            ),
+            ['109.17', '25.00', '3.82'],
+        )
+
+    def test_reimporting_shared_fitid_creates_no_second_entry(self):
+        first = confirm_preview(
+            batch=create_preview(
+                household=self.household,
+                device_session=self.device,
+                content=self.shared_fitid_content,
+            ),
+            device_session=self.device,
+        )
+        before = Transaction.objects.filter(account=first.account).count()
+
+        again = create_preview(
+            household=self.household,
+            device_session=self.device,
+            content=self.shared_fitid_content,
+        )
+        confirm_preview(batch=again, device_session=self.device)
+
+        self.assertTrue(again.is_repeated_file)
+        self.assertEqual(
+            Transaction.objects.filter(account=first.account).count(), before
         )
 
     def _bound_preview(self, content=None):

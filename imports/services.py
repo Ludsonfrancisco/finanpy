@@ -128,11 +128,18 @@ def _create_preview(*, household, device_session, content: bytes) -> ImportBatch
         _save(batch)
         if repeated:
             return batch
+        ambiguous = _ambiguous_external_ids(parsed.transactions)
+        seen_in_file = set()
         for line_number, item in enumerate(parsed.transactions, start=1):
             record = _record_from_parsed(
                 batch=batch, line_number=line_number, item=item
             )
-            _classify_record(record, link.account)
+            _classify_record(
+                record,
+                link.account,
+                ambiguous=ambiguous,
+                seen_in_file=seen_in_file,
+            )
             _save(record)
         _update_counts(batch)
         return batch
@@ -321,8 +328,9 @@ def _confirm_preview(*, batch: ImportBatch, device_session) -> ImportBatch:
             raise ImportStateError('Import preview owner is invalid.')
 
         records = list(batch.records.select_for_update().order_by('line_number'))
+        ambiguous = _ambiguous_external_ids(records)
         reference_ids = [
-            _reference_external_id(record)
+            _effective_reference_id(record, ambiguous)
             for record in records
             if record.outcome in (ImportRecord.PENDING, ImportRecord.WARNING)
         ]
@@ -370,7 +378,7 @@ def _confirm_preview(*, batch: ImportBatch, device_session) -> ImportBatch:
                 reference = SourceReference(
                     account=batch.account,
                     provider=batch.provider,
-                    external_id=_reference_external_id(record),
+                    external_id=_effective_reference_id(record, ambiguous),
                     transaction=ledger_transaction,
                 )
                 _save(reference)
@@ -503,11 +511,61 @@ def _record_from_parsed(*, batch, line_number, item):
     )
 
 
-def _classify_record(record, account):
+def _content_digest(entry):
+    """What the entry says, independent of the identity the file gave it."""
+    value = '|'.join(
+        (
+            entry.posted_on.isoformat(),
+            _normalized_decimal(entry.amount),
+            entry.transaction_type,
+            ' '.join(entry.description.split()),
+        )
+    )
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _ambiguous_external_ids(entries):
+    """External ids the file gives to entries that say different things.
+
+    A Nubank card statement reuses one FITID for a purchase and the tax
+    charged on it. Both are real, so neither can inherit the other identity.
+    An id repeated over an identical entry is just a repeated line.
+    """
+    digests = {}
+    for entry in entries:
+        if not entry.external_id:
+            continue
+        digests.setdefault(entry.external_id, set()).add(_content_digest(entry))
+    return {
+        external_id
+        for external_id, values in digests.items()
+        if len(values) > 1
+    }
+
+
+def _effective_reference_id(record, ambiguous):
+    """The identity stored for a record, unique even when a FITID repeats."""
+    if record.external_id and record.external_id in ambiguous:
+        return f'{record.external_id}#{_content_digest(record)[:16]}'
+    return _reference_external_id(record)
+
+
+def _classify_record(record, account, *, ambiguous=frozenset(), seen_in_file=None):
+    if seen_in_file is None:
+        seen_in_file = set()
+    entry = (record.external_id, _content_digest(record))
+    if record.external_id and entry in seen_in_file:
+        # The same line twice in one file is one entry, not two.
+        record.outcome = ImportRecord.DUPLICATE
+        return
+    if record.external_id:
+        seen_in_file.add(entry)
     if (
         record.external_id
         and SourceReference.objects.filter(
-            account=account, provider='nubank', external_id=record.external_id
+            account=account,
+            provider='nubank',
+            external_id=_effective_reference_id(record, ambiguous),
         ).exists()
     ):
         record.outcome = ImportRecord.DUPLICATE
@@ -520,6 +578,9 @@ def _classify_record(record, account):
             fingerprint=record.fingerprint,
         ).exists()
     ):
+        record.outcome = ImportRecord.WARNING
+    elif record.external_id in ambiguous:
+        # Importable, but the person should see that the file reused an id.
         record.outcome = ImportRecord.WARNING
     else:
         record.outcome = ImportRecord.PENDING
