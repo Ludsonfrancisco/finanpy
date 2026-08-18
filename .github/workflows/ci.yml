@@ -5,8 +5,11 @@ on:
   push:
     branches:
       - main
-      - codex/sprint-4-flutter-foundation
-      - codex/sprint-5-ofx-flutter
+      - master
+      - 'codex/**'
+      - 'feature/**'
+    tags:
+      - 'v*'
 
 permissions:
   contents: read
@@ -206,3 +209,16 @@ jobs:
       - run: flutter pub get
       - run: flutter test --exclude-tags=golden
       - run: flutter build ios --release --no-codesign --dart-define=LAR_FINANCE_API_BASE_URL=https://financeiro.palmbook.online/api/v1
+      - name: Package iOS IPA
+        run: |
+          mkdir -p build/Payload
+          cp -r build/ios/iphoneos/Runner.app build/Payload/
+          cd build
+          zip -r lar-finance.ipa Payload
+      - name: Upload iOS IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lar-finance-ios-ipa-${{ github.sha }}
+          path: mobile/build/lar-finance.ipa
+          if-no-files-found: error
+

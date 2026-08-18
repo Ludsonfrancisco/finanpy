@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../network/api_error.dart';
 import '../storage/local_ledger.dart';
 import '../../features/auth/domain/session.dart';
@@ -115,6 +117,39 @@ final class LedgerSyncCoordinator {
         _lastSuccessfulSession = expectedSession;
         state.markCurrent(syncedAt);
         return SyncResult.updated;
+      }
+
+      final pendingMutations = await _ledger.readPendingMutations();
+      if (pendingMutations.isNotEmpty) {
+        final operations = pendingMutations
+            .map((m) {
+              final data = (jsonDecode(m.payloadJson) as Map)
+                  .cast<String, Object?>();
+              return SyncOperationPayload(
+                operationId: m.operationId,
+                entity: m.entity,
+                action: m.action,
+                entityUuid: m.entityUuid,
+                expectedVersion: m.expectedVersion,
+                data: data,
+              );
+            })
+            .toList(growable: false);
+
+        final results = await _api.pushOperations(operations);
+        final successfulIds = <String>[];
+        final failedIds = <String>[];
+        for (var i = 0; i < results.length; i++) {
+          final res = results[i];
+          final opId = operations[i].operationId;
+          if (res.isSuccessful) {
+            successfulIds.add(opId);
+          } else {
+            failedIds.add(opId);
+          }
+        }
+        await _ledger.removeMutations(successfulIds);
+        await _ledger.markMutationsFailed(failedIds);
       }
 
       var cursor = metadata.cursor;

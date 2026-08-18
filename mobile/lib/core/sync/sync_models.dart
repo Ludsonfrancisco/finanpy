@@ -62,3 +62,48 @@ final class SyncMetadata {
 }
 
 enum SyncResult { current, updated, offlineWithCache, noCacheOffline, failed }
+
+final class SyncOperationPayload {
+  const SyncOperationPayload({
+    required this.operationId,
+    required this.entity,
+    required this.action,
+    required this.entityUuid,
+    required this.expectedVersion,
+    required this.data,
+  });
+
+  final String operationId;
+  final String entity;
+  final String action;
+  final String entityUuid;
+  final int expectedVersion;
+  final JsonObject data;
+
+  JsonObject toJson() => <String, Object?>{
+    'operation_id': operationId,
+    'entity': entity,
+    'action': action,
+    'entity_uuid': entityUuid,
+    'expected_version': expectedVersion,
+    'data': data,
+  };
+}
+
+final class SyncOperationResult {
+  const SyncOperationResult({
+    required this.status,
+    this.code,
+    this.entityType,
+    this.entityUuid,
+    this.version,
+  });
+
+  final String status;
+  final String? code;
+  final String? entityType;
+  final String? entityUuid;
+  final int? version;
+
+  bool get isSuccessful => status == 'applied' || status == 'duplicate';
+}

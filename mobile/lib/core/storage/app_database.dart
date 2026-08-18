@@ -13,13 +13,14 @@ part 'app_database.g.dart';
     Transactions,
     SyncState,
     LocalSettings,
+    OutboxMutations,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -32,6 +33,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await migrator.addColumn(syncState, syncState.sessionIdentity);
+      }
+      if (from < 4) {
+        await migrator.createTable(outboxMutations);
       }
     },
     beforeOpen: (details) async {

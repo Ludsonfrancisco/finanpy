@@ -38,6 +38,9 @@ abstract interface class LocalLedger {
     bool Function()? isSessionCurrent,
   });
   Future<SyncMetadata?> readSyncMetadata();
+  Future<List<OutboxMutation>> readPendingMutations({int limit = 100});
+  Future<void> removeMutations(List<String> operationIds);
+  Future<void> markMutationsFailed(List<String> operationIds);
 }
 
 final class DriftLocalLedger implements LocalLedger {
@@ -57,6 +60,31 @@ final class DriftLocalLedger implements LocalLedger {
   @override
   Stream<HomeSnapshot> watchHome(OwnerScope scope, DateTime now) =>
       _homeRepository.watchSnapshot(scope, now);
+
+  @override
+  Future<List<OutboxMutation>> readPendingMutations({int limit = 100}) {
+    return (_db.select(_db.outboxMutations)
+          ..where((row) => row.status.equals('pending'))
+          ..orderBy([(row) => OrderingTerm.asc(row.createdAt)])
+          ..limit(limit))
+        .get();
+  }
+
+  @override
+  Future<void> removeMutations(List<String> operationIds) async {
+    if (operationIds.isEmpty) return;
+    await (_db.delete(
+      _db.outboxMutations,
+    )..where((row) => row.operationId.isIn(operationIds))).go();
+  }
+
+  @override
+  Future<void> markMutationsFailed(List<String> operationIds) async {
+    if (operationIds.isEmpty) return;
+    await (_db.update(_db.outboxMutations)
+          ..where((row) => row.operationId.isIn(operationIds)))
+        .write(const OutboxMutationsCompanion(status: Value('failed')));
+  }
 
   @override
   Future<void> replaceBootstrap(

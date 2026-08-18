@@ -8,6 +8,7 @@ final class LarSidebar extends StatelessWidget {
   });
   final int selectedIndex;
   final ValueChanged<int> onSelect;
+
   @override
   Widget build(BuildContext context) => NavigationRail(
     extended: true,
@@ -23,6 +24,16 @@ final class LarSidebar extends StatelessWidget {
         icon: Icon(Icons.home_outlined),
         selectedIcon: Icon(Icons.home),
         label: Text('Início'),
+      ),
+      NavigationRailDestination(
+        icon: Icon(Icons.receipt_long_outlined),
+        selectedIcon: Icon(Icons.receipt_long),
+        label: Text('Movimentações'),
+      ),
+      NavigationRailDestination(
+        icon: Icon(Icons.account_balance_outlined),
+        selectedIcon: Icon(Icons.account_balance),
+        label: Text('Contas'),
       ),
       NavigationRailDestination(
         icon: Icon(Icons.more_horiz),

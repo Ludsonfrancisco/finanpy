@@ -4,6 +4,9 @@ import 'sync_models.dart';
 abstract interface class SyncApi {
   Future<BootstrapPayload> fetchBootstrap();
   Future<SyncPage> fetchChanges(String cursor);
+  Future<List<SyncOperationResult>> pushOperations(
+    List<SyncOperationPayload> operations,
+  );
 }
 
 final class DjangoSyncApi implements SyncApi {
@@ -26,6 +29,33 @@ final class DjangoSyncApi implements SyncApi {
     );
     return parseSyncPage(body);
   }
+
+  @override
+  Future<List<SyncOperationResult>> pushOperations(
+    List<SyncOperationPayload> operations,
+  ) async {
+    if (operations.isEmpty) return const [];
+    final payload = <String, Object?>{
+      'operations': operations.map((op) => op.toJson()).toList(growable: false),
+    };
+    final body = await _transport.postObject('/sync/push/', data: payload);
+    return parseSyncPushResponse(body);
+  }
+}
+
+List<SyncOperationResult> parseSyncPushResponse(JsonObject json) {
+  final results = _requiredObjectList(json, 'results');
+  return results
+      .map(
+        (res) => SyncOperationResult(
+          status: _requiredString(res, 'status'),
+          code: res['code'] as String?,
+          entityType: res['entity_type'] as String?,
+          entityUuid: res['entity_uuid'] as String?,
+          version: res['version'] as int?,
+        ),
+      )
+      .toList(growable: false);
 }
 
 BootstrapPayload parseBootstrapPayload(Map<String, Object?> json) {

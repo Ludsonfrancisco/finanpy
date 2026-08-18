@@ -6,11 +6,17 @@ import '../design_system/components/sync_status.dart';
 import '../design_system/lar_spacing.dart';
 import '../core/sync/sync_coordinator.dart';
 import '../core/sync/sync_state.dart';
+import '../features/accounts/application/accounts_controller.dart';
+import '../features/accounts/data/accounts_repository.dart';
+import '../features/accounts/presentation/accounts_screen.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/device_owner_screen.dart';
 import '../features/auth/presentation/initial_sync_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/more_screen.dart';
+import '../features/categories/application/categories_controller.dart';
+import '../features/categories/data/categories_repository.dart';
+import '../features/categories/presentation/categories_screen.dart';
 import '../features/home/application/home_controller.dart';
 import '../features/home/data/home_repository.dart';
 import '../features/home/presentation/home_screen.dart';
@@ -18,6 +24,12 @@ import '../features/imports/application/import_controller.dart';
 import '../features/imports/data/import_repository.dart';
 import '../features/imports/data/ofx_file_picker.dart';
 import '../features/imports/presentation/import_screen.dart';
+import '../features/reports/application/reports_controller.dart';
+import '../features/reports/data/reports_repository.dart';
+import '../features/reports/presentation/reports_screen.dart';
+import '../features/transactions/application/transactions_controller.dart';
+import '../features/transactions/data/transactions_repository.dart';
+import '../features/transactions/presentation/transactions_screen.dart';
 import 'adaptive_shell.dart';
 import 'app_config.dart';
 import 'privacy_shield.dart';
@@ -28,13 +40,15 @@ GoRouter createAppRouter(
   AuthController authController, {
   LedgerSyncCoordinator? syncCoordinator,
   HomeRepository? homeRepository,
+  AccountsRepository? accountsRepository,
+  TransactionsRepository? transactionsRepository,
+  CategoriesRepository? categoriesRepository,
+  ReportsRepository? reportsRepository,
   ValueVisibilityController? valueVisibilityController,
   ImportRepository? importRepository,
   OfxFilePicker? ofxFilePicker,
 }) {
   config.validate();
-  // Built once: a picker rebuilt per frame would restart the import state
-  // every time the native dialog steals the focus.
   final picker = ofxFilePicker ?? FilePickerOfxPicker();
   return GoRouter(
     initialLocation: '/login',
@@ -71,7 +85,17 @@ GoRouter createAppRouter(
       ),
       ShellRoute(
         builder: (context, state, child) {
-          final index = state.uri.path.startsWith('/more') ? 1 : 0;
+          final path = state.uri.path;
+          final int index;
+          if (path.startsWith('/transactions')) {
+            index = 1;
+          } else if (path.startsWith('/accounts')) {
+            index = 2;
+          } else if (path.startsWith('/more')) {
+            index = 3;
+          } else {
+            index = 0;
+          }
           return PrivacyShield(
             onInactive: valueVisibilityController
                 ?.protectBeforeFirstReadForInactiveReturn,
@@ -82,7 +106,12 @@ GoRouter createAppRouter(
                   ),
             child: AdaptiveShell(
               selectedIndex: index,
-              onSelect: (value) => context.go(value == 0 ? '/home' : '/more'),
+              onSelect: (value) => context.go(switch (value) {
+                1 => '/transactions',
+                2 => '/accounts',
+                3 => '/more',
+                _ => '/home',
+              }),
               child: child,
             ),
           );
@@ -97,11 +126,45 @@ GoRouter createAppRouter(
             ),
           ),
           GoRoute(
+            path: '/transactions',
+            builder: (context, state) => _TransactionsShell(
+              syncCoordinator: syncCoordinator,
+              transactionsRepository: transactionsRepository,
+              valueVisibilityController: valueVisibilityController,
+              onOpenImport: () => context.go('/more/import-ofx'),
+            ),
+          ),
+          GoRoute(
+            path: '/accounts',
+            builder: (context, state) => _AccountsShell(
+              syncCoordinator: syncCoordinator,
+              accountsRepository: accountsRepository,
+              valueVisibilityController: valueVisibilityController,
+              onOpenImport: () => context.go('/more/import-ofx'),
+            ),
+          ),
+          GoRoute(
+            path: '/categories',
+            builder: (context, state) => _CategoriesShell(
+              syncCoordinator: syncCoordinator,
+              categoriesRepository: categoriesRepository,
+            ),
+          ),
+          GoRoute(
+            path: '/reports',
+            builder: (context, state) => _ReportsShell(
+              syncCoordinator: syncCoordinator,
+              reportsRepository: reportsRepository,
+            ),
+          ),
+          GoRoute(
             path: '/more',
             builder: (context, state) => MoreScreen(
               onOpenImport: importRepository == null
                   ? null
                   : () => context.go('/more/import-ofx'),
+              onOpenCategories: () => context.go('/categories'),
+              onOpenReports: () => context.go('/reports'),
             ),
             routes: <RouteBase>[
               GoRoute(
@@ -248,8 +311,142 @@ SyncVisualState _visualState(SyncPhase phase) => switch (phase) {
   SyncPhase.failed => SyncVisualState.failed,
 };
 
-/// Hosts the import controller for the route. Task 6 replaces the body with
-/// the Casa de Valores screen; the ownership of the controller stays here.
+final class _AccountsShell extends StatefulWidget {
+  const _AccountsShell({
+    required this.syncCoordinator,
+    required this.accountsRepository,
+    required this.valueVisibilityController,
+    required this.onOpenImport,
+  });
+
+  final LedgerSyncCoordinator? syncCoordinator;
+  final AccountsRepository? accountsRepository;
+  final ValueVisibilityController? valueVisibilityController;
+  final VoidCallback onOpenImport;
+
+  @override
+  State<_AccountsShell> createState() => _AccountsShellState();
+}
+
+final class _AccountsShellState extends State<_AccountsShell> {
+  AccountsController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _createController();
+  }
+
+  @override
+  void didUpdateWidget(_AccountsShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.syncCoordinator == widget.syncCoordinator &&
+        oldWidget.accountsRepository == widget.accountsRepository) {
+      return;
+    }
+    _controller?.dispose();
+    _createController();
+  }
+
+  void _createController() {
+    final repository = widget.accountsRepository;
+    final coordinator = widget.syncCoordinator;
+    _controller = repository == null || coordinator == null
+        ? null
+        : AccountsController(
+            repository: repository,
+            syncState: coordinator.state,
+          );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller != null) {
+      return AccountsScreen(
+        controller: controller,
+        visibilityController: widget.valueVisibilityController,
+        onOpenImport: widget.onOpenImport,
+      );
+    }
+    return const _RouteNotice(title: 'Contas');
+  }
+}
+
+final class _TransactionsShell extends StatefulWidget {
+  const _TransactionsShell({
+    required this.syncCoordinator,
+    required this.transactionsRepository,
+    required this.valueVisibilityController,
+    required this.onOpenImport,
+  });
+
+  final LedgerSyncCoordinator? syncCoordinator;
+  final TransactionsRepository? transactionsRepository;
+  final ValueVisibilityController? valueVisibilityController;
+  final VoidCallback onOpenImport;
+
+  @override
+  State<_TransactionsShell> createState() => _TransactionsShellState();
+}
+
+final class _TransactionsShellState extends State<_TransactionsShell> {
+  TransactionsController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _createController();
+  }
+
+  @override
+  void didUpdateWidget(_TransactionsShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.syncCoordinator == widget.syncCoordinator &&
+        oldWidget.transactionsRepository == widget.transactionsRepository) {
+      return;
+    }
+    _controller?.dispose();
+    _createController();
+  }
+
+  void _createController() {
+    final repository = widget.transactionsRepository;
+    final coordinator = widget.syncCoordinator;
+    _controller = repository == null || coordinator == null
+        ? null
+        : TransactionsController(
+            repository: repository,
+            syncState: coordinator.state,
+          );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller != null) {
+      return TransactionsScreen(
+        controller: controller,
+        visibilityController: widget.valueVisibilityController,
+        onOpenImport: widget.onOpenImport,
+      );
+    }
+    return const _RouteNotice(title: 'Movimentações');
+  }
+}
+
 final class _ImportShell extends StatefulWidget {
   const _ImportShell({
     required this.repository,
@@ -314,6 +511,126 @@ final class _ImportShellState extends State<_ImportShell> {
       onLoadMore: () => unawaited(_controller.loadMore()),
     ),
   );
+}
+
+final class _CategoriesShell extends StatefulWidget {
+  const _CategoriesShell({
+    required this.syncCoordinator,
+    required this.categoriesRepository,
+  });
+
+  final LedgerSyncCoordinator? syncCoordinator;
+  final CategoriesRepository? categoriesRepository;
+
+  @override
+  State<_CategoriesShell> createState() => _CategoriesShellState();
+}
+
+final class _CategoriesShellState extends State<_CategoriesShell> {
+  CategoriesController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _createController();
+  }
+
+  @override
+  void didUpdateWidget(_CategoriesShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.syncCoordinator == widget.syncCoordinator &&
+        oldWidget.categoriesRepository == widget.categoriesRepository) {
+      return;
+    }
+    _controller?.dispose();
+    _createController();
+  }
+
+  void _createController() {
+    final repository = widget.categoriesRepository;
+    final coordinator = widget.syncCoordinator;
+    _controller = repository == null || coordinator == null
+        ? null
+        : CategoriesController(
+            repository: repository,
+            syncState: coordinator.state,
+          );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller != null) {
+      return CategoriesScreen(controller: controller);
+    }
+    return const _RouteNotice(title: 'Categorias');
+  }
+}
+
+final class _ReportsShell extends StatefulWidget {
+  const _ReportsShell({
+    required this.syncCoordinator,
+    required this.reportsRepository,
+  });
+
+  final LedgerSyncCoordinator? syncCoordinator;
+  final ReportsRepository? reportsRepository;
+
+  @override
+  State<_ReportsShell> createState() => _ReportsShellState();
+}
+
+final class _ReportsShellState extends State<_ReportsShell> {
+  ReportsController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _createController();
+  }
+
+  @override
+  void didUpdateWidget(_ReportsShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.syncCoordinator == widget.syncCoordinator &&
+        oldWidget.reportsRepository == widget.reportsRepository) {
+      return;
+    }
+    _controller?.dispose();
+    _createController();
+  }
+
+  void _createController() {
+    final repository = widget.reportsRepository;
+    final coordinator = widget.syncCoordinator;
+    _controller = repository == null || coordinator == null
+        ? null
+        : ReportsController(
+            repository: repository,
+            syncState: coordinator.state,
+          );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller != null) {
+      return ReportsScreen(controller: controller);
+    }
+    return const _RouteNotice(title: 'Relatórios & Gráficos');
+  }
 }
 
 final class _RouteNotice extends StatelessWidget {

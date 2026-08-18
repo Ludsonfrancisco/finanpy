@@ -184,3 +184,21 @@ class LocalSettings extends Table {
   @override
   Set<Column<Object>> get primaryKey => {key};
 }
+
+class OutboxMutations extends Table {
+  TextColumn get operationId => text()();
+  TextColumn get entity =>
+      text().check(entity.isIn(const ['transaction', 'account', 'category']))();
+  TextColumn get action =>
+      text().check(action.isIn(const ['create', 'update', 'delete']))();
+  TextColumn get entityUuid => text()();
+  IntColumn get expectedVersion => integer()();
+  TextColumn get payloadJson => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  TextColumn get status => text()
+      .withDefault(const Constant('pending'))
+      .check(status.isIn(const ['pending', 'in_flight', 'failed']))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {operationId};
+}

@@ -6,10 +6,17 @@ import '../../../design_system/lar_spacing.dart';
 import '../application/auth_controller.dart';
 
 final class MoreScreen extends ConsumerWidget {
-  const MoreScreen({this.onOpenImport, super.key});
+  const MoreScreen({
+    this.onOpenImport,
+    this.onOpenCategories,
+    this.onOpenReports,
+    super.key,
+  });
 
   /// Navigation is injected: this screen never builds its own transport.
   final VoidCallback? onOpenImport;
+  final VoidCallback? onOpenCategories;
+  final VoidCallback? onOpenReports;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,18 +50,38 @@ final class MoreScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: LarSpacing.xs),
                 Text(lastSync),
-                if (onOpenImport != null) ...<Widget>[
+                if (onOpenReports != null ||
+                    onOpenCategories != null ||
+                    onOpenImport != null) ...<Widget>[
                   const SizedBox(height: LarSpacing.xl),
                   Text(
-                    'Importação',
+                    'Cadastros & Ferramentas',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  const SizedBox(height: LarSpacing.sm),
-                  OutlinedButton.icon(
-                    onPressed: onOpenImport,
-                    icon: const Icon(Icons.file_upload_outlined),
-                    label: const Text('Importar OFX'),
-                  ),
+                  if (onOpenReports != null) ...[
+                    const SizedBox(height: LarSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: onOpenReports,
+                      icon: const Icon(Icons.pie_chart_outline),
+                      label: const Text('Relatórios & Gráficos'),
+                    ),
+                  ],
+                  if (onOpenCategories != null) ...[
+                    const SizedBox(height: LarSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: onOpenCategories,
+                      icon: const Icon(Icons.category_outlined),
+                      label: const Text('Categorias'),
+                    ),
+                  ],
+                  if (onOpenImport != null) ...[
+                    const SizedBox(height: LarSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: onOpenImport,
+                      icon: const Icon(Icons.file_upload_outlined),
+                      label: const Text('Importar OFX'),
+                    ),
+                  ],
                 ],
                 const SizedBox(height: LarSpacing.xl),
                 OutlinedButton.icon(

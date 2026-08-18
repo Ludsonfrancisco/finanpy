@@ -9,6 +9,7 @@ final class LarBottomNavigation extends StatelessWidget {
   });
   final int selectedIndex;
   final ValueChanged<int> onSelect;
+
   @override
   Widget build(BuildContext context) {
     if (Theme.of(context).platform == TargetPlatform.iOS) {
@@ -23,6 +24,16 @@ final class LarBottomNavigation extends StatelessWidget {
             icon: Icon(CupertinoIcons.house),
             activeIcon: Icon(CupertinoIcons.house_fill),
             label: 'Início',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.list_bullet),
+            activeIcon: Icon(CupertinoIcons.list_bullet),
+            label: 'Movimentações',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.creditcard),
+            activeIcon: Icon(CupertinoIcons.creditcard_fill),
+            label: 'Contas',
           ),
           BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.ellipsis_circle),
@@ -40,6 +51,16 @@ final class LarBottomNavigation extends StatelessWidget {
           icon: Icon(Icons.home_outlined),
           selectedIcon: Icon(Icons.home),
           label: 'Início',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.receipt_long_outlined),
+          selectedIcon: Icon(Icons.receipt_long),
+          label: 'Movimentações',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.account_balance_outlined),
+          selectedIcon: Icon(Icons.account_balance),
+          label: 'Contas',
         ),
         NavigationDestination(
           icon: Icon(Icons.more_horiz),

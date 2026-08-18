@@ -16,13 +16,17 @@ import 'core/storage/local_ledger.dart';
 import 'core/sync/sync_api.dart';
 import 'core/sync/sync_coordinator.dart';
 import 'design_system/lar_theme.dart';
+import 'features/accounts/data/accounts_repository.dart';
 import 'features/auth/application/auth_controller.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/secure_token_store.dart';
 import 'features/auth/domain/session.dart';
+import 'features/categories/data/categories_repository.dart';
 import 'features/home/data/home_repository.dart';
 import 'features/imports/data/import_repository.dart';
 import 'features/imports/data/ofx_file_picker.dart';
+import 'features/reports/data/reports_repository.dart';
+import 'features/transactions/data/transactions_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +65,10 @@ Future<void> main() async {
     onSessionExpired: controller.expireSession,
   );
   final homeRepository = DriftHomeRepository(database);
+  final accountsRepository = DriftAccountsRepository(database);
+  final transactionsRepository = DriftTransactionsRepository(database);
+  final categoriesRepository = DriftCategoriesRepository(database);
+  final reportsRepository = DriftReportsRepository(database);
   final importRepository = DjangoImportRepository(sessionTransport);
   runApp(
     MyApp(
@@ -68,6 +76,10 @@ Future<void> main() async {
       authController: controller,
       syncCoordinator: syncCoordinator,
       homeRepository: homeRepository,
+      accountsRepository: accountsRepository,
+      transactionsRepository: transactionsRepository,
+      categoriesRepository: categoriesRepository,
+      reportsRepository: reportsRepository,
       valueVisibilityController: valueVisibilityController,
       importRepository: importRepository,
     ),
@@ -80,6 +92,10 @@ class MyApp extends StatelessWidget {
     required this.authController,
     this.syncCoordinator,
     this.homeRepository,
+    this.accountsRepository,
+    this.transactionsRepository,
+    this.categoriesRepository,
+    this.reportsRepository,
     this.valueVisibilityController,
     this.importRepository,
     this.ofxFilePicker,
@@ -90,6 +106,10 @@ class MyApp extends StatelessWidget {
          authController,
          syncCoordinator: syncCoordinator,
          homeRepository: homeRepository,
+         accountsRepository: accountsRepository,
+         transactionsRepository: transactionsRepository,
+         categoriesRepository: categoriesRepository,
+         reportsRepository: reportsRepository,
          valueVisibilityController: valueVisibilityController,
          importRepository: importRepository,
          ofxFilePicker: ofxFilePicker,
@@ -99,6 +119,10 @@ class MyApp extends StatelessWidget {
   final AuthController authController;
   final LedgerSyncCoordinator? syncCoordinator;
   final HomeRepository? homeRepository;
+  final AccountsRepository? accountsRepository;
+  final TransactionsRepository? transactionsRepository;
+  final CategoriesRepository? categoriesRepository;
+  final ReportsRepository? reportsRepository;
   final ValueVisibilityController? valueVisibilityController;
   final ImportRepository? importRepository;
   final OfxFilePicker? ofxFilePicker;

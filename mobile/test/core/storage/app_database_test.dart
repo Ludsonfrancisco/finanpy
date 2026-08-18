@@ -41,7 +41,7 @@ void main() {
         );
 
     final transaction = await db.select(db.transactions).getSingle();
-    expect(db.schemaVersion, 3);
+    expect(db.schemaVersion, 4);
     expect(transaction.amountMinor, 2486040);
     expect(transaction.version, 3);
   });

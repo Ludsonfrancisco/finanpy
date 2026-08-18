@@ -7,6 +7,7 @@ import 'package:lar_finance/app/app_lifecycle.dart';
 import 'package:lar_finance/app/app_config.dart';
 import 'package:lar_finance/app/router.dart';
 import 'package:lar_finance/core/network/api_error.dart';
+import 'package:lar_finance/core/storage/app_database.dart';
 import 'package:lar_finance/core/storage/local_ledger.dart';
 import 'package:lar_finance/core/sync/sync_api.dart';
 import 'package:lar_finance/core/sync/sync_coordinator.dart';
@@ -486,6 +487,16 @@ final class _MemoryLedger implements LocalLedger {
   @override
   Stream<HomeSnapshot> watchHome(OwnerScope scope, DateTime now) =>
       const Stream<HomeSnapshot>.empty();
+
+  @override
+  Future<List<OutboxMutation>> readPendingMutations({int limit = 100}) async =>
+      const [];
+
+  @override
+  Future<void> removeMutations(List<String> operationIds) async {}
+
+  @override
+  Future<void> markMutationsFailed(List<String> operationIds) async {}
 }
 
 final class _SequenceSyncApi implements SyncApi {
@@ -502,6 +513,11 @@ final class _SequenceSyncApi implements SyncApi {
   final List<Object> changeOutcomes;
   int bootstrapCalls = 0;
   int changeCalls = 0;
+
+  @override
+  Future<List<SyncOperationResult>> pushOperations(
+    List<SyncOperationPayload> operations,
+  ) async => const [];
 
   @override
   Future<BootstrapPayload> fetchBootstrap() async {

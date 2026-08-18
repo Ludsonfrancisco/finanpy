@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lar_finance/core/network/api_error.dart';
@@ -52,6 +53,44 @@ void main() {
       expect(result, SyncResult.updated);
       expect((await ledger.readSyncMetadata())?.cursor, bootstrap.cursor);
       expect(await database.select(database.transactions).get(), hasLength(3));
+    });
+
+    test('pushes pending outbox mutations before fetching changes', () async {
+      final fakeApi = _FakeSyncApi(
+        bootstrap: bootstrap,
+        pages: [SyncPage(changes: const [], cursor: bootstrap.cursor)],
+      );
+      final coordinator = _coordinator(ledger, fakeApi);
+
+      // Bootstrap first
+      await coordinator.synchronize();
+
+      // Enqueue an outbox mutation
+      await database
+          .into(database.outboxMutations)
+          .insert(
+            OutboxMutationsCompanion.insert(
+              operationId: 'op-001',
+              entity: 'transaction',
+              action: 'create',
+              entityUuid: 'tx-001',
+              expectedVersion: 0,
+              payloadJson: '{"description":"Test","amount":"50.00"}',
+              createdAt: DateTime.now().toUtc(),
+              status: const Value('pending'),
+            ),
+          );
+
+      expect(await ledger.readPendingMutations(), hasLength(1));
+
+      // Sync again
+      final syncResult = await coordinator.synchronize();
+      expect(syncResult, SyncResult.current);
+
+      // Outbox item was pushed and removed
+      expect(fakeApi.pushedOperations, hasLength(1));
+      expect(fakeApi.pushedOperations.first.operationId, 'op-001');
+      expect(await ledger.readPendingMutations(), isEmpty);
     });
 
     test('rolls back a bootstrap with a broken account reference', () async {
@@ -819,6 +858,17 @@ final class _FakeSyncApi implements SyncApi {
   int _nextPage = 0;
   int _activeChains = 0;
   int maxConcurrentChains = 0;
+  final List<SyncOperationPayload> pushedOperations = <SyncOperationPayload>[];
+
+  @override
+  Future<List<SyncOperationResult>> pushOperations(
+    List<SyncOperationPayload> operations,
+  ) async {
+    pushedOperations.addAll(operations);
+    return operations
+        .map((op) => const SyncOperationResult(status: 'applied'))
+        .toList(growable: false);
+  }
 
   @override
   Future<BootstrapPayload> fetchBootstrap() async {

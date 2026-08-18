@@ -259,7 +259,7 @@ As sprints abaixo assumem ciclos curtos e focados. Cada sprint é incremental e 
 
 ---
 
-playwright### Sprint 9 — Docker (sprint final)
+### Sprint 9 — Docker & Containerização
 
 - [X] **9.1 Containerização**
   - [X] 9.1.1 Criar `Dockerfile` multi-stage baseado em `python:3.12-slim`
@@ -278,3 +278,80 @@ playwright### Sprint 9 — Docker (sprint final)
   - [X] 9.3.3 Validar execução via `docker compose up`
 
 ---
+
+### Sprint 10 — Arquitetura Mobile & Isolamento Contábil (Lar Finance)
+
+- [X] **10.1 Multi-Owner Household Contábil**
+  - [X] 10.1.1 Modelagem de titulares contábeis no backend (`Eu`, `Esposa`, `Conjunto`)
+  - [X] 10.1.2 Isolamento estrito de dados familiares por `Household`
+  - [X] 10.1.3 Endpoints REST de autenticação e sessão móvel
+
+- [X] **10.2 Fundação do App Flutter & Design System**
+  - [X] 10.2.1 Configuração do Flutter com tema *Casa de Valores* (Verde Mineral `#2F756A`, Terracota `#B8534F`, Champanhe `#C7A35A`)
+  - [X] 10.2.2 Banco de dados reativo local SQLite com Drift
+  - [X] 10.2.3 Navegação adaptativa GoRouter (`AdaptiveShell`) com suporte a Desktop, Tablet e Mobile
+  - [X] 10.2.4 Escudo de privacidade (`PrivacyShield`) para ofuscação de valores
+
+---
+
+### Sprint 11 — Motor OFX & Reconciliação Bancária
+
+- [X] **11.1 Parser & Importador OFX**
+  - [X] 11.1.1 Parser OFX robusto com extração de metadados de conta bancária e extratos
+  - [X] 11.1.2 Deduplicação inteligente de transações via hash idempotente
+  - [X] 11.1.3 Tela de pré-visualização, seleção de conta de destino e confirmação de importação
+
+---
+
+### Sprint 12 — Sincronização Delta & Outbox Pattern Offline
+
+- [X] **12.1 Sincronização Bidirecional Idempotente**
+  - [X] 12.1.1 Endpoint de pull delta de alterações (`/api/v1/sync/changes/`)
+  - [X] 12.1.2 Endpoint de push idempotente (`/api/v1/sync/push/`) com suporte a transações em lote
+  - [X] 12.1.3 Coordenador de sincronização no app Flutter (`LedgerSyncCoordinator`)
+
+- [X] **12.2 Mutações Offline no SQLite (Drift)**
+  - [X] 12.2.1 Tabela `OutboxMutations` versionada no schema 4 com migração automática
+  - [X] 12.2.2 Enfileiramento atômico de mutações locais com resposta instantânea na UI
+
+---
+
+### Sprint 13 — Formulários & Gestão Completa no Mobile
+
+- [X] **13.1 Movimentações & Contas Bancárias**
+  - [X] 13.1.1 Formulário `TransactionFormSheet` (criar, editar, excluir, alternar despesa/receita, valor em centavos)
+  - [X] 13.1.2 Formulário `AccountFormSheet` (criar conta bancária, tipo e saldo inicial)
+  - [X] 13.1.3 Telas `TransactionsScreen` e `AccountsScreen` com FABs, busca e filtros
+
+- [X] **13.2 Gestão de Categorias**
+  - [X] 13.2.1 Modelo reativo `DriftCategoriesRepository` com contagem de lançamentos vinculados
+  - [X] 13.2.2 Formulário `CategoryFormSheet` com seletor visual da paleta *Casa de Valores*
+  - [X] 13.2.3 Tela `CategoriesScreen` com abas (Todas / Despesas / Receitas), busca e exclusão segura
+
+---
+
+### Sprint 14 — Gráficos & Relatórios Analíticos Familiares
+
+- [X] **14.1 Inteligência Contábil & Agregações**
+  - [X] 14.1.1 Agregações de despesas por categoria e fluxo de caixa de 6 meses no SQLite
+  - [X] 14.1.2 Filtros por titular contábil (`Lar`, `Eu`, `Esposa`) e múltiplos períodos
+
+- [X] **14.2 Gráficos Nativos CustomPainter**
+  - [X] 14.2.1 Gráfico de Rosca (`DonutChartWidget`) com legenda interativa e animação
+  - [X] 14.2.2 Gráfico de Barras Mensal (`MonthlyBarChartWidget`) comparando Receitas vs Despesas
+  - [X] 14.2.3 Card de Métricas (`ReportsMetricsCard`) com cálculo da **Taxa de Poupança Familiar**
+  - [X] 14.2.4 Tela `ReportsScreen` integrada na navegação e atalhos
+
+---
+
+### Sprint 15 — CI/CD & Empacotamento de Produção
+
+- [X] **15.1 Pipeline GitHub Actions**
+  - [X] 15.1.1 Workflow `.github/workflows/ci.yml` automatizando testes paralelos Django e Flutter
+  - [X] 15.1.2 Barreira de cobertura de código (> 90%) e varredura de segredos Gitleaks
+  - [X] 15.1.3 Build automatizado de artefatos de Release (Windows MSIX, Android APK e Docker)
+
+- [X] **15.2 Compilação de Produção**
+  - [X] 15.2.1 Executável Windows Release (`lar_finance.exe`) compilado e validado
+  - [X] 15.2.2 Pacote instalador Windows (`lar_finance.msix`) gerado com sucesso
+

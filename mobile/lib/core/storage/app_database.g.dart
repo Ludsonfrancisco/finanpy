@@ -3188,6 +3188,535 @@ class LocalSettingsCompanion extends UpdateCompanion<LocalSetting> {
   }
 }
 
+class $OutboxMutationsTable extends OutboxMutations
+    with TableInfo<$OutboxMutationsTable, OutboxMutation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OutboxMutationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _operationIdMeta = const VerificationMeta(
+    'operationId',
+  );
+  @override
+  late final GeneratedColumn<String> operationId = GeneratedColumn<String>(
+    'operation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityMeta = const VerificationMeta('entity');
+  @override
+  late final GeneratedColumn<String> entity = GeneratedColumn<String>(
+    'entity',
+    aliasedName,
+    false,
+    check: () => entity.isIn(const ['transaction', 'account', 'category']),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+    'action',
+    aliasedName,
+    false,
+    check: () => action.isIn(const ['create', 'update', 'delete']),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityUuidMeta = const VerificationMeta(
+    'entityUuid',
+  );
+  @override
+  late final GeneratedColumn<String> entityUuid = GeneratedColumn<String>(
+    'entity_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _expectedVersionMeta = const VerificationMeta(
+    'expectedVersion',
+  );
+  @override
+  late final GeneratedColumn<int> expectedVersion = GeneratedColumn<int>(
+    'expected_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadJsonMeta = const VerificationMeta(
+    'payloadJson',
+  );
+  @override
+  late final GeneratedColumn<String> payloadJson = GeneratedColumn<String>(
+    'payload_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    check: () => status.isIn(const ['pending', 'in_flight', 'failed']),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    operationId,
+    entity,
+    action,
+    entityUuid,
+    expectedVersion,
+    payloadJson,
+    createdAt,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'outbox_mutations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OutboxMutation> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('operation_id')) {
+      context.handle(
+        _operationIdMeta,
+        operationId.isAcceptableOrUnknown(
+          data['operation_id']!,
+          _operationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_operationIdMeta);
+    }
+    if (data.containsKey('entity')) {
+      context.handle(
+        _entityMeta,
+        entity.isAcceptableOrUnknown(data['entity']!, _entityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(
+        _actionMeta,
+        action.isAcceptableOrUnknown(data['action']!, _actionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('entity_uuid')) {
+      context.handle(
+        _entityUuidMeta,
+        entityUuid.isAcceptableOrUnknown(data['entity_uuid']!, _entityUuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityUuidMeta);
+    }
+    if (data.containsKey('expected_version')) {
+      context.handle(
+        _expectedVersionMeta,
+        expectedVersion.isAcceptableOrUnknown(
+          data['expected_version']!,
+          _expectedVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_expectedVersionMeta);
+    }
+    if (data.containsKey('payload_json')) {
+      context.handle(
+        _payloadJsonMeta,
+        payloadJson.isAcceptableOrUnknown(
+          data['payload_json']!,
+          _payloadJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadJsonMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {operationId};
+  @override
+  OutboxMutation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OutboxMutation(
+      operationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operation_id'],
+      )!,
+      entity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity'],
+      )!,
+      action: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action'],
+      )!,
+      entityUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_uuid'],
+      )!,
+      expectedVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_version'],
+      )!,
+      payloadJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload_json'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  $OutboxMutationsTable createAlias(String alias) {
+    return $OutboxMutationsTable(attachedDatabase, alias);
+  }
+}
+
+class OutboxMutation extends DataClass implements Insertable<OutboxMutation> {
+  final String operationId;
+  final String entity;
+  final String action;
+  final String entityUuid;
+  final int expectedVersion;
+  final String payloadJson;
+  final DateTime createdAt;
+  final String status;
+  const OutboxMutation({
+    required this.operationId,
+    required this.entity,
+    required this.action,
+    required this.entityUuid,
+    required this.expectedVersion,
+    required this.payloadJson,
+    required this.createdAt,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['operation_id'] = Variable<String>(operationId);
+    map['entity'] = Variable<String>(entity);
+    map['action'] = Variable<String>(action);
+    map['entity_uuid'] = Variable<String>(entityUuid);
+    map['expected_version'] = Variable<int>(expectedVersion);
+    map['payload_json'] = Variable<String>(payloadJson);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  OutboxMutationsCompanion toCompanion(bool nullToAbsent) {
+    return OutboxMutationsCompanion(
+      operationId: Value(operationId),
+      entity: Value(entity),
+      action: Value(action),
+      entityUuid: Value(entityUuid),
+      expectedVersion: Value(expectedVersion),
+      payloadJson: Value(payloadJson),
+      createdAt: Value(createdAt),
+      status: Value(status),
+    );
+  }
+
+  factory OutboxMutation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OutboxMutation(
+      operationId: serializer.fromJson<String>(json['operationId']),
+      entity: serializer.fromJson<String>(json['entity']),
+      action: serializer.fromJson<String>(json['action']),
+      entityUuid: serializer.fromJson<String>(json['entityUuid']),
+      expectedVersion: serializer.fromJson<int>(json['expectedVersion']),
+      payloadJson: serializer.fromJson<String>(json['payloadJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'operationId': serializer.toJson<String>(operationId),
+      'entity': serializer.toJson<String>(entity),
+      'action': serializer.toJson<String>(action),
+      'entityUuid': serializer.toJson<String>(entityUuid),
+      'expectedVersion': serializer.toJson<int>(expectedVersion),
+      'payloadJson': serializer.toJson<String>(payloadJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  OutboxMutation copyWith({
+    String? operationId,
+    String? entity,
+    String? action,
+    String? entityUuid,
+    int? expectedVersion,
+    String? payloadJson,
+    DateTime? createdAt,
+    String? status,
+  }) => OutboxMutation(
+    operationId: operationId ?? this.operationId,
+    entity: entity ?? this.entity,
+    action: action ?? this.action,
+    entityUuid: entityUuid ?? this.entityUuid,
+    expectedVersion: expectedVersion ?? this.expectedVersion,
+    payloadJson: payloadJson ?? this.payloadJson,
+    createdAt: createdAt ?? this.createdAt,
+    status: status ?? this.status,
+  );
+  OutboxMutation copyWithCompanion(OutboxMutationsCompanion data) {
+    return OutboxMutation(
+      operationId: data.operationId.present
+          ? data.operationId.value
+          : this.operationId,
+      entity: data.entity.present ? data.entity.value : this.entity,
+      action: data.action.present ? data.action.value : this.action,
+      entityUuid: data.entityUuid.present
+          ? data.entityUuid.value
+          : this.entityUuid,
+      expectedVersion: data.expectedVersion.present
+          ? data.expectedVersion.value
+          : this.expectedVersion,
+      payloadJson: data.payloadJson.present
+          ? data.payloadJson.value
+          : this.payloadJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutboxMutation(')
+          ..write('operationId: $operationId, ')
+          ..write('entity: $entity, ')
+          ..write('action: $action, ')
+          ..write('entityUuid: $entityUuid, ')
+          ..write('expectedVersion: $expectedVersion, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    operationId,
+    entity,
+    action,
+    entityUuid,
+    expectedVersion,
+    payloadJson,
+    createdAt,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OutboxMutation &&
+          other.operationId == this.operationId &&
+          other.entity == this.entity &&
+          other.action == this.action &&
+          other.entityUuid == this.entityUuid &&
+          other.expectedVersion == this.expectedVersion &&
+          other.payloadJson == this.payloadJson &&
+          other.createdAt == this.createdAt &&
+          other.status == this.status);
+}
+
+class OutboxMutationsCompanion extends UpdateCompanion<OutboxMutation> {
+  final Value<String> operationId;
+  final Value<String> entity;
+  final Value<String> action;
+  final Value<String> entityUuid;
+  final Value<int> expectedVersion;
+  final Value<String> payloadJson;
+  final Value<DateTime> createdAt;
+  final Value<String> status;
+  final Value<int> rowid;
+  const OutboxMutationsCompanion({
+    this.operationId = const Value.absent(),
+    this.entity = const Value.absent(),
+    this.action = const Value.absent(),
+    this.entityUuid = const Value.absent(),
+    this.expectedVersion = const Value.absent(),
+    this.payloadJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OutboxMutationsCompanion.insert({
+    required String operationId,
+    required String entity,
+    required String action,
+    required String entityUuid,
+    required int expectedVersion,
+    required String payloadJson,
+    required DateTime createdAt,
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : operationId = Value(operationId),
+       entity = Value(entity),
+       action = Value(action),
+       entityUuid = Value(entityUuid),
+       expectedVersion = Value(expectedVersion),
+       payloadJson = Value(payloadJson),
+       createdAt = Value(createdAt);
+  static Insertable<OutboxMutation> custom({
+    Expression<String>? operationId,
+    Expression<String>? entity,
+    Expression<String>? action,
+    Expression<String>? entityUuid,
+    Expression<int>? expectedVersion,
+    Expression<String>? payloadJson,
+    Expression<DateTime>? createdAt,
+    Expression<String>? status,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (operationId != null) 'operation_id': operationId,
+      if (entity != null) 'entity': entity,
+      if (action != null) 'action': action,
+      if (entityUuid != null) 'entity_uuid': entityUuid,
+      if (expectedVersion != null) 'expected_version': expectedVersion,
+      if (payloadJson != null) 'payload_json': payloadJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (status != null) 'status': status,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OutboxMutationsCompanion copyWith({
+    Value<String>? operationId,
+    Value<String>? entity,
+    Value<String>? action,
+    Value<String>? entityUuid,
+    Value<int>? expectedVersion,
+    Value<String>? payloadJson,
+    Value<DateTime>? createdAt,
+    Value<String>? status,
+    Value<int>? rowid,
+  }) {
+    return OutboxMutationsCompanion(
+      operationId: operationId ?? this.operationId,
+      entity: entity ?? this.entity,
+      action: action ?? this.action,
+      entityUuid: entityUuid ?? this.entityUuid,
+      expectedVersion: expectedVersion ?? this.expectedVersion,
+      payloadJson: payloadJson ?? this.payloadJson,
+      createdAt: createdAt ?? this.createdAt,
+      status: status ?? this.status,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (operationId.present) {
+      map['operation_id'] = Variable<String>(operationId.value);
+    }
+    if (entity.present) {
+      map['entity'] = Variable<String>(entity.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (entityUuid.present) {
+      map['entity_uuid'] = Variable<String>(entityUuid.value);
+    }
+    if (expectedVersion.present) {
+      map['expected_version'] = Variable<int>(expectedVersion.value);
+    }
+    if (payloadJson.present) {
+      map['payload_json'] = Variable<String>(payloadJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutboxMutationsCompanion(')
+          ..write('operationId: $operationId, ')
+          ..write('entity: $entity, ')
+          ..write('action: $action, ')
+          ..write('entityUuid: $entityUuid, ')
+          ..write('expectedVersion: $expectedVersion, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('status: $status, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3198,6 +3727,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $SyncStateTable syncState = $SyncStateTable(this);
   late final $LocalSettingsTable localSettings = $LocalSettingsTable(this);
+  late final $OutboxMutationsTable outboxMutations = $OutboxMutationsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3210,6 +3742,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactions,
     syncState,
     localSettings,
+    outboxMutations,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -6526,6 +7059,277 @@ typedef $$LocalSettingsTableProcessedTableManager =
       LocalSetting,
       PrefetchHooks Function()
     >;
+typedef $$OutboxMutationsTableCreateCompanionBuilder =
+    OutboxMutationsCompanion Function({
+      required String operationId,
+      required String entity,
+      required String action,
+      required String entityUuid,
+      required int expectedVersion,
+      required String payloadJson,
+      required DateTime createdAt,
+      Value<String> status,
+      Value<int> rowid,
+    });
+typedef $$OutboxMutationsTableUpdateCompanionBuilder =
+    OutboxMutationsCompanion Function({
+      Value<String> operationId,
+      Value<String> entity,
+      Value<String> action,
+      Value<String> entityUuid,
+      Value<int> expectedVersion,
+      Value<String> payloadJson,
+      Value<DateTime> createdAt,
+      Value<String> status,
+      Value<int> rowid,
+    });
+
+class $$OutboxMutationsTableFilterComposer
+    extends Composer<_$AppDatabase, $OutboxMutationsTable> {
+  $$OutboxMutationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityUuid => $composableBuilder(
+    column: $table.entityUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedVersion => $composableBuilder(
+    column: $table.expectedVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OutboxMutationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $OutboxMutationsTable> {
+  $$OutboxMutationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityUuid => $composableBuilder(
+    column: $table.entityUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedVersion => $composableBuilder(
+    column: $table.expectedVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OutboxMutationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OutboxMutationsTable> {
+  $$OutboxMutationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entity =>
+      $composableBuilder(column: $table.entity, builder: (column) => column);
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<String> get entityUuid => $composableBuilder(
+    column: $table.entityUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedVersion => $composableBuilder(
+    column: $table.expectedVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+}
+
+class $$OutboxMutationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OutboxMutationsTable,
+          OutboxMutation,
+          $$OutboxMutationsTableFilterComposer,
+          $$OutboxMutationsTableOrderingComposer,
+          $$OutboxMutationsTableAnnotationComposer,
+          $$OutboxMutationsTableCreateCompanionBuilder,
+          $$OutboxMutationsTableUpdateCompanionBuilder,
+          (
+            OutboxMutation,
+            BaseReferences<
+              _$AppDatabase,
+              $OutboxMutationsTable,
+              OutboxMutation
+            >,
+          ),
+          OutboxMutation,
+          PrefetchHooks Function()
+        > {
+  $$OutboxMutationsTableTableManager(
+    _$AppDatabase db,
+    $OutboxMutationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OutboxMutationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OutboxMutationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OutboxMutationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> operationId = const Value.absent(),
+                Value<String> entity = const Value.absent(),
+                Value<String> action = const Value.absent(),
+                Value<String> entityUuid = const Value.absent(),
+                Value<int> expectedVersion = const Value.absent(),
+                Value<String> payloadJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OutboxMutationsCompanion(
+                operationId: operationId,
+                entity: entity,
+                action: action,
+                entityUuid: entityUuid,
+                expectedVersion: expectedVersion,
+                payloadJson: payloadJson,
+                createdAt: createdAt,
+                status: status,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String operationId,
+                required String entity,
+                required String action,
+                required String entityUuid,
+                required int expectedVersion,
+                required String payloadJson,
+                required DateTime createdAt,
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OutboxMutationsCompanion.insert(
+                operationId: operationId,
+                entity: entity,
+                action: action,
+                entityUuid: entityUuid,
+                expectedVersion: expectedVersion,
+                payloadJson: payloadJson,
+                createdAt: createdAt,
+                status: status,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OutboxMutationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OutboxMutationsTable,
+      OutboxMutation,
+      $$OutboxMutationsTableFilterComposer,
+      $$OutboxMutationsTableOrderingComposer,
+      $$OutboxMutationsTableAnnotationComposer,
+      $$OutboxMutationsTableCreateCompanionBuilder,
+      $$OutboxMutationsTableUpdateCompanionBuilder,
+      (
+        OutboxMutation,
+        BaseReferences<_$AppDatabase, $OutboxMutationsTable, OutboxMutation>,
+      ),
+      OutboxMutation,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6544,4 +7348,6 @@ class $AppDatabaseManager {
       $$SyncStateTableTableManager(_db, _db.syncState);
   $$LocalSettingsTableTableManager get localSettings =>
       $$LocalSettingsTableTableManager(_db, _db.localSettings);
+  $$OutboxMutationsTableTableManager get outboxMutations =>
+      $$OutboxMutationsTableTableManager(_db, _db.outboxMutations);
 }

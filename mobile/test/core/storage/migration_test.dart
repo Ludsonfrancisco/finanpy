@@ -98,7 +98,7 @@ void main() {
           .customSelect('PRAGMA user_version')
           .getSingle()
           .then((row) => row.read<int>('user_version')),
-      3,
+      4,
     );
   });
 
@@ -154,7 +154,48 @@ void main() {
           .customSelect('PRAGMA user_version')
           .getSingle()
           .then((row) => row.read<int>('user_version')),
-      3,
+      4,
+    );
+  });
+
+  test('schema v3 migrates to v4 by creating outbox_mutations table', () async {
+    final directory = await Directory.systemTemp.createTemp('lar-finance-v3-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}ledger.sqlite',
+    );
+    final now = DateTime.utc(2026, 8, 14, 12);
+    var db = AppDatabase(NativeDatabase(file));
+    await db
+        .into(db.households)
+        .insert(
+          HouseholdsCompanion.insert(
+            uuid: '11111111-1111-4111-8111-111111111111',
+            name: 'Casa',
+            updatedAt: now,
+          ),
+        );
+    await db.close();
+
+    db = AppDatabase(
+      NativeDatabase(
+        file,
+        setup: (rawDatabase) {
+          rawDatabase.execute('DROP TABLE IF EXISTS outbox_mutations');
+          rawDatabase.execute('PRAGMA user_version = 3');
+        },
+      ),
+    );
+    addTearDown(db.close);
+
+    final mutations = await db.select(db.outboxMutations).get();
+    expect(mutations, isEmpty);
+    expect(
+      await db
+          .customSelect('PRAGMA user_version')
+          .getSingle()
+          .then((row) => row.read<int>('user_version')),
+      4,
     );
   });
 }
