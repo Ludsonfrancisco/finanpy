@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>{% block title %}Finanpy{% endblock %}</title>
+  <title>{% block title %}Lar Finance{% endblock %}</title>
 
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,10 +17,36 @@
   <!-- Alpine.js via CDN — required for mobile sidebar toggle -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+  <!-- Chart.js via CDN for responsive web charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <script>
     tailwind.config = {
       theme: {
         extend: {
+          colors: {
+            mineral: {
+              DEFAULT: '#2F756A',
+              light: '#3D9285',
+              dark: '#23584F',
+            },
+            danger: {
+              DEFAULT: '#B8534F',
+              light: '#D66D69',
+              dark: '#963E3B',
+            },
+            champagne: {
+              DEFAULT: '#C7A35A',
+              light: '#DBB86F',
+              dark: '#A6843D',
+            },
+            lar: {
+              bg: '#121815',
+              surface: '#1A221E',
+              card: '#1E2823',
+              border: '#28352E',
+            },
+          },
           fontFamily: {
             sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
           },
@@ -31,7 +57,7 @@
 
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans antialiased">
+<body class="bg-[#121815] text-[#E8ECE9] font-sans antialiased">
 
   <!-- Skip to main content — visible on keyboard focus only -->
   <a href="#main-content"

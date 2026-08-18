@@ -1,73 +1,77 @@
 <aside
   :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-  class="fixed inset-y-0 left-0 z-30 flex w-64 flex-shrink-0 flex-col border-r border-slate-800 bg-slate-900 transition-transform duration-200 ease-in-out md:relative md:translate-x-0 md:flex"
+  class="fixed inset-y-0 left-0 z-30 flex w-64 flex-shrink-0 flex-col border-r border-[#28352E] bg-[#1A221E] transition-transform duration-200 ease-in-out md:relative md:translate-x-0 md:flex"
   aria-label="Navegação principal"
 >
 
-  <!-- Brand -->
-  <div class="flex items-center px-6 py-5 border-b border-slate-800">
+  <!-- Brand: Lar Finance -->
+  <div class="flex items-center gap-3 px-6 py-5 border-b border-[#28352E]">
+    <div class="h-9 w-9 rounded-xl bg-mineral flex items-center justify-center text-white font-bold shadow-md shadow-mineral/20">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7m-9 2v8m4-8v8m5-8l2 2" />
+      </svg>
+    </div>
     <a href="{% url 'dashboard' %}"
-       class="text-xl font-bold bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 bg-clip-text text-transparent transition focus:outline-none focus:ring-2 focus:ring-emerald-500/40 rounded">
-      Finanpy
+       class="text-xl font-bold tracking-tight text-[#E8ECE9] hover:text-white transition focus:outline-none">
+      Lar Finance
     </a>
   </div>
 
   <!-- Navigation -->
-  <nav class="flex flex-1 flex-col gap-1 overflow-y-auto p-4">
+  <nav class="flex flex-1 flex-col gap-1.5 overflow-y-auto p-4">
 
     <a href="{% url 'dashboard' %}"
-       class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500/40 {% if request.resolver_match.url_name == 'dashboard' %}bg-emerald-500 text-white shadow-lg shadow-emerald-500/20{% else %}text-slate-400 hover:bg-slate-800 hover:text-slate-100{% endif %}">
+       class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition focus:outline-none {% if request.resolver_match.url_name == 'dashboard' %}bg-mineral text-white shadow-lg shadow-mineral/30{% else %}text-[#8D958D] hover:bg-[#222C27] hover:text-[#E8ECE9]{% endif %}">
       <!-- icon: home -->
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7m-9 2v8m4-8v8m5-8l2 2" />
       </svg>
-      <span class="font-semibold">Dashboard</span>
+      <span>Dashboard</span>
     </a>
 
-    <!-- Submenu with rounded lines (Inspired by LuxeLane) -->
+    <!-- Submenu com conectores -->
     <div class="relative ml-8 pl-4 py-2 space-y-1">
         <!-- Vertical connector -->
-        <div class="absolute left-0 top-0 bottom-6 w-px bg-slate-800"></div>
+        <div class="absolute left-0 top-0 bottom-6 w-px bg-[#28352E]"></div>
 
         <a href="{% url 'accounts:list' %}"
-           class="relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs transition {% if 'accounts' in request.resolver_match.app_name %}text-emerald-400{% else %}text-slate-500 hover:text-slate-200{% endif %} group">
-            <!-- Curved Line -->
-            <div class="absolute -left-4 w-4 h-1/2 border-slate-800 rounded-bl-xl border-b border-l top-0"></div>
-            <span class="font-bold uppercase tracking-widest">Contas</span>
+           class="relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition {% if 'accounts' in request.resolver_match.app_name %}text-mineral-light font-bold{% else %}text-[#8D958D] hover:text-[#E8ECE9]{% endif %} group">
+            <div class="absolute -left-4 w-4 h-1/2 border-[#28352E] rounded-bl-xl border-b border-l top-0"></div>
+            <span>Contas</span>
         </a>
 
         <a href="{% url 'categories:list' %}"
-           class="relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs transition {% if 'categories' in request.resolver_match.app_name %}text-emerald-400{% else %}text-slate-500 hover:text-slate-200{% endif %} group">
-            <div class="absolute -left-4 w-4 h-full border-slate-800 rounded-bl-xl border-b border-l -top-1/2"></div>
-            <span class="font-bold uppercase tracking-widest">Categorias</span>
+           class="relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition {% if 'categories' in request.resolver_match.app_name %}text-mineral-light font-bold{% else %}text-[#8D958D] hover:text-[#E8ECE9]{% endif %} group">
+            <div class="absolute -left-4 w-4 h-full border-[#28352E] rounded-bl-xl border-b border-l -top-1/2"></div>
+            <span>Categorias</span>
         </a>
 
         <a href="{% url 'transactions:list' %}"
-           class="relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs transition {% if 'transactions' in request.resolver_match.app_name %}text-emerald-400{% else %}text-slate-500 hover:text-slate-200{% endif %} group">
-            <div class="absolute -left-4 w-4 h-[150%] border-slate-800 rounded-bl-xl border-b border-l -top-[100%]"></div>
-            <span class="font-bold uppercase tracking-widest">Transações</span>
+           class="relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition {% if 'transactions' in request.resolver_match.app_name %}text-mineral-light font-bold{% else %}text-[#8D958D] hover:text-[#E8ECE9]{% endif %} group">
+            <div class="absolute -left-4 w-4 h-[150%] border-[#28352E] rounded-bl-xl border-b border-l -top-[100%]"></div>
+            <span>Transações</span>
         </a>
     </div>
 
-    <div class="mt-4">
+    <div class="mt-2">
         <a href="{% url 'profiles:edit' %}"
-           class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-400 transition hover:bg-slate-800 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+           class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[#8D958D] transition hover:bg-[#222C27] hover:text-[#E8ECE9] focus:outline-none">
           <!-- icon: user -->
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
-          <span class="font-semibold">Meu Perfil</span>
+          <span>Meu Perfil</span>
         </a>
     </div>
 
     <!-- Divider -->
-    <div class="my-2 border-t border-slate-800"></div>
+    <div class="my-3 border-t border-[#28352E]"></div>
 
-    <!-- Logout (POST form to keep CSRF safe) -->
+    <!-- Logout (POST form) -->
     <form method="post" action="{% url 'users:logout' %}">
       {% csrf_token %}
       <button type="submit"
-              class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-400 transition hover:bg-rose-900/30 hover:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-500/40">
+              class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[#8D958D] transition hover:bg-danger/10 hover:text-danger-light focus:outline-none">
         <!-- icon: logout -->
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />

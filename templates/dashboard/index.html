@@ -1,117 +1,168 @@
 {% extends "layouts/base_app.html" %}
 
-{% block title %}Dashboard — Finanpy{% endblock %}
+{% block title %}Dashboard — Lar Finance{% endblock %}
 
 {% block extra_head %}
 <style>
-    .glass-card {
-        background: rgba(30, 41, 59, 0.4);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+    .lar-card {
+        background: #1A221E;
+        border: 1px solid #28352E;
     }
-    .metric-glow-emerald {
-        box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
-    }
-    .metric-glow-rose {
-        box-shadow: 0 0 20px rgba(244, 63, 94, 0.1);
-    }
-    .metric-glow-slate {
-        box-shadow: 0 0 20px rgba(148, 163, 184, 0.1);
+    .lar-card:hover {
+        border-color: #384A41;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Header Section (Inspired by LuxeLane) -->
-<header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+<!-- Header & Seletor de Titular Contábil -->
+<header class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
     <div class="flex items-center gap-4">
-        <h1 class="text-4xl font-bold text-white tracking-tight">Dashboard</h1>
-        <div class="hidden md:block h-10 w-px bg-slate-800 mx-2"></div>
-        <div class="flex flex-col">
-            <span class="text-sm font-semibold text-slate-100">{{ recent_transactions|length }} transações recentes</span>
-            <span class="text-xs text-slate-500">Acompanhamento em tempo real</span>
+        <div>
+            <h1 class="text-3xl font-bold text-[#E8ECE9] tracking-tight">Dashboard do Lar</h1>
+            <p class="text-xs text-[#8D958D] mt-0.5">Gestão financeira integrada e inteligente</p>
         </div>
     </div>
     
-    <!-- Quick Actions / Date Range Toggle -->
-    <div class="bg-slate-900/50 p-1 rounded-full flex items-center self-start md:self-center border border-white/5">
-        <button class="px-5 py-2 bg-emerald-500 text-white rounded-full shadow-lg text-xs font-bold transition-all">Geral</button>
-        <button class="px-5 py-2 text-xs font-semibold text-slate-400 hover:text-white transition-all">Este Mês</button>
+    <!-- Seletor de Titular Familiar (Lar / Eu / Esposa) -->
+    <div class="bg-[#1A221E] p-1.5 rounded-2xl flex items-center gap-1 self-start lg:self-center border border-[#28352E]">
+        <a href="?owner=household" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition-all {% if owner_filter == 'household' or not owner_filter %}bg-mineral text-white shadow-md shadow-mineral/30{% else %}text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27]{% endif %}">
+           Lar (Geral)
+        </a>
+        <a href="?owner=self" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition-all {% if owner_filter == 'self' %}bg-mineral text-white shadow-md shadow-mineral/30{% else %}text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27]{% endif %}">
+           Eu
+        </a>
+        <a href="?owner=spouse" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition-all {% if owner_filter == 'spouse' %}bg-mineral text-white shadow-md shadow-mineral/30{% else %}text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27]{% endif %}">
+           Esposa
+        </a>
     </div>
 </header>
 
-<!-- ===== Summary metric cards (Premium Grid) ===== -->
-<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-10">
+<!-- ===== Summary metric cards (4 Cards Grid) ===== -->
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
 
-  <!-- Saldo total (Feature Card Style) -->
-  <div class="glass-card rounded-[2rem] p-8 transition-all hover:scale-[1.02] metric-glow-slate group cursor-default">
-    <div class="flex items-center justify-between mb-6">
-      <div class="h-12 w-12 flex items-center justify-center rounded-2xl bg-slate-800/50 text-slate-400 group-hover:text-white transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+  <!-- Saldo Total / Patrimônio -->
+  <div class="lar-card rounded-2xl p-6 transition-all cursor-default">
+    <div class="flex items-center justify-between mb-4">
+      <div class="h-10 w-10 flex items-center justify-center rounded-xl bg-[#222C27] text-champagne">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
         </svg>
       </div>
-      <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Patrimônio Líquido</span>
+      <span class="text-[10px] font-bold uppercase tracking-wider text-[#8D958D]">Patrimônio Líquido</span>
     </div>
-    <p class="text-4xl font-bold text-white tracking-tight mb-2">
+    <p class="text-2xl font-bold text-[#E8ECE9] tracking-tight mb-1 tabular-nums">
       R$&nbsp;{{ total_balance|floatformat:2 }}
     </p>
-    <div class="flex items-center gap-2">
-        <span class="h-1.5 w-1.5 rounded-full bg-slate-500 animate-pulse"></span>
-        <p class="text-xs font-medium text-slate-500">Consolidado de todas as contas</p>
-    </div>
+    <p class="text-xs font-medium text-[#8D958D]">Consolidado em contas</p>
   </div>
 
-  <!-- Receitas do mês -->
-  <div class="glass-card rounded-[2rem] p-8 transition-all hover:scale-[1.02] metric-glow-emerald group cursor-default relative overflow-hidden">
-    <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-    </div>
-    <div class="flex items-center justify-between mb-6">
-      <div class="h-12 w-12 flex items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+  <!-- Entradas do Mês -->
+  <div class="lar-card rounded-2xl p-6 transition-all cursor-default">
+    <div class="flex items-center justify-between mb-4">
+      <div class="h-10 w-10 flex items-center justify-center rounded-xl bg-mineral/15 text-mineral-light">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
         </svg>
       </div>
-      <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-500/60">Entradas</span>
+      <span class="text-[10px] font-bold uppercase tracking-wider text-mineral-light">Entradas</span>
     </div>
-    <p class="text-4xl font-bold text-emerald-400 tracking-tight mb-2">
+    <p class="text-2xl font-bold text-mineral-light tracking-tight mb-1 tabular-nums">
       R$&nbsp;{{ monthly_income|floatformat:2 }}
     </p>
-    <p class="text-xs font-medium text-slate-500">Receitas acumuladas no mês</p>
+    <p class="text-xs font-medium text-[#8D958D]">Receitas acumuladas</p>
   </div>
 
-  <!-- Despesas do mês -->
-  <div class="glass-card rounded-[2rem] p-8 transition-all hover:scale-[1.02] metric-glow-rose group cursor-default relative overflow-hidden">
-    <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6" />
-        </svg>
-    </div>
-    <div class="flex items-center justify-between mb-6">
-      <div class="h-12 w-12 flex items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400 group-hover:bg-rose-500 group-hover:text-white transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+  <!-- Saídas do Mês -->
+  <div class="lar-card rounded-2xl p-6 transition-all cursor-default">
+    <div class="flex items-center justify-between mb-4">
+      <div class="h-10 w-10 flex items-center justify-center rounded-xl bg-danger/15 text-danger-light">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
         </svg>
       </div>
-      <span class="text-[10px] font-bold uppercase tracking-widest text-rose-500/60">Saídas</span>
+      <span class="text-[10px] font-bold uppercase tracking-wider text-danger-light">Saídas</span>
     </div>
-    <p class="text-4xl font-bold text-rose-400 tracking-tight mb-2">
+    <p class="text-2xl font-bold text-danger-light tracking-tight mb-1 tabular-nums">
       R$&nbsp;{{ monthly_expenses|floatformat:2 }}
     </p>
-    <p class="text-xs font-medium text-slate-500">Despesas totais no período</p>
+    <p class="text-xs font-medium text-[#8D958D]">Despesas no período</p>
   </div>
+
+  <!-- Taxa de Poupança Familiar -->
+  <div class="lar-card rounded-2xl p-6 transition-all cursor-default">
+    <div class="flex items-center justify-between mb-4">
+      <div class="h-10 w-10 flex items-center justify-center rounded-xl bg-champagne/15 text-champagne">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <span class="text-[10px] font-bold uppercase tracking-wider text-champagne">Poupança</span>
+    </div>
+    <p class="text-2xl font-bold text-champagne tracking-tight mb-1 tabular-nums">
+      {{ savings_rate }}%
+    </p>
+    <p class="text-xs font-medium text-[#8D958D]">
+      Saldo líq: R$&nbsp;{{ monthly_net|floatformat:2 }}
+    </p>
+  </div>
+
 </div>
 
+<!-- ===== Gráficos Analíticos (Donut & Fluxo Mensal) ===== -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+
+    <!-- Gráfico 1: Fluxo Mensal 6 Meses -->
+    <div class="lar-card rounded-2xl p-6 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-[#E8ECE9] tracking-tight">Fluxo Mensal (6 Meses)</h2>
+            <div class="flex items-center gap-4 text-xs">
+                <span class="flex items-center gap-1.5 text-mineral-light font-semibold">
+                    <span class="w-2.5 h-2.5 rounded-full bg-mineral"></span> Receitas
+                </span>
+                <span class="flex items-center gap-1.5 text-danger-light font-semibold">
+                    <span class="w-2.5 h-2.5 rounded-full bg-danger"></span> Despesas
+                </span>
+            </div>
+        </div>
+        <div class="h-64 relative">
+            <canvas id="monthlyFlowChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Gráfico 2: Distribuição de Despesas por Categoria (Donut) -->
+    <div class="lar-card rounded-2xl p-6 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-[#E8ECE9] tracking-tight">Despesas por Categoria</h2>
+            <span class="text-xs text-[#8D958D]">Mês Atual</span>
+        </div>
+        {% if expenses_by_category %}
+        <div class="h-64 relative flex items-center justify-center">
+            <canvas id="categoryDonutChart"></canvas>
+        </div>
+        {% else %}
+        <div class="h-64 flex flex-col items-center justify-center text-[#8D958D]">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-[#28352E] mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+            </svg>
+            <p class="text-sm font-medium">Sem despesas registradas no mês.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- ===== Tabela de Transações Recentes & Categorias ===== -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-    <!-- ===== Recent transactions (Larger Area) ===== -->
-    <div class="lg:col-span-2 glass-card rounded-[2rem] overflow-hidden flex flex-col">
-        <div class="flex items-center justify-between px-8 py-6 border-b border-white/5">
-            <h2 class="text-xl font-bold text-white tracking-tight">Transações Recentes</h2>
-            <a href="{% url 'transactions:list' %}" class="flex items-center gap-2 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors uppercase tracking-widest">
+    <!-- Transações Recentes -->
+    <div class="lg:col-span-2 lar-card rounded-2xl overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-[#28352E]">
+            <h2 class="text-lg font-bold text-[#E8ECE9] tracking-tight">Transações Recentes</h2>
+            <a href="{% url 'transactions:list' %}" class="flex items-center gap-1.5 text-xs font-bold text-mineral-light hover:text-mineral transition-colors uppercase tracking-wider">
                 Ver Tudo
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
@@ -119,39 +170,46 @@
             </a>
         </div>
 
-        <div class="flex-1 overflow-x-auto no-scrollbar">
+        <div class="flex-1 overflow-x-auto">
             {% if recent_transactions %}
             <table class="w-full text-sm text-left border-collapse">
-                <thead class="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-900/50">
+                <thead class="text-[10px] font-bold uppercase tracking-wider text-[#8D958D] bg-[#121815]">
                     <tr>
-                        <th class="px-8 py-4">Data</th>
-                        <th class="px-8 py-4">Descrição</th>
-                        <th class="px-8 py-4">Conta</th>
-                        <th class="px-8 py-4 text-right">Valor</th>
+                        <th class="px-6 py-3.5">Data</th>
+                        <th class="px-6 py-3.5">Descrição</th>
+                        <th class="px-6 py-3.5">Conta</th>
+                        <th class="px-6 py-3.5 text-right">Valor</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-white/5">
+                <tbody class="divide-y divide-[#28352E]">
                     {% for transaction in recent_transactions %}
-                    <tr class="group hover:bg-white/[0.02] transition-colors cursor-default">
-                        <td class="px-8 py-5 text-slate-500 font-medium whitespace-nowrap">
+                    <tr class="hover:bg-[#222C27] transition-colors">
+                        <td class="px-6 py-4 text-[#8D958D] font-medium whitespace-nowrap text-xs">
                             {{ transaction.date|date:"d M, Y" }}
                         </td>
-                        <td class="px-8 py-5">
+                        <td class="px-6 py-4">
                             <div class="flex flex-col">
-                                <span class="text-slate-100 font-semibold mb-1 group-hover:text-white transition-colors">{{ transaction.description }}</span>
-                                <span class="inline-flex w-fit items-center rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-400 ring-1 ring-slate-700 uppercase tracking-tighter">
-                                    {{ transaction.category.name }}
-                                </span>
+                                <span class="text-[#E8ECE9] font-medium mb-1">{{ transaction.description }}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold bg-[#222C27] text-[#8D958D] border border-[#28352E]">
+                                        {{ transaction.category.name }}
+                                    </span>
+                                    {% if transaction.financial_owner %}
+                                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-mineral/10 text-mineral-light border border-mineral/20">
+                                        {{ transaction.financial_owner.get_type_display }}
+                                    </span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </td>
-                        <td class="px-8 py-5 text-slate-400 font-medium whitespace-nowrap">
+                        <td class="px-6 py-4 text-[#8D958D] font-medium whitespace-nowrap text-xs">
                             {{ transaction.account.name }}
                         </td>
-                        <td class="px-8 py-5 text-right font-bold tabular-nums whitespace-nowrap">
+                        <td class="px-6 py-4 text-right font-bold tabular-nums whitespace-nowrap">
                             {% if transaction.type == 'income' %}
-                                <span class="text-emerald-400">+ R$&nbsp;{{ transaction.amount|floatformat:2 }}</span>
+                                <span class="text-mineral-light">+ R$&nbsp;{{ transaction.amount|floatformat:2 }}</span>
                             {% else %}
-                                <span class="text-rose-400">- R$&nbsp;{{ transaction.amount|floatformat:2 }}</span>
+                                <span class="text-danger-light">- R$&nbsp;{{ transaction.amount|floatformat:2 }}</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -159,61 +217,158 @@
                 </tbody>
             </table>
             {% else %}
-            <div class="p-20 text-center">
-                <div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-900 mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <p class="text-slate-500 font-medium">Nenhuma transação registrada ainda.</p>
+            <div class="p-16 text-center">
+                <p class="text-[#8D958D] text-sm">Nenhuma transação registrada ainda.</p>
             </div>
             {% endif %}
         </div>
     </div>
 
-    <!-- ===== Expenses by category (Sidebar Style) ===== -->
-    <div class="glass-card rounded-[2rem] overflow-hidden flex flex-col">
-        <div class="px-8 py-6 border-b border-white/5">
-            <h2 class="text-xl font-bold text-white tracking-tight">Por Categoria</h2>
-            <p class="text-xs text-slate-500 font-medium mt-1 uppercase tracking-widest">Maiores gastos do mês</p>
+    <!-- Lista de Categorias com Porcentagem Real -->
+    <div class="lar-card rounded-2xl overflow-hidden flex flex-col">
+        <div class="px-6 py-5 border-b border-[#28352E]">
+            <h2 class="text-lg font-bold text-[#E8ECE9] tracking-tight">Maiores Gastos</h2>
+            <p class="text-xs text-[#8D958D] mt-0.5">Distribuição do mês atual</p>
         </div>
 
-        <div class="flex-1 p-6">
+        <div class="flex-1 p-6 space-y-5">
             {% if expenses_by_category %}
-            <div class="space-y-6">
                 {% for item in expenses_by_category %}
-                <div class="group cursor-default">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-3">
-                            <span class="h-2 w-2 rounded-full" style="background-color: {{ item.category__color }}"></span>
-                            <span class="text-sm font-bold text-slate-300 group-hover:text-white transition-colors">{{ item.category__name }}</span>
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-2.5">
+                            <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ item.color }}"></span>
+                            <span class="text-xs font-semibold text-[#E8ECE9]">{{ item.name }}</span>
                         </div>
-                        <span class="text-sm font-bold text-white tabular-nums">R$&nbsp;{{ item.total|floatformat:2 }}</span>
+                        <div class="text-right">
+                            <span class="text-xs font-bold text-[#E8ECE9] tabular-nums">R$&nbsp;{{ item.total|floatformat:2 }}</span>
+                            <span class="text-[10px] text-[#8D958D] ml-1.5 font-medium">({{ item.percentage }}%)</span>
+                        </div>
                     </div>
-                    <!-- Progress Bar (Inspired by LuxeLane's clean lines) -->
-                    <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                        <!-- Simplified percentage calculation if possible, or just a fixed style for mockup feel -->
-                        <div class="h-full rounded-full transition-all duration-1000" 
-                             style="background-color: {{ item.category__color }}; width: 65%;"></div>
+                    <div class="h-1.5 w-full bg-[#121815] rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-700" 
+                             style="background-color: {{ item.color }}; width: {{ item.percentage }}%;"></div>
                     </div>
                 </div>
                 {% endfor %}
-            </div>
             {% else %}
             <div class="h-full flex items-center justify-center py-10">
-                <p class="text-sm text-slate-500 font-medium italic">Sem despesas registradas.</p>
+                <p class="text-xs text-[#8D958D] italic">Sem despesas registradas.</p>
             </div>
             {% endif %}
-        </div>
-        
-        <!-- Bottom Stats (Social Proof feel) -->
-        <div class="mt-auto p-6 bg-slate-900/30 border-t border-white/5">
-            <div class="flex items-center justify-between">
-                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Eficiência Mensal</span>
-                <span class="text-xs font-bold text-emerald-500">+12% vs anterior</span>
-            </div>
         </div>
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Gráfico de Fluxo Mensal
+    const flowCtx = document.getElementById('monthlyFlowChart');
+    if (flowCtx) {
+        const labels = {{ monthly_flows|safe }}.map(f => f.label);
+        const incomes = {{ monthly_flows|safe }}.map(f => f.income);
+        const expenses = {{ monthly_flows|safe }}.map(f => f.expense);
+
+        new Chart(flowCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Receitas',
+                        data: incomes,
+                        backgroundColor: '#2F756A',
+                        borderRadius: 6,
+                        barPercentage: 0.6,
+                    },
+                    {
+                        label: 'Despesas',
+                        data: expenses,
+                        backgroundColor: '#B8534F',
+                        borderRadius: 6,
+                        barPercentage: 0.6,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': R$ ' + context.raw.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#8D958D', font: { size: 11 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: {
+                            color: '#8D958D',
+                            font: { size: 10 },
+                            callback: function(value) { return 'R$ ' + value; }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Gráfico Donut de Categorias
+    const donutCtx = document.getElementById('categoryDonutChart');
+    if (donutCtx) {
+        const catLabels = [{% for item in expenses_by_category %}"{{ item.name }}",{% endfor %}];
+        const catTotals = [{% for item in expenses_by_category %}{{ item.total }},{% endfor %}];
+        const catColors = [{% for item in expenses_by_category %}"{{ item.color }}",{% endfor %}];
+
+        if (catLabels.length > 0) {
+            new Chart(donutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        data: catTotals,
+                        backgroundColor: catColors,
+                        borderWidth: 2,
+                        borderColor: '#1A221E'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#8D958D',
+                                boxWidth: 12,
+                                padding: 16,
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': R$ ' + context.raw.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+});
+</script>
 {% endblock %}
