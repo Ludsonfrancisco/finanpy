@@ -515,3 +515,15 @@ class TransactionFilterViewTest(TestCase):
         self.assertNotContains(response, other_category.name)
         self.assertNotContains(response, foreign_transaction.description)
         self.assertNotIn(other_category, response.context['filter_categories'])
+
+    def test_export_ofx_generates_valid_file_and_headers(self):
+        response = self.client.get('/transacoes/exportar-ofx/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response['Content-Type'].startswith('application/x-ofx'))
+        self.assertTrue(response['Content-Disposition'].startswith('attachment; filename="extrato-lar-finance-'))
+        content = response.content.decode('utf-8')
+        self.assertIn('OFXHEADER:100', content)
+        self.assertIn('<OFX>', content)
+        self.assertIn('<STMTTRN>', content)
+        self.assertIn('Salário jan', content)
+        self.assertIn('Aluguel jan', content)
