@@ -12,7 +12,7 @@ class ImportAccountLink(models.Model):
     )
     account = models.ForeignKey(
         'accounts.Account',
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name='import_account_links',
     )
     provider = models.CharField(max_length=32)
@@ -67,7 +67,7 @@ class ImportBatch(models.Model):
         'accounts.Account',
         null=True,
         blank=True,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         related_name='import_batches',
     )
     financial_owner = models.ForeignKey(
@@ -167,14 +167,14 @@ class ImportRecord(models.Model):
 class SourceReference(models.Model):
     account = models.ForeignKey(
         'accounts.Account',
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name='source_references',
     )
     provider = models.CharField(max_length=32)
     external_id = models.CharField(max_length=255)
     transaction = models.ForeignKey(
         'transactions.Transaction',
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name='source_references',
     )
 

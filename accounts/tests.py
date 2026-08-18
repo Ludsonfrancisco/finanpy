@@ -191,6 +191,77 @@ class AccountViewTest(TestCase):
         self.assertRedirects(response, '/accounts/')
         self.assertFalse(Account.objects.filter(pk=self.account.pk).exists())
 
+    def test_delete_account_with_imported_data_and_references(self):
+        from api.models import DeviceSession
+        from imports.models import ImportAccountLink, ImportBatch, SourceReference
+        import datetime
+        from django.utils import timezone
+
+        device_session = DeviceSession.objects.create(
+            user=self.user,
+            household=self.household,
+            default_owner=self.shared_owner,
+            platform='ios',
+            name='iPhone de Teste',
+            access_token_digest='test_digest_access_1234567890abcdef',
+            access_expires_at=timezone.now() + datetime.timedelta(days=1),
+            refresh_token_digest='test_digest_refresh_1234567890abcdef',
+            refresh_expires_at=timezone.now() + datetime.timedelta(days=30),
+        )
+
+        ImportAccountLink.objects.create(
+            household=self.household,
+            account=self.account,
+            provider='nubank',
+            product_type='checking',
+            external_account_id='ext-nubank-123',
+        )
+
+        ImportBatch.objects.create(
+            household=self.household,
+            device_session=device_session,
+            account=self.account,
+            financial_owner=self.shared_owner,
+            provider='nubank',
+            product_type='checking',
+            external_account_id='ext-nubank-123',
+            file_sha256='a' * 64,
+            statement_start=datetime.date(2026, 1, 1),
+            statement_end=datetime.date(2026, 1, 31),
+            expires_at=timezone.now() + datetime.timedelta(days=1),
+            status=ImportBatch.COMPLETED,
+        )
+
+        tx = Transaction.objects.create(
+            user=self.user,
+            household=self.household,
+            financial_owner=self.shared_owner,
+            account=self.account,
+            category=Category.objects.create(
+                user=self.user,
+                household=self.household,
+                name='Alimentacao Teste',
+                type=Category.EXPENSE,
+            ),
+            description='Compra Nubank',
+            amount=Decimal('50.00'),
+            date=datetime.date.today(),
+            type=Transaction.EXPENSE,
+        )
+
+        SourceReference.objects.create(
+            account=self.account,
+            provider='nubank',
+            external_id='tx-nubank-999',
+            transaction=tx,
+        )
+
+        response = self.client.post(f'/accounts/{self.account.pk}/delete/')
+        self.assertRedirects(response, '/accounts/')
+        self.assertFalse(Account.objects.filter(pk=self.account.pk).exists())
+        self.assertFalse(Transaction.objects.filter(pk=tx.pk).exists())
+        self.assertFalse(SourceReference.objects.filter(external_id='tx-nubank-999').exists())
+
     def test_cannot_update_account_from_other_household(self):
         response = self.client.post(f'/accounts/{self.other_account.pk}/edit/', {
             'name': 'Hackeada',

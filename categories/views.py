@@ -1,5 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import ProtectedError
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
@@ -67,5 +69,14 @@ class CategoryDeleteView(LoginRequiredMixin, HouseholdContextMixin, DeleteView):
         return super().get_queryset().filter(household=self.household)
 
     def form_valid(self, form):
-        messages.success(self.request, 'Categoria excluída com sucesso.')
-        return super().form_valid(form)
+        try:
+            response = super().form_valid(form)
+            messages.success(self.request, 'Categoria excluída com sucesso.')
+            return response
+        except ProtectedError:
+            messages.error(
+                self.request,
+                'Não foi possível excluir a categoria porque existem registros vinculados protegidos.'
+            )
+            return redirect('categories:list')
+
