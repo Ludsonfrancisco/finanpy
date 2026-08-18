@@ -1,6 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from accounts.models import Account
@@ -236,4 +238,193 @@ NEWFILEVERSION:102
         filename = f'extrato-lar-finance-{now.strftime("%Y%m%d")}.ofx'
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
+
+
+class TransactionImportOFXView(LoginRequiredMixin, HouseholdContextMixin, View):
+    """Permite fazer upload, pré-visualizar deduplicação e confirmar importação de OFX."""
+
+    template_name = 'transactions/import.html'
+
+    def get(self, request, *args, **kwargs):
+        accounts = Account.objects.filter(household=self.household).order_by('name')
+        categories = Category.objects.filter(household=self.household).order_by('name')
+        if not accounts.exists():
+            messages.warning(request, 'Cadastre uma conta antes de importar extratos.')
+            return redirect('accounts:create')
+
+        return render(request, self.template_name, {
+            'accounts': accounts,
+            'categories': categories,
+            'preview_data': None,
+        })
+
+    def post(self, request, *args, **kwargs):
+        from decimal import Decimal
+        from django.db import transaction
+        from imports.models import SourceReference
+        from imports.ofx import parse_nubank_ofx, OfxParseError
+
+        action = request.POST.get('action', 'preview')
+        accounts = Account.objects.filter(household=self.household).order_by('name')
+        categories = Category.objects.filter(household=self.household).order_by('name')
+
+        if action == 'preview':
+            ofx_file = request.FILES.get('ofx_file')
+            account_id = request.POST.get('account')
+            category_id = request.POST.get('category')
+
+            if not ofx_file:
+                messages.error(request, 'Por favor, selecione um arquivo .ofx para enviar.')
+                return render(request, self.template_name, {
+                    'accounts': accounts,
+                    'categories': categories,
+                    'preview_data': None,
+                })
+
+            account = Account.objects.filter(household=self.household, pk=account_id).first()
+            if not account:
+                messages.error(request, 'Conta de destino inválida.')
+                return redirect('transactions:import_ofx')
+
+            try:
+                content = ofx_file.read()
+                parsed = parse_nubank_ofx(content)
+            except OfxParseError as e:
+                messages.error(request, f'Erro ao ler o arquivo OFX: {e}')
+                return render(request, self.template_name, {
+                    'accounts': accounts,
+                    'categories': categories,
+                    'preview_data': None,
+                })
+            except Exception as e:
+                messages.error(request, f'Formato de arquivo incompatível: {e}')
+                return render(request, self.template_name, {
+                    'accounts': accounts,
+                    'categories': categories,
+                    'preview_data': None,
+                })
+
+            items = []
+            duplicate_count = 0
+            new_count = 0
+
+            for tx in parsed.transactions:
+                is_duplicate = False
+                if tx.external_id:
+                    is_duplicate = SourceReference.objects.filter(
+                        account=account,
+                        external_id=tx.external_id,
+                    ).exists()
+
+                if not is_duplicate:
+                    is_duplicate = Transaction.objects.filter(
+                        account=account,
+                        date=tx.posted_on,
+                        amount=abs(tx.amount),
+                        description=tx.description,
+                    ).exists()
+
+                if is_duplicate:
+                    duplicate_count += 1
+                else:
+                    new_count += 1
+
+                items.append({
+                    'date': tx.posted_on.strftime('%Y-%m-%d'),
+                    'description': tx.description,
+                    'amount': float(abs(tx.amount)),
+                    'type': tx.transaction_type,
+                    'external_id': tx.external_id,
+                    'is_duplicate': is_duplicate,
+                })
+
+            preview_data = {
+                'account_id': str(account.pk),
+                'account_name': account.name,
+                'category_id': category_id,
+                'period_start': parsed.statement_start.strftime('%d/%m/%Y'),
+                'period_end': parsed.statement_end.strftime('%d/%m/%Y'),
+                'total_count': len(items),
+                'new_count': new_count,
+                'duplicate_count': duplicate_count,
+                'items': items,
+            }
+
+            request.session['ofx_import_preview'] = preview_data
+
+            return render(request, self.template_name, {
+                'accounts': accounts,
+                'categories': categories,
+                'preview_data': preview_data,
+            })
+
+        elif action == 'confirm':
+            preview_data = request.session.pop('ofx_import_preview', None)
+            if not preview_data or not preview_data.get('items'):
+                messages.error(request, 'Nenhuma pré-visualização ativa encontrada. Por favor, envie o arquivo novamente.')
+                return redirect('transactions:import_ofx')
+
+            account = Account.objects.filter(
+                household=self.household,
+                pk=preview_data['account_id'],
+            ).first()
+
+            if not account:
+                messages.error(request, 'Conta não encontrada.')
+                return redirect('transactions:import_ofx')
+
+            default_category = None
+            if preview_data.get('category_id'):
+                default_category = Category.objects.filter(
+                    household=self.household,
+                    pk=preview_data['category_id'],
+                ).first()
+
+            if not default_category:
+                default_category = Category.objects.filter(household=self.household).first()
+
+            if not default_category:
+                default_category = Category.objects.create(
+                    user=self.request.user,
+                    household=self.household,
+                    name='Outros',
+                    type=Category.EXPENSE,
+                )
+
+            imported_count = 0
+            with transaction.atomic():
+                for item in preview_data['items']:
+                    if item.get('is_duplicate'):
+                        continue
+
+                    tx = Transaction.objects.create(
+                        user=self.request.user,
+                        household=self.household,
+                        financial_owner=account.financial_owner,
+                        account=account,
+                        category=default_category,
+                        description=item['description'],
+                        amount=Decimal(str(item['amount'])),
+                        date=item['date'],
+                        type=item['type'],
+                    )
+
+                    if item.get('external_id'):
+                        SourceReference.objects.create(
+                            account=account,
+                            provider='nubank',
+                            external_id=item['external_id'],
+                            transaction=tx,
+                        )
+
+                    imported_count += 1
+
+            messages.success(
+                request,
+                f'🎉 {imported_count} movimentações importadas com sucesso para a conta {account.name}!'
+            )
+            return redirect('transactions:list')
+
+        return redirect('transactions:import_ofx')
+
 

@@ -25,19 +25,31 @@
         </div>
     </div>
     
-    <!-- Seletor de Titular Familiar (Lar / Eu / Esposa) -->
-    <div class="bg-[#1A221E] p-1.5 rounded-2xl flex items-center gap-1 self-start lg:self-center border border-[#28352E]">
-        <a href="?owner=household" 
-           class="px-4 py-2 rounded-xl text-xs font-bold transition-all {% if owner_filter == 'household' or not owner_filter %}bg-mineral text-white shadow-md shadow-mineral/30{% else %}text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27]{% endif %}">
-           Lar (Geral)
-        </a>
-        <a href="?owner=self" 
-           class="px-4 py-2 rounded-xl text-xs font-bold transition-all {% if owner_filter == 'self' %}bg-mineral text-white shadow-md shadow-mineral/30{% else %}text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27]{% endif %}">
-           Eu
-        </a>
-        <a href="?owner=spouse" 
-           class="px-4 py-2 rounded-xl text-xs font-bold transition-all {% if owner_filter == 'spouse' %}bg-mineral text-white shadow-md shadow-mineral/30{% else %}text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27]{% endif %}">
-           Esposa
+    <div class="flex flex-wrap items-center gap-3 self-start lg:self-center">
+        <!-- Seletor de Titular Familiar (Lar / Eu / Esposa) -->
+        <div class="bg-[#1A221E] p-1.5 rounded-2xl flex items-center gap-1 border border-[#28352E]">
+            <a href="?owner=household" 
+               class="px-4 py-2 rounded-xl text-xs font-bold transition-all {% if owner_filter == 'household' or not owner_filter %}bg-mineral text-white shadow-md shadow-mineral/30{% else %}text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27]{% endif %}">
+               Lar (Geral)
+            </a>
+            <a href="?owner=self" 
+               class="px-4 py-2 rounded-xl text-xs font-bold transition-all {% if owner_filter == 'self' %}bg-mineral text-white shadow-md shadow-mineral/30{% else %}text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27]{% endif %}">
+               Eu
+            </a>
+            <a href="?owner=spouse" 
+               class="px-4 py-2 rounded-xl text-xs font-bold transition-all {% if owner_filter == 'spouse' %}bg-mineral text-white shadow-md shadow-mineral/30{% else %}text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27]{% endif %}">
+               Esposa
+            </a>
+        </div>
+
+        <!-- Botão Rápido Importar OFX -->
+        <a href="{% url 'transactions:import_ofx' %}" 
+           class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-mineral/15 hover:bg-mineral/25 border border-mineral/30 text-mineral-light hover:text-white text-xs font-bold transition shadow-sm"
+           title="Importar extrato bancário .ofx">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            <span>Importar OFX</span>
         </a>
     </div>
 </header>

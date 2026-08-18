@@ -6,6 +6,7 @@ app_name = 'transactions'
 
 urlpatterns = [
     path('', views.TransactionListView.as_view(), name='list'),
+    path('importar/', views.TransactionImportOFXView.as_view(), name='import_ofx'),
     path('exportar-ofx/', views.TransactionExportOFXView.as_view(), name='export_ofx'),
     path('nova/', views.TransactionCreateView.as_view(), name='create'),
     path('<int:pk>/editar/', views.TransactionUpdateView.as_view(), name='update'),

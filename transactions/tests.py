@@ -527,3 +527,52 @@ class TransactionFilterViewTest(TestCase):
         self.assertIn('<STMTTRN>', content)
         self.assertIn('Salário jan', content)
         self.assertIn('Aluguel jan', content)
+
+    def test_import_ofx_get_page_renders_form(self):
+        response = self.client.get('/transacoes/importar/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Importar Extrato Bancário (OFX)')
+        self.assertContains(response, self.account.name)
+
+    def test_import_ofx_preview_and_confirm_flow(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from imports.models import SourceReference
+
+        sample_ofx = (
+            b'OFXHEADER:100\nDATA:OFXSGML\nVERSION:102\nSECURITY:NONE\nENCODING:UTF-8\nCHARSET:NONE\n\n'
+            b'<OFX>\n<SIGNONMSGSRSV1><SONRS><STATUS><CODE>0\n<SEVERITY>INFO\n</STATUS>'
+            b'<DTSERVER>20260131120000\n<LANGUAGE>POR\n</SONRS></SIGNONMSGSRSV1>\n'
+            b'<BANKMSGSRSV1><STMTTRNRS><TRNUID>1\n<STATUS><CODE>0\n<SEVERITY>INFO\n</STATUS>'
+            b'<STMTRS><CURDEF>BRL\n<BANKACCTFROM><BANKID>0260\n<ACCTID>123456\n<ACCTTYPE>CHECKING\n</BANKACCTFROM>\n'
+            b'<BANKTRANLIST><DTSTART>20260101120000\n<DTEND>20260131120000\n'
+            b'<STMTTRN><TRNTYPE>DEBIT\n<DTPOSTED>20260115120000\n<TRNAMT>-85.50\n<FITID>nubank-tx-001\n<MEMO>Supermercado Teste\n</STMTTRN>\n'
+            b'<STMTTRN><TRNTYPE>CREDIT\n<DTPOSTED>20260120120000\n<TRNAMT>2500.00\n<FITID>nubank-tx-002\n<MEMO>Transferencia Teste\n</STMTTRN>\n'
+            b'</BANKTRANLIST><LEDGERBAL><BALAMT>2414.50\n<DTASOF>20260131120000\n</LEDGERBAL></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>'
+        )
+
+        uploaded_file = SimpleUploadedFile('extrato.ofx', sample_ofx, content_type='application/x-ofx')
+
+        # 1. Preview
+        response = self.client.post('/transacoes/importar/', {
+            'action': 'preview',
+            'account': self.account.pk,
+            'category': self.cat_expense.pk,
+            'ofx_file': uploaded_file,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Lançamentos Identificados no Extrato')
+        self.assertContains(response, 'Supermercado Teste')
+        self.assertContains(response, 'Transferencia Teste')
+
+        # 2. Confirm
+        response = self.client.post('/transacoes/importar/', {
+            'action': 'confirm',
+        })
+        self.assertRedirects(response, '/transacoes/')
+
+        # 3. Verify created records
+        self.assertTrue(Transaction.objects.filter(description='Supermercado Teste', amount=Decimal('85.50')).exists())
+        self.assertTrue(Transaction.objects.filter(description='Transferencia Teste', amount=Decimal('2500.00')).exists())
+        self.assertTrue(SourceReference.objects.filter(external_id='nubank-tx-001').exists())
+        self.assertTrue(SourceReference.objects.filter(external_id='nubank-tx-002').exists())
+
