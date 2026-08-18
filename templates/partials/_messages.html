@@ -3,15 +3,15 @@
   {% for message in messages %}
     {% if message.tags == 'success' %}
       <div role="alert"
-           class="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
+           class="flex items-center gap-3 rounded-2xl border border-mineral/40 bg-mineral/15 px-4 py-3.5 text-sm text-mineral-light shadow-md shadow-mineral/10">
         <!-- icon: check-circle -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 text-mineral-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span class="flex-1">{{ message }}</span>
+        <span class="flex-1 font-medium text-[#E8ECE9]">{{ message }}</span>
         <button type="button"
                 onclick="this.parentElement.remove()"
-                class="ml-auto flex-shrink-0 rounded p-0.5 text-emerald-400/70 transition hover:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                class="ml-auto flex-shrink-0 rounded-lg p-1 text-[#8D958D] transition hover:text-white hover:bg-mineral/20 focus:outline-none"
                 aria-label="Fechar mensagem">
           &times;
         </button>
@@ -19,15 +19,15 @@
 
     {% elif message.tags == 'error' %}
       <div role="alert"
-           class="flex items-center gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400">
+           class="flex items-center gap-3 rounded-2xl border border-danger/40 bg-danger/15 px-4 py-3.5 text-sm text-danger-light shadow-md shadow-danger/10">
         <!-- icon: x-circle -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 text-danger-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span class="flex-1">{{ message }}</span>
+        <span class="flex-1 font-medium text-[#E8ECE9]">{{ message }}</span>
         <button type="button"
                 onclick="this.parentElement.remove()"
-                class="ml-auto flex-shrink-0 rounded p-0.5 text-rose-400/70 transition hover:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                class="ml-auto flex-shrink-0 rounded-lg p-1 text-[#8D958D] transition hover:text-white hover:bg-danger/20 focus:outline-none"
                 aria-label="Fechar mensagem">
           &times;
         </button>
@@ -35,32 +35,30 @@
 
     {% elif message.tags == 'warning' %}
       <div role="alert"
-           class="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+           class="flex items-center gap-3 rounded-2xl border border-champagne/40 bg-champagne/15 px-4 py-3.5 text-sm text-champagne shadow-md shadow-champagne/10">
         <!-- icon: exclamation -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 text-champagne" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
         </svg>
-        <span class="flex-1">{{ message }}</span>
+        <span class="flex-1 font-medium text-[#E8ECE9]">{{ message }}</span>
         <button type="button"
                 onclick="this.parentElement.remove()"
-                class="ml-auto flex-shrink-0 rounded p-0.5 text-amber-400/70 transition hover:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                class="ml-auto flex-shrink-0 rounded-lg p-1 text-[#8D958D] transition hover:text-white hover:bg-champagne/20 focus:outline-none"
                 aria-label="Fechar mensagem">
           &times;
         </button>
       </div>
 
     {% else %}
-      {# Fallback covers 'info' and any other tag #}
       <div role="alert"
-           class="flex items-center gap-3 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-400">
-        <!-- icon: information-circle -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+           class="flex items-center gap-3 rounded-2xl border border-[#24302A] bg-[#171F1B] px-4 py-3.5 text-sm text-[#E8ECE9]">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 text-mineral-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
         </svg>
-        <span class="flex-1">{{ message }}</span>
+        <span class="flex-1 font-medium">{{ message }}</span>
         <button type="button"
                 onclick="this.parentElement.remove()"
-                class="ml-auto flex-shrink-0 rounded p-0.5 text-sky-400/70 transition hover:text-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                class="ml-auto flex-shrink-0 rounded-lg p-1 text-[#8D958D] transition hover:text-white focus:outline-none"
                 aria-label="Fechar mensagem">
           &times;
         </button>

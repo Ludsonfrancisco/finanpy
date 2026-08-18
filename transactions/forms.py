@@ -7,10 +7,10 @@ from households.forms import HouseholdModelFormMixin
 from .models import Transaction
 
 _INPUT_CLASSES = (
-    'block w-full rounded-xl border border-slate-700 bg-slate-800 '
-    'px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 '
-    'focus:border-emerald-500 focus:outline-none focus:ring-2 '
-    'focus:ring-emerald-500/40'
+    'block w-full rounded-xl border border-[#24302A] bg-[#121815] '
+    'px-4 py-3 text-sm text-[#E8ECE9] placeholder-[#5C665F] '
+    'focus:border-mineral focus:outline-none focus:ring-2 '
+    'focus:ring-mineral/30 transition'
 )
 
 

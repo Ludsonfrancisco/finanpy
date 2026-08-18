@@ -1,27 +1,28 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>{% block title %}Lar Finance{% endblock %}</title>
+  <title>{% block title %}Lar Finance — Gestão Financeira Familiar{% endblock %}</title>
 
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- TailwindCSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Alpine.js via CDN — required for mobile sidebar toggle -->
+  <!-- Alpine.js via CDN -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-  <!-- Chart.js via CDN for responsive web charts -->
+  <!-- Chart.js via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
@@ -29,39 +30,92 @@
               DEFAULT: '#2F756A',
               light: '#3D9285',
               dark: '#23584F',
+              hover: '#28635A',
+              muted: 'rgba(47, 117, 106, 0.15)',
             },
             danger: {
               DEFAULT: '#B8534F',
               light: '#D66D69',
               dark: '#963E3B',
+              muted: 'rgba(184, 83, 79, 0.15)',
             },
             champagne: {
               DEFAULT: '#C7A35A',
               light: '#DBB86F',
               dark: '#A6843D',
+              muted: 'rgba(199, 163, 90, 0.15)',
             },
             lar: {
-              bg: '#121815',
-              surface: '#1A221E',
-              card: '#1E2823',
-              border: '#28352E',
+              bg: '#101512',
+              surface: '#171F1B',
+              card: '#1B2420',
+              border: '#24302A',
+              borderHover: '#32423A',
+              textPrimary: '#E8ECE9',
+              textSecondary: '#8D958D',
+              textMuted: '#5C665F',
             },
           },
           fontFamily: {
             sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'glow-mineral': '0 0 25px -5px rgba(47, 117, 106, 0.25)',
+            'glow-danger': '0 0 25px -5px rgba(184, 83, 79, 0.25)',
+            'glow-champagne': '0 0 25px -5px rgba(199, 163, 90, 0.25)',
+            'card': '0 4px 20px -2px rgba(0, 0, 0, 0.5)',
           },
         },
       },
     }
   </script>
 
+  <style>
+    /* Custom Scrollbar Casa de Valores */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #101512;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #24302A;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2F756A;
+    }
+
+    /* Ambient Background Lighting */
+    .ambient-bg {
+      background-color: #101512;
+      background-image: 
+        radial-gradient(at 15% 15%, rgba(47, 117, 106, 0.08) 0px, transparent 50%),
+        radial-gradient(at 85% 85%, rgba(199, 163, 90, 0.04) 0px, transparent 50%);
+    }
+
+    .lar-card {
+      background: #171F1B;
+      border: 1px solid #24302A;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .lar-card:hover {
+      border-color: #32423A;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-[#121815] text-[#E8ECE9] font-sans antialiased">
+<body class="ambient-bg text-[#E8ECE9] font-sans antialiased min-h-screen selection:bg-mineral selection:text-white">
 
-  <!-- Skip to main content — visible on keyboard focus only -->
+  <!-- Skip to main content -->
   <a href="#main-content"
-     class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[9999] focus:rounded-xl focus:bg-emerald-500 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-950">
+     class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[9999] focus:rounded-xl focus:bg-mineral focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:outline-none focus:ring-2 focus:ring-mineral-light">
     Ir para o conteúdo principal
   </a>
 

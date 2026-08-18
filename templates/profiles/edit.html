@@ -1,111 +1,93 @@
 {% extends "layouts/base_app.html" %}
 
-{% block title %}Meu Perfil — Finanpy{% endblock %}
+{% block title %}Meu Perfil — Lar Finance{% endblock %}
 
 {% block content %}
 
-<!-- Page heading -->
-<div class="mb-8">
-  <h1 class="text-2xl font-semibold text-slate-100">Meu Perfil</h1>
-  <p class="mt-1 text-sm text-slate-400">Atualize suas informações pessoais</p>
-</div>
+<div class="max-w-2xl mx-auto">
 
-<!-- Card -->
-<div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-black/20 backdrop-blur">
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-[#E8ECE9] tracking-tight">Meu Perfil</h1>
+    <p class="text-xs text-[#8D958D] mt-1">Gerencie seus dados de acesso e preferências do lar</p>
+  </div>
 
-  <form method="post" enctype="multipart/form-data" novalidate>
-    {% csrf_token %}
+  <!-- Card -->
+  <div class="lar-card rounded-2xl p-6 sm:p-8">
+    <form method="post" enctype="multipart/form-data" novalidate class="space-y-6">
+      {% csrf_token %}
 
-    <div class="flex flex-col gap-5">
-
-      <!-- Row 1: first_name + last_name side by side on sm+ -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-
-        <!-- first_name -->
+      <!-- Nome e Sobrenome -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label for="{{ form.first_name.id_for_label }}"
-                 class="mb-1.5 block text-sm font-medium text-slate-300">
+          <label for="{{ form.first_name.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
             Nome
           </label>
           {{ form.first_name }}
           {% if form.first_name.errors %}
             {% for error in form.first_name.errors %}
-              <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+              <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
             {% endfor %}
           {% endif %}
         </div>
 
-        <!-- last_name -->
         <div>
-          <label for="{{ form.last_name.id_for_label }}"
-                 class="mb-1.5 block text-sm font-medium text-slate-300">
+          <label for="{{ form.last_name.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
             Sobrenome
           </label>
           {{ form.last_name }}
           {% if form.last_name.errors %}
             {% for error in form.last_name.errors %}
-              <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+              <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
             {% endfor %}
           {% endif %}
         </div>
-
       </div>
 
-      <!-- Row 2: birth_date (full width) -->
+      <!-- Data de Nascimento -->
       <div>
-        <label for="{{ form.birth_date.id_for_label }}"
-               class="mb-1.5 block text-sm font-medium text-slate-300">
-          Data de nascimento
+        <label for="{{ form.birth_date.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
+          Data de Nascimento
         </label>
         {{ form.birth_date }}
         {% if form.birth_date.errors %}
           {% for error in form.birth_date.errors %}
-            <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+            <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
           {% endfor %}
         {% endif %}
       </div>
 
-      <!-- Row 3: avatar (full width) -->
+      <!-- Foto de Perfil (Avatar) -->
       <div>
-        <label for="{{ form.avatar.id_for_label }}"
-               class="mb-1.5 block text-sm font-medium text-slate-300">
-          Foto de perfil
+        <label for="{{ form.avatar.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
+          Foto de Perfil
         </label>
-        {% if form.instance.avatar %}
-          <div class="mb-3 flex items-center gap-4">
-            <img src="{{ form.instance.avatar.url }}"
+        {% if user.profile.avatar %}
+          <div class="mb-3 flex items-center gap-3">
+            <img src="{{ user.profile.avatar.url }}"
                  alt="Foto atual"
-                 class="h-16 w-16 rounded-full object-cover ring-2 ring-slate-700">
-            <span class="text-xs text-slate-400">Foto atual — envie nova para substituir</span>
+                 class="h-12 w-12 rounded-xl object-cover ring-1 ring-[#24302A]">
+            <span class="text-xs text-[#8D958D]">Foto atual</span>
           </div>
         {% endif %}
         {{ form.avatar }}
         {% if form.avatar.errors %}
           {% for error in form.avatar.errors %}
-            <span class="mt-1 block text-xs text-rose-400">{{ error }}</span>
+            <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
           {% endfor %}
         {% endif %}
       </div>
 
-      <!-- Non-field errors -->
-      {% if form.non_field_errors %}
-        <div>
-          {% for error in form.non_field_errors %}
-            <span class="block text-xs text-rose-400">{{ error }}</span>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      <!-- Submit button -->
-      <div>
+      <!-- Buttons -->
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-[#24302A]">
         <button type="submit"
-                class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
-          Salvar alterações
+                class="px-6 py-2.5 rounded-xl bg-mineral hover:bg-mineral-hover text-xs font-bold text-white shadow-md shadow-mineral/20 transition focus:outline-none focus:ring-2 focus:ring-mineral-light">
+          Salvar Alterações
         </button>
       </div>
 
-    </div>
-  </form>
+    </form>
+  </div>
 
 </div>
 
