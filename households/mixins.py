@@ -12,9 +12,14 @@ class HouseholdContextMixin:
     household = None
 
     def dispatch(self, request, *args, **kwargs):
-        try:
-            self.household = get_household_for_user(request.user)
-        except Household.DoesNotExist as exc:
-            logger.warning('Household access denied: no active household membership.')
-            raise PermissionDenied('Acesso ao Lar indisponível.') from exc
+        if request.user.is_authenticated:
+            try:
+                self.household = get_household_for_user(request.user)
+            except Household.DoesNotExist:
+                from .services import ensure_household_for_user
+                try:
+                    self.household = ensure_household_for_user(request.user)
+                except Exception as exc:
+                    logger.warning('Household auto-bootstrap failed: %s', exc)
+                    raise PermissionDenied('Acesso ao Lar indisponível.') from exc
         return super().dispatch(request, *args, **kwargs)
