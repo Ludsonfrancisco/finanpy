@@ -36,7 +36,7 @@ ENTITY_SPECS = {
     ),
     'category': EntitySpec(
         model=Category,
-        scalar_fields=frozenset({'name', 'type', 'color', 'icon'}),
+        scalar_fields=frozenset({'name', 'type', 'color', 'icon', 'budget'}),
         relation_fields={},
     ),
     'transaction': EntitySpec(

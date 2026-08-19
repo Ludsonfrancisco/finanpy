@@ -241,3 +241,62 @@ class DashboardHouseholdScopeTest(TestCase):
         self.assertIn(household_income, recent_transactions)
         self.assertIn(household_expense, recent_transactions)
         self.assertNotIn(foreign_transaction, recent_transactions)
+
+    def test_dashboard_ano_da_seca_metrics(self):
+        category = Category.objects.create(
+            user=self.user,
+            household=self.household,
+            name='Alimentação',
+            type=Category.EXPENSE,
+            budget=Decimal('1000.00'),
+        )
+        today = timezone.localdate()
+        Transaction.objects.create(
+            user=self.user,
+            household=self.household,
+            financial_owner=self.self_owner,
+            account=self.self_account,
+            category=category,
+            description='Supermercado',
+            amount=Decimal('300.00'),
+            date=today,
+            type=Transaction.EXPENSE,
+        )
+
+        response = self.client.get('/dashboard/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['total_budget'], Decimal('1000.00'))
+        self.assertEqual(response.context['budgeted_expenses'], Decimal('300.00'))
+        self.assertEqual(response.context['budget_remaining'], Decimal('700.00'))
+        self.assertGreater(response.context['daily_burn_rate'], 0)
+        self.assertFalse(response.context['is_over_budget'])
+        self.assertEqual(response.context['budget_status'], 'safe')
+
+    def test_dashboard_ano_da_seca_over_budget(self):
+        category = Category.objects.create(
+            user=self.user,
+            household=self.household,
+            name='Restaurantes',
+            type=Category.EXPENSE,
+            budget=Decimal('200.00'),
+        )
+        today = timezone.localdate()
+        Transaction.objects.create(
+            user=self.user,
+            household=self.household,
+            financial_owner=self.self_owner,
+            account=self.self_account,
+            category=category,
+            description='Jantar Especial',
+            amount=Decimal('350.00'),
+            date=today,
+            type=Transaction.EXPENSE,
+        )
+
+        response = self.client.get('/dashboard/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['is_over_budget'])
+        self.assertEqual(response.context['over_budget_amount'], Decimal('150.00'))
+        self.assertEqual(response.context['daily_burn_rate'], Decimal('0.00'))
+        self.assertEqual(response.context['budget_status'], 'danger')
+

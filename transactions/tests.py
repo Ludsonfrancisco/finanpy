@@ -576,3 +576,137 @@ class TransactionFilterViewTest(TestCase):
         self.assertTrue(SourceReference.objects.filter(external_id='nubank-tx-001').exists())
         self.assertTrue(SourceReference.objects.filter(external_id='nubank-tx-002').exists())
 
+
+class TransactionQuickEntryTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email='quick@example.com', password='pass123')
+        self.other_user = User.objects.create_user(email='other@example.com', password='pass123')
+        self.household = ensure_household_for_user(self.user)
+        self.other_household = ensure_household_for_user(self.other_user)
+        self.owner = get_financial_owner(self.household)
+        self.other_owner = get_financial_owner(self.other_household)
+        self.client.login(username='quick@example.com', password='pass123')
+
+        self.account = Account.objects.create(
+            user=self.user,
+            household=self.household,
+            financial_owner=self.owner,
+            name='Conta Corrente',
+            type=Account.CHECKING,
+            initial_balance=Decimal('100.00'),
+        )
+        self.other_account = Account.objects.create(
+            user=self.other_user,
+            household=self.other_household,
+            financial_owner=self.other_owner,
+            name='Conta Estrangeira',
+            type=Account.CHECKING,
+            initial_balance=Decimal('100.00'),
+        )
+        self.category = Category.objects.create(
+            user=self.user,
+            household=self.household,
+            name='Supermercado',
+            type=Category.EXPENSE,
+            budget=Decimal('800.00'),
+        )
+        self.other_category = Category.objects.create(
+            user=self.other_user,
+            household=self.other_household,
+            name='Outro Lar',
+            type=Category.EXPENSE,
+        )
+
+    def test_quick_create_success_json(self):
+        payload = {
+            'date': '2026-08-19',
+            'type': 'expense',
+            'description': 'Padaria Pão Quente',
+            'amount': '15,50',
+            'account': self.account.pk,
+            'category': self.category.pk,
+        }
+        response = self.client.post(
+            '/transacoes/quick-create/',
+            payload,
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['transaction']['description'], 'Padaria Pão Quente')
+        self.assertEqual(data['transaction']['amount'], 15.5)
+
+        tx = Transaction.objects.get(pk=data['transaction']['id'])
+        self.assertEqual(tx.household, self.household)
+        self.assertEqual(tx.financial_owner, self.owner)
+        self.assertEqual(tx.amount, Decimal('15.50'))
+
+    def test_quick_create_validation_error(self):
+        payload = {
+            'date': '2026-08-19',
+            'type': 'expense',
+            'description': '',
+            'amount': '0.00',
+            'account': self.account.pk,
+            'category': self.category.pk,
+        }
+        response = self.client.post(
+            '/transacoes/quick-create/',
+            payload,
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['success'])
+
+    def test_quick_create_rejects_foreign_account_or_category(self):
+        payload = {
+            'date': '2026-08-19',
+            'type': 'expense',
+            'description': 'Hacker attempt',
+            'amount': '50.00',
+            'account': self.other_account.pk,
+            'category': self.category.pk,
+        }
+        response = self.client.post(
+            '/transacoes/quick-create/',
+            payload,
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_quick_delete_success(self):
+        tx = Transaction.objects.create(
+            user=self.user,
+            household=self.household,
+            financial_owner=self.owner,
+            account=self.account,
+            category=self.category,
+            description='Para excluir',
+            amount=Decimal('20.00'),
+            date=datetime.date.today(),
+            type=Transaction.EXPENSE,
+        )
+        response = self.client.post(f'/transacoes/{tx.pk}/quick-delete/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+        self.assertFalse(Transaction.objects.filter(pk=tx.pk).exists())
+
+    def test_quick_delete_foreign_transaction_404(self):
+        foreign_tx = Transaction.objects.create(
+            user=self.other_user,
+            household=self.other_household,
+            financial_owner=self.other_owner,
+            account=self.other_account,
+            category=self.other_category,
+            description='Estrangeira',
+            amount=Decimal('20.00'),
+            date=datetime.date.today(),
+            type=Transaction.EXPENSE,
+        )
+        response = self.client.post(f'/transacoes/{foreign_tx.pk}/quick-delete/')
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Transaction.objects.filter(pk=foreign_tx.pk).exists())
+
+

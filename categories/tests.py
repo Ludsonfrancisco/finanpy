@@ -25,11 +25,22 @@ class CategoryModelTest(TestCase):
             household=self.household,
             name='Alimentação',
             type=Category.EXPENSE,
-            color='#FF0000'
+            color='#FF0000',
+            budget=1500.00,
         )
         self.assertEqual(category.name, 'Alimentação')
         self.assertEqual(category.type, Category.EXPENSE)
+        self.assertEqual(category.budget, 1500.00)
         self.assertEqual(str(category), 'Alimentação (Despesa)')
+
+    def test_category_default_budget(self):
+        category = Category.objects.create(
+            user=self.user,
+            household=self.household,
+            name='Farmácia',
+            type=Category.EXPENSE,
+        )
+        self.assertEqual(category.budget, 0.00)
 
     def test_unique_household_constraint(self):
         Category.objects.create(

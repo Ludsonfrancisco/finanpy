@@ -34,9 +34,16 @@
           </div>
           <div class="min-w-0">
             <h3 class="text-sm font-bold text-[#E8ECE9] truncate group-hover:text-white transition">{{ category.name }}</h3>
-            <span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider mt-0.5 {% if category.type == 'income' %}text-mineral-light{% else %}text-danger-light{% endif %}">
-              {{ category.get_type_display }}
-            </span>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider {% if category.type == 'income' %}text-mineral-light{% else %}text-danger-light{% endif %}">
+                {{ category.get_type_display }}
+              </span>
+              {% if category.budget > 0 %}
+                <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-bold bg-[#121815] text-champagne border border-[#28352E]" title="Teto Mensal Orçado">
+                  Teto: R$&nbsp;{{ category.budget|floatformat:2 }}
+                </span>
+              {% endif %}
+            </div>
           </div>
         </div>
 

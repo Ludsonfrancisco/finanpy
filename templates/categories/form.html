@@ -53,7 +53,7 @@
         {% endif %}
       </div>
 
-      <!-- Cor e Ícone -->
+      <!-- Cor, Ícone e Teto Mensal -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label for="{{ form.color.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
@@ -67,19 +67,18 @@
           {% endif %}
         </div>
 
-        {% if form.icon %}
         <div>
-          <label for="{{ form.icon.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
-            Ícone
+          <label for="{{ form.budget.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5 flex items-center justify-between">
+            <span>Teto Mensal (R$)</span>
+            <span class="text-[10px] text-mineral-light font-normal">Ano da Seca</span>
           </label>
-          {{ form.icon }}
-          {% if form.icon.errors %}
-            {% for error in form.icon.errors %}
+          {{ form.budget }}
+          {% if form.budget.errors %}
+            {% for error in form.budget.errors %}
               <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
             {% endfor %}
           {% endif %}
         </div>
-        {% endif %}
       </div>
 
       <!-- Buttons -->

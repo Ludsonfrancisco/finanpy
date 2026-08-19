@@ -37,6 +37,7 @@ def _serialize_category(category):
         'type': category.type,
         'color': category.color,
         'icon': category.icon,
+        'budget': _string_value(category.budget),
     }
 
 

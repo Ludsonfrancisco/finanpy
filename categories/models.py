@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -45,6 +46,13 @@ class Category(models.Model):
         blank=True,
         null=True,
         verbose_name='ícone',
+    )
+    budget = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        blank=True,
+        verbose_name='teto mensal (R$)',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

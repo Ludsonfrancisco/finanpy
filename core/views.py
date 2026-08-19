@@ -10,6 +10,7 @@ from django.views.generic import TemplateView
 
 from accounts.models import Account
 from bills.services import get_bills_dashboard_metrics
+from categories.models import Category
 from households.mixins import HouseholdContextMixin
 from households.models import FinancialOwner
 from transactions.models import Transaction
@@ -82,10 +83,54 @@ class DashboardView(LoginRequiredMixin, HouseholdContextMixin, TemplateView):
         else:
             savings_rate = 0.0
 
-        # Maiores Despesas por Categoria no Mês (com cálculo de porcentagem)
+        # Módulo Ano da Seca: Tetos Orçamentários e Daily Burn Rate
+        categories_expense_qs = Category.objects.filter(household=household, type=Category.EXPENSE)
+        total_budget = categories_expense_qs.filter(budget__gt=0).aggregate(total=Sum('budget'))['total'] or Decimal('0.00')
+
+        _, last_day = calendar.monthrange(today.year, today.month)
+        days_remaining = max(1, last_day - today.day + 1)
+
+        budgeted_cat_ids = categories_expense_qs.filter(budget__gt=0).values_list('id', flat=True)
+        if total_budget > Decimal('0.00'):
+            budgeted_expenses = (
+                monthly_qs.filter(type=Transaction.EXPENSE, category_id__in=budgeted_cat_ids)
+                .aggregate(total=Sum('amount'))['total']
+                or Decimal('0.00')
+            )
+            budget_remaining = total_budget - budgeted_expenses
+            if budget_remaining > Decimal('0.00'):
+                daily_burn_rate = budget_remaining / Decimal(str(days_remaining))
+                is_over_budget = False
+                over_budget_amount = Decimal('0.00')
+            else:
+                daily_burn_rate = Decimal('0.00')
+                is_over_budget = (budget_remaining < Decimal('0.00'))
+                over_budget_amount = abs(budget_remaining)
+
+            budget_usage_pct = round(float((budgeted_expenses / total_budget) * 100), 1)
+            if is_over_budget:
+                budget_status = 'danger'
+                budget_status_label = f'Estouro de R$ {over_budget_amount:.2f}'
+            elif budget_usage_pct >= 85.0:
+                budget_status = 'warning'
+                budget_status_label = f'{budget_usage_pct}% do teto consumido'
+            else:
+                budget_status = 'safe'
+                budget_status_label = f'{budget_usage_pct}% do teto consumido'
+        else:
+            budgeted_expenses = Decimal('0.00')
+            budget_remaining = Decimal('0.00')
+            daily_burn_rate = Decimal('0.00')
+            is_over_budget = False
+            over_budget_amount = Decimal('0.00')
+            budget_usage_pct = 0.0
+            budget_status = 'unset'
+            budget_status_label = 'Defina tetos nas categorias'
+
+        # Maiores Despesas por Categoria no Mês (com teto e porcentagem)
         cat_raw = (
             monthly_qs.filter(type=Transaction.EXPENSE)
-            .values('category__name', 'category__color')
+            .values('category__name', 'category__color', 'category__budget')
             .annotate(total=Sum('amount'))
             .order_by('-total')[:6]
         )
@@ -93,6 +138,10 @@ class DashboardView(LoginRequiredMixin, HouseholdContextMixin, TemplateView):
         for item in cat_raw:
             tot = item['total'] or Decimal('0.00')
             pct = float((tot / monthly_expenses) * 100) if monthly_expenses > Decimal('0.00') else 0.0
+            cat_budget = item.get('category__budget') or Decimal('0.00')
+            cat_budget_pct = round(float((tot / cat_budget) * 100), 1) if cat_budget > Decimal('0.00') else None
+            cat_is_over = tot > cat_budget if cat_budget > Decimal('0.00') else False
+
             expenses_by_category.append({
                 'name': item['category__name'],
                 'color': item['category__color'] or '#2F756A',
@@ -100,6 +149,9 @@ class DashboardView(LoginRequiredMixin, HouseholdContextMixin, TemplateView):
                 'category__color': item['category__color'] or '#2F756A',
                 'total': tot,
                 'percentage': round(pct, 1),
+                'budget': cat_budget,
+                'budget_percentage': cat_budget_pct,
+                'is_over_budget': cat_is_over,
             })
 
         # Fluxo Mensal dos Últimos 6 Meses
@@ -146,5 +198,17 @@ class DashboardView(LoginRequiredMixin, HouseholdContextMixin, TemplateView):
         context['financial_owners'] = financial_owners
         context['owner_filter'] = owner_filter
         context['selected_owner'] = selected_owner
+
+        # Contexto do Módulo Ano da Seca
+        context['total_budget'] = total_budget
+        context['budgeted_expenses'] = budgeted_expenses
+        context['budget_remaining'] = budget_remaining
+        context['daily_burn_rate'] = round(daily_burn_rate, 2)
+        context['days_remaining'] = days_remaining
+        context['is_over_budget'] = is_over_budget
+        context['over_budget_amount'] = over_budget_amount
+        context['budget_usage_pct'] = budget_usage_pct
+        context['budget_status'] = budget_status
+        context['budget_status_label'] = budget_status_label
 
         return context

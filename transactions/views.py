@@ -1,7 +1,13 @@
+import json
+from decimal import Decimal, InvalidOperation
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
@@ -46,14 +52,119 @@ class TransactionListView(LoginRequiredMixin, HouseholdContextMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         params = self.request.GET
+        accounts = Account.objects.filter(household=self.household).select_related('financial_owner').order_by('name')
+        categories = Category.objects.filter(household=self.household).order_by('name')
+
         context['filter_date_from'] = params.get('date_from', '')
         context['filter_date_to'] = params.get('date_to', '')
         context['filter_account'] = params.get('account', '')
         context['filter_category'] = params.get('category', '')
         context['filter_type'] = params.get('type', '')
-        context['filter_accounts'] = Account.objects.filter(household=self.household)
-        context['filter_categories'] = Category.objects.filter(household=self.household)
+        context['filter_accounts'] = accounts
+        context['filter_categories'] = categories
+        context['accounts'] = accounts
+        context['categories'] = categories
+        context['today_date'] = timezone.localdate().strftime('%Y-%m-%d')
         return context
+
+
+class TransactionQuickCreateView(LoginRequiredMixin, HouseholdContextMixin, View):
+    """Cria uma transação de forma assíncrona (AJAX/Fetch) para o Modo Planilha."""
+
+    def post(self, request, *args, **kwargs):
+        if request.content_type == 'application/json':
+            try:
+                data = json.loads(request.body)
+            except Exception:
+                return JsonResponse({'success': False, 'error': 'JSON inválido.'}, status=400)
+        else:
+            data = request.POST
+
+        date_str = data.get('date')
+        description = (data.get('description') or '').strip()
+        amount_raw = str(data.get('amount') or '').strip().replace(',', '.')
+        type_ = data.get('type', Transaction.EXPENSE)
+        account_id = data.get('account')
+        category_id = data.get('category')
+
+        if not description:
+            return JsonResponse({'success': False, 'error': 'A descrição é obrigatória.'}, status=400)
+
+        if not amount_raw:
+            return JsonResponse({'success': False, 'error': 'O valor é obrigatório.'}, status=400)
+
+        try:
+            amount = Decimal(amount_raw)
+            if amount <= Decimal('0.00'):
+                return JsonResponse({'success': False, 'error': 'O valor deve ser maior que zero.'}, status=400)
+        except InvalidOperation:
+            return JsonResponse({'success': False, 'error': 'Valor numérico inválido.'}, status=400)
+
+        tx_date = parse_date(date_str) if date_str else timezone.localdate()
+        if not tx_date:
+            return JsonResponse({'success': False, 'error': 'Data inválida.'}, status=400)
+
+        if type_ not in (Transaction.EXPENSE, Transaction.INCOME):
+            type_ = Transaction.EXPENSE
+
+        account = Account.objects.filter(household=self.household, pk=account_id).select_related('financial_owner').first()
+        if not account:
+            return JsonResponse({'success': False, 'error': 'Conta bancária inválida ou não encontrada no Lar.'}, status=400)
+
+        category = Category.objects.filter(household=self.household, pk=category_id).first()
+        if not category:
+            return JsonResponse({'success': False, 'error': 'Categoria inválida ou não encontrada no Lar.'}, status=400)
+
+        try:
+            tx = Transaction(
+                user=self.request.user,
+                household=self.household,
+                financial_owner=account.financial_owner,
+                account=account,
+                category=category,
+                description=description,
+                amount=amount,
+                date=tx_date,
+                type=type_,
+            )
+            tx.full_clean()
+            tx.save()
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+        owner_display = tx.financial_owner.get_type_display() if tx.financial_owner else ''
+        cat_color = tx.category.color or '#8D958D'
+
+        return JsonResponse({
+            'success': True,
+            'transaction': {
+                'id': tx.pk,
+                'date': tx.date.strftime('%Y-%m-%d'),
+                'date_formatted': tx.date.strftime('%d %b, %Y'),
+                'description': tx.description,
+                'amount': float(tx.amount),
+                'amount_formatted': f'{tx.amount:.2f}',
+                'type': tx.type,
+                'account_name': tx.account.name,
+                'category_name': tx.category.name,
+                'category_color': cat_color,
+                'financial_owner_display': owner_display,
+                'update_url': reverse('transactions:update', kwargs={'pk': tx.pk}),
+                'delete_url': reverse('transactions:delete', kwargs={'pk': tx.pk}),
+                'quick_delete_url': reverse('transactions:quick_delete', kwargs={'pk': tx.pk}),
+            }
+        })
+
+
+class TransactionQuickDeleteView(LoginRequiredMixin, HouseholdContextMixin, View):
+    """Exclui uma transação de forma assíncrona para o Modo Planilha."""
+
+    def post(self, request, pk, *args, **kwargs):
+        tx = Transaction.objects.filter(household=self.household, pk=pk).first()
+        if not tx:
+            return JsonResponse({'success': False, 'error': 'Transação não encontrada.'}, status=404)
+        tx.delete()
+        return JsonResponse({'success': True, 'id': pk})
 
 
 class TransactionCreateView(LoginRequiredMixin, HouseholdContextMixin, CreateView):

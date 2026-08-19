@@ -37,6 +37,100 @@
   </div>
 </header>
 
+<!-- Quick Entry (Modo Planilha Rápida) Card -->
+<div class="lar-card rounded-2xl p-5 mb-8 border-mineral/40 bg-gradient-to-r from-[#171F1B] via-[#1B2420] to-[#121815] shadow-lg">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+    <div class="flex items-center gap-2">
+      <span class="flex h-2 w-2 rounded-full bg-mineral animate-pulse"></span>
+      <h2 class="text-xs font-bold uppercase tracking-wider text-mineral-light">Lançamento Rápido (Modo Planilha)</h2>
+    </div>
+    <div class="text-[11px] text-[#8D958D] flex items-center gap-2">
+      <span>Atalhos:</span>
+      <kbd class="px-1.5 py-0.5 rounded bg-[#121815] border border-[#24302A] text-[10px] font-mono text-[#E8ECE9]">Tab</kbd> navegar
+      <kbd class="px-1.5 py-0.5 rounded bg-[#121815] border border-[#24302A] text-[10px] font-mono text-[#E8ECE9]">Enter</kbd> salvar
+      <kbd class="px-1.5 py-0.5 rounded bg-[#121815] border border-[#24302A] text-[10px] font-mono text-[#E8ECE9]">Esc</kbd> limpar
+    </div>
+  </div>
+
+  <form id="quick-entry-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+    {% csrf_token %}
+    
+    <!-- Data -->
+    <div class="lg:col-span-2">
+      <label for="qe-date" class="block text-[10px] font-bold uppercase tracking-wider text-[#8D958D] mb-1">Data</label>
+      <input type="date" id="qe-date" name="date" value="{{ today_date }}"
+             class="w-full rounded-xl bg-[#121815] border border-[#24302A] px-3 py-2 text-xs text-[#E8ECE9] focus:border-mineral focus:outline-none focus:ring-2 focus:ring-mineral/30">
+    </div>
+
+    <!-- Tipo -->
+    <div class="lg:col-span-2">
+      <label for="qe-type" class="block text-[10px] font-bold uppercase tracking-wider text-[#8D958D] mb-1">Tipo</label>
+      <select id="qe-type" name="type"
+              class="w-full rounded-xl bg-[#121815] border border-[#24302A] px-3 py-2 text-xs text-[#E8ECE9] focus:border-mineral focus:outline-none focus:ring-2 focus:ring-mineral/30">
+        <option value="expense" selected>Despesa</option>
+        <option value="income">Receita</option>
+      </select>
+    </div>
+
+    <!-- Descrição -->
+    <div class="lg:col-span-3">
+      <label for="qe-desc" class="block text-[10px] font-bold uppercase tracking-wider text-[#8D958D] mb-1">Descrição*</label>
+      <input type="text" id="qe-desc" name="description" placeholder="Ex: Supermercado, Padaria..." autofocus
+             class="w-full rounded-xl bg-[#121815] border border-[#24302A] px-3 py-2 text-xs text-[#E8ECE9] placeholder-[#5C665F] focus:border-mineral focus:outline-none focus:ring-2 focus:ring-mineral/30">
+    </div>
+
+    <!-- Valor -->
+    <div class="lg:col-span-2">
+      <label for="qe-amount" class="block text-[10px] font-bold uppercase tracking-wider text-[#8D958D] mb-1">Valor (R$)*</label>
+      <input type="text" id="qe-amount" name="amount" placeholder="0,00" inputmode="decimal"
+             class="w-full rounded-xl bg-[#121815] border border-[#24302A] px-3 py-2 text-xs text-[#E8ECE9] placeholder-[#5C665F] font-bold focus:border-mineral focus:outline-none focus:ring-2 focus:ring-mineral/30">
+    </div>
+
+    <!-- Conta -->
+    <div class="lg:col-span-3">
+      <label for="qe-account" class="block text-[10px] font-bold uppercase tracking-wider text-[#8D958D] mb-1">Conta</label>
+      <select id="qe-account" name="account"
+              class="w-full rounded-xl bg-[#121815] border border-[#24302A] px-3 py-2 text-xs text-[#E8ECE9] focus:border-mineral focus:outline-none focus:ring-2 focus:ring-mineral/30">
+        {% for acct in accounts %}
+          <option value="{{ acct.pk }}">{{ acct.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Categoria & Botão (Linha 2 ou flexível) -->
+    <div class="lg:col-span-12 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+      <div class="flex items-center gap-3 flex-1">
+        <div class="w-full sm:w-72">
+          <label for="qe-category" class="block text-[10px] font-bold uppercase tracking-wider text-[#8D958D] mb-1">Categoria</label>
+          <select id="qe-category" name="category"
+                  class="w-full rounded-xl bg-[#121815] border border-[#24302A] px-3 py-2 text-xs text-[#E8ECE9] focus:border-mineral focus:outline-none focus:ring-2 focus:ring-mineral/30">
+            {% for cat in categories %}
+              <option value="{{ cat.pk }}" data-color="{{ cat.color }}">{{ cat.name }} ({{ cat.get_type_display }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 self-end">
+        <button type="button" id="qe-btn-clear"
+                class="px-3 py-2 rounded-xl text-xs font-semibold text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27] transition">
+          Limpar (Esc)
+        </button>
+        <button type="submit" id="qe-btn-submit"
+                class="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-mineral hover:bg-mineral-hover text-xs font-bold text-white shadow-md shadow-mineral/20 transition focus:outline-none focus:ring-2 focus:ring-mineral-light">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Inserir na Linha (Enter)</span>
+        </button>
+      </div>
+    </div>
+  </form>
+  
+  <!-- Inline Feedback Toast -->
+  <div id="qe-feedback" class="hidden mt-3 p-2.5 rounded-xl text-xs font-medium transition-all"></div>
+</div>
+
 <!-- Filter Bar Card -->
 <form method="get" class="lar-card rounded-2xl p-5 mb-8">
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -108,114 +202,317 @@
   </div>
 </form>
 
-{% if not transactions %}
+<div id="empty-state-wrapper" class="{% if transactions %}hidden{% endif %}">
   {% include 'partials/_empty_state.html' with empty_title="Nenhuma movimentação encontrada" empty_message="Nenhuma transação atende aos filtros aplicados ou ainda não há lançamentos no período." empty_action_url="/transacoes/nova/" empty_action_label="Nova transação" %}
-{% else %}
-  <!-- Transactions Table Card -->
-  <div class="lar-card rounded-2xl overflow-hidden flex flex-col">
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm text-left border-collapse" aria-label="Lista de transações">
-        <thead class="text-[10px] font-bold uppercase tracking-wider text-[#8D958D] bg-[#121815] border-b border-[#24302A]">
-          <tr>
-            <th class="px-6 py-4">Data</th>
-            <th class="px-6 py-4">Descrição</th>
-            <th class="px-6 py-4">Conta</th>
-            <th class="px-6 py-4 text-right">Valor</th>
-            <th class="px-6 py-4 text-right">Ações</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-[#24302A]">
-          {% for transaction in transactions %}
-            <tr class="hover:bg-[#222C27] transition-colors group">
-              
-              <!-- Data -->
-              <td class="px-6 py-4 text-xs font-medium text-[#8D958D] whitespace-nowrap">
-                {{ transaction.date|date:"d M, Y" }}
-              </td>
+</div>
 
-              <!-- Descrição + Categoria + Titular -->
-              <td class="px-6 py-4">
-                <div class="flex flex-col">
-                  <span class="text-sm font-semibold text-[#E8ECE9] group-hover:text-white transition">{{ transaction.description }}</span>
-                  <div class="flex items-center gap-1.5 mt-1">
-                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold bg-[#121815] border border-[#24302A]"
-                          style="color: {{ transaction.category.color|default:'#8D958D' }};">
-                      <span class="w-1.5 h-1.5 rounded-full mr-1.5" style="background-color: {{ transaction.category.color|default:'#8D958D' }};"></span>
-                      {{ transaction.category.name }}
+<!-- Transactions Table Card -->
+<div id="transactions-table-card" class="lar-card rounded-2xl overflow-hidden flex flex-col {% if not transactions %}hidden{% endif %}">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left border-collapse" aria-label="Lista de transações">
+      <thead class="text-[10px] font-bold uppercase tracking-wider text-[#8D958D] bg-[#121815] border-b border-[#24302A]">
+        <tr>
+          <th class="px-6 py-4">Data</th>
+          <th class="px-6 py-4">Descrição</th>
+          <th class="px-6 py-4">Conta</th>
+          <th class="px-6 py-4 text-right">Valor</th>
+          <th class="px-6 py-4 text-right">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="transactions-table-body" class="divide-y divide-[#24302A]">
+        {% for transaction in transactions %}
+          <tr id="tx-row-{{ transaction.pk }}" class="hover:bg-[#222C27] transition-colors group">
+            
+            <!-- Data -->
+            <td class="px-6 py-4 text-xs font-medium text-[#8D958D] whitespace-nowrap">
+              {{ transaction.date|date:"d M, Y" }}
+            </td>
+
+            <!-- Descrição + Categoria + Titular -->
+            <td class="px-6 py-4">
+              <div class="flex flex-col">
+                <span class="text-sm font-semibold text-[#E8ECE9] group-hover:text-white transition">{{ transaction.description }}</span>
+                <div class="flex items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold bg-[#121815] border border-[#24302A]"
+                        style="color: {{ transaction.category.color|default:'#8D958D' }};">
+                    <span class="w-1.5 h-1.5 rounded-full mr-1.5" style="background-color: {{ transaction.category.color|default:'#8D958D' }};"></span>
+                    {{ transaction.category.name }}
+                  </span>
+                  {% if transaction.financial_owner %}
+                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-mineral-muted text-mineral-light border border-mineral/30">
+                      {{ transaction.financial_owner.get_type_display }}
                     </span>
-                    {% if transaction.financial_owner %}
-                      <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-mineral-muted text-mineral-light border border-mineral/30">
-                        {{ transaction.financial_owner.get_type_display }}
-                      </span>
-                    {% endif %}
-                  </div>
+                  {% endif %}
                 </div>
-              </td>
+              </div>
+            </td>
 
-              <!-- Conta -->
-              <td class="px-6 py-4 text-xs font-medium text-[#8D958D] whitespace-nowrap">
-                {{ transaction.account.name }}
-              </td>
+            <!-- Conta -->
+            <td class="px-6 py-4 text-xs font-medium text-[#8D958D] whitespace-nowrap">
+              {{ transaction.account.name }}
+            </td>
 
-              <!-- Valor -->
-              <td class="px-6 py-4 text-right font-bold tabular-nums whitespace-nowrap">
-                {% if transaction.type == 'income' %}
-                  <span class="text-mineral-light font-bold text-sm">+ R$&nbsp;{{ transaction.amount|floatformat:2 }}</span>
-                {% else %}
-                  <span class="text-danger-light font-bold text-sm">- R$&nbsp;{{ transaction.amount|floatformat:2 }}</span>
-                {% endif %}
-              </td>
+            <!-- Valor -->
+            <td class="px-6 py-4 text-right font-bold tabular-nums whitespace-nowrap">
+              {% if transaction.type == 'income' %}
+                <span class="text-mineral-light font-bold text-sm">+ R$&nbsp;{{ transaction.amount|floatformat:2 }}</span>
+              {% else %}
+                <span class="text-danger-light font-bold text-sm">- R$&nbsp;{{ transaction.amount|floatformat:2 }}</span>
+              {% endif %}
+            </td>
 
-              <!-- Ações -->
-              <td class="px-6 py-4 text-right whitespace-nowrap">
-                <div class="inline-flex items-center gap-1">
-                  <a href="{% url 'transactions:update' transaction.pk %}"
-                     class="p-1.5 rounded-lg text-[#8D958D] hover:text-mineral-light hover:bg-[#121815] transition"
-                     title="Editar transação">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </a>
-                  <a href="{% url 'transactions:delete' transaction.pk %}"
-                     class="p-1.5 rounded-lg text-[#8D958D] hover:text-danger-light hover:bg-danger/10 transition"
-                     title="Excluir transação">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 001 1h6a1 1 0 001-1M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" />
-                    </svg>
-                  </a>
-                </div>
-              </td>
+            <!-- Ações -->
+            <td class="px-6 py-4 text-right whitespace-nowrap">
+              <div class="inline-flex items-center gap-1">
+                <a href="{% url 'transactions:update' transaction.pk %}"
+                   class="p-1.5 rounded-lg text-[#8D958D] hover:text-mineral-light hover:bg-[#121815] transition"
+                   title="Editar transação">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </a>
+                <button type="button"
+                        onclick="quickDeleteTransaction({{ transaction.pk }}, '{% url 'transactions:quick_delete' transaction.pk %}')"
+                        class="p-1.5 rounded-lg text-[#8D958D] hover:text-danger-light hover:bg-danger/10 transition cursor-pointer"
+                        title="Excluir transação">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 001 1h6a1 1 0 001-1M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" />
+                  </svg>
+                </button>
+              </div>
+            </td>
 
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Pagination -->
-    {% if is_paginated %}
-      <div class="flex items-center justify-between px-6 py-4 border-t border-[#24302A] text-xs">
-        <span class="text-[#8D958D]">
-          Página <strong class="text-[#E8ECE9] font-medium">{{ page_obj.number }}</strong> de <strong class="text-[#E8ECE9] font-medium">{{ page_obj.paginator.num_pages }}</strong>
-        </span>
-        <div class="flex items-center gap-2">
-          {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
-               class="px-3 py-1.5 rounded-xl border border-[#24302A] text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27] transition">
-              Anterior
-            </a>
-          {% endif %}
-          {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
-               class="px-3 py-1.5 rounded-xl border border-[#24302A] text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27] transition">
-              Próxima
-            </a>
-          {% endif %}
-        </div>
-      </div>
-    {% endif %}
-
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-{% endif %}
+
+  <!-- Pagination -->
+  {% if is_paginated %}
+    <div class="flex items-center justify-between px-6 py-4 border-t border-[#24302A] text-xs">
+      <span class="text-[#8D958D]">
+        Página <strong class="text-[#E8ECE9] font-medium">{{ page_obj.number }}</strong> de <strong class="text-[#E8ECE9] font-medium">{{ page_obj.paginator.num_pages }}</strong>
+      </span>
+      <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+             class="px-3 py-1.5 rounded-xl border border-[#24302A] text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27] transition">
+            Anterior
+          </a>
+        {% endif %}
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+             class="px-3 py-1.5 rounded-xl border border-[#24302A] text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27] transition">
+            Próxima
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+</div>
 
 {% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('quick-entry-form');
+  const descInput = document.getElementById('qe-desc');
+  const amountInput = document.getElementById('qe-amount');
+  const dateInput = document.getElementById('qe-date');
+  const typeSelect = document.getElementById('qe-type');
+  const accountSelect = document.getElementById('qe-account');
+  const categorySelect = document.getElementById('qe-category');
+  const clearBtn = document.getElementById('qe-btn-clear');
+  const submitBtn = document.getElementById('qe-btn-submit');
+  const feedbackEl = document.getElementById('qe-feedback');
+  const tbody = document.getElementById('transactions-table-body');
+  const tableCard = document.getElementById('transactions-table-card');
+  const emptyState = document.getElementById('empty-state-wrapper');
+
+  let isSubmitting = false;
+
+  function showFeedback(msg, isError = false) {
+    feedbackEl.textContent = msg;
+    feedbackEl.className = isError 
+      ? 'mt-3 p-2.5 rounded-xl text-xs font-semibold bg-danger/15 text-danger-light border border-danger/30 block'
+      : 'mt-3 p-2.5 rounded-xl text-xs font-semibold bg-mineral/15 text-mineral-light border border-mineral/30 block';
+    setTimeout(() => {
+      feedbackEl.className = 'hidden mt-3 p-2.5 rounded-xl text-xs font-medium transition-all';
+    }, 4000);
+  }
+
+  function clearInputs() {
+    descInput.value = '';
+    amountInput.value = '';
+    descInput.focus();
+  }
+
+  clearBtn.addEventListener('click', clearInputs);
+
+  // Esc key clears description & amount
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && (document.activeElement === descInput || document.activeElement === amountInput)) {
+      clearInputs();
+    }
+  });
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    const desc = descInput.value.trim();
+    let amountStr = amountInput.value.trim().replace(',', '.');
+
+    if (!desc) {
+      showFeedback('Por favor, informe a descrição da transação.', true);
+      descInput.focus();
+      return;
+    }
+
+    if (!amountStr || isNaN(parseFloat(amountStr)) || parseFloat(amountStr) <= 0) {
+      showFeedback('Por favor, informe um valor numérico válido maior que zero.', true);
+      amountInput.focus();
+      return;
+    }
+
+    const payload = {
+      date: dateInput.value,
+      type: typeSelect.value,
+      description: desc,
+      amount: amountStr,
+      account: accountSelect.value,
+      category: categorySelect.value,
+    };
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    isSubmitting = true;
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-50');
+
+    try {
+      const response = await fetch('{% url "transactions:quick_create" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        showFeedback(result.error || 'Erro ao criar transação.', true);
+        return;
+      }
+
+      const tx = result.transaction;
+      showFeedback(`✓ "${tx.description}" lançada com sucesso!`, false);
+
+      // Inserir linha dinâmica na tabela com efeito highlight
+      const tr = document.createElement('tr');
+      tr.id = `tx-row-${tx.id}`;
+      tr.className = 'hover:bg-[#222C27] transition-colors group bg-mineral/20 transition-all duration-1000';
+
+      const isIncome = tx.type === 'income';
+      const valColor = isIncome ? 'text-mineral-light' : 'text-danger-light';
+      const valPrefix = isIncome ? '+ R$' : '- R$';
+
+      tr.innerHTML = `
+        <td class="px-6 py-4 text-xs font-medium text-[#8D958D] whitespace-nowrap">
+          ${tx.date_formatted}
+        </td>
+        <td class="px-6 py-4">
+          <div class="flex flex-col">
+            <span class="text-sm font-semibold text-[#E8ECE9] group-hover:text-white transition">${tx.description}</span>
+            <div class="flex items-center gap-1.5 mt-1">
+              <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold bg-[#121815] border border-[#24302A]"
+                    style="color: ${tx.category_color};">
+                <span class="w-1.5 h-1.5 rounded-full mr-1.5" style="background-color: ${tx.category_color};"></span>
+                ${tx.category_name}
+              </span>
+              ${tx.financial_owner_display ? `
+                <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-mineral-muted text-mineral-light border border-mineral/30">
+                  ${tx.financial_owner_display}
+                </span>` : ''}
+            </div>
+          </div>
+        </td>
+        <td class="px-6 py-4 text-xs font-medium text-[#8D958D] whitespace-nowrap">
+          ${tx.account_name}
+        </td>
+        <td class="px-6 py-4 text-right font-bold tabular-nums whitespace-nowrap">
+          <span class="${valColor} font-bold text-sm">${valPrefix}&nbsp;${tx.amount_formatted}</span>
+        </td>
+        <td class="px-6 py-4 text-right whitespace-nowrap">
+          <div class="inline-flex items-center gap-1">
+            <a href="${tx.update_url}"
+               class="p-1.5 rounded-lg text-[#8D958D] hover:text-mineral-light hover:bg-[#121815] transition"
+               title="Editar transação">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </a>
+            <button type="button"
+                    onclick="quickDeleteTransaction(${tx.id}, '${tx.quick_delete_url}')"
+                    class="p-1.5 rounded-lg text-[#8D958D] hover:text-danger-light hover:bg-danger/10 transition cursor-pointer"
+                    title="Excluir transação">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 001 1h6a1 1 0 001-1M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" />
+              </svg>
+            </button>
+          </div>
+        </td>
+      `;
+
+      if (emptyState) emptyState.classList.add('hidden');
+      if (tableCard) tableCard.classList.remove('hidden');
+
+      tbody.insertBefore(tr, tbody.firstChild);
+
+      // Suavemente remove o efeito de destaque
+      setTimeout(() => {
+        tr.classList.remove('bg-mineral/20');
+      }, 1500);
+
+      clearInputs();
+
+    } catch (err) {
+      showFeedback('Erro de conexão ao salvar transação.', true);
+    } finally {
+      isSubmitting = false;
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('opacity-50');
+    }
+  });
+});
+
+async function quickDeleteTransaction(id, url) {
+  if (!confirm('Deseja realmente excluir esta movimentação?')) return;
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken }
+    });
+    const json = await res.json();
+    if (res.ok && json.success) {
+      const row = document.getElementById(`tx-row-${id}`);
+      if (row) {
+        row.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => row.remove(), 300);
+      }
+    } else {
+      alert(json.error || 'Erro ao excluir transação.');
+    }
+  } catch (err) {
+    alert('Erro de conexão.');
+  }
+}
+</script>
+{% endblock %}
+
