@@ -66,6 +66,8 @@ class RecurringBillForm(HouseholdModelFormMixin, forms.ModelForm):
             self.fields['category'].queryset = Category.objects.filter(household=household)
             self.fields['default_account'].queryset = Account.objects.filter(household=household)
             self.fields['financial_owner'].queryset = FinancialOwner.objects.filter(household=household)
+            self.fields['default_account'].required = False
+            self.fields['financial_owner'].required = False
         else:
             self.fields['category'].queryset = Category.objects.none()
             self.fields['default_account'].queryset = Account.objects.none()

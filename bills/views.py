@@ -90,7 +90,7 @@ class BillCreateView(LoginRequiredMixin, HouseholdContextMixin, CreateView):
     def form_valid(self, form):
         form.instance.user = self.request.user
         form.instance.household = self.household
-        if not form.cleaned_data.get('financial_owner'):
+        if not form.instance.financial_owner_id:
             from households.services import get_financial_owner
             form.instance.financial_owner = get_financial_owner(self.household, FinancialOwner.SHARED)
 
@@ -123,8 +123,16 @@ class BillUpdateView(LoginRequiredMixin, HouseholdContextMixin, UpdateView):
         return kwargs
 
     def form_valid(self, form):
+        if not form.instance.financial_owner_id:
+            from households.services import get_financial_owner
+            form.instance.financial_owner = get_financial_owner(self.household, FinancialOwner.SHARED)
+
+        if not validate_instance_or_add_form_errors(form):
+            return self.form_invalid(form)
+
+        response = super().form_valid(form)
         messages.success(self.request, f'Conta fixa "{self.object.name}" atualizada com sucesso!')
-        return super().form_valid(form)
+        return response
 
     def form_invalid(self, form):
         messages.error(self.request, 'Por favor corrija os erros abaixo.')

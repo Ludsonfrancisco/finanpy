@@ -212,3 +212,49 @@ class BillsViewsTest(TestCase):
         response = self.client.post(reverse('bills:delete', kwargs={'pk': bill.pk}))
         self.assertRedirects(response, reverse('bills:list'))
         self.assertFalse(RecurringBill.objects.filter(name='Energia Enel').exists())
+
+    def test_bill_create_with_minimal_fields_and_optional_values(self):
+        # Create without default_account or financial_owner
+        response = self.client.post(reverse('bills:create'), {
+            'name': 'Netflix',
+            'amount': '55.90',
+            'due_day': 20,
+            'type': RecurringBill.EXPENSE,
+            'category': self.category.pk,
+            'default_account': '',
+            'financial_owner': '',
+            'is_active': True,
+        })
+        self.assertRedirects(response, reverse('bills:list'))
+        bill = RecurringBill.objects.filter(name='Netflix').first()
+        self.assertIsNotNone(bill)
+        self.assertIsNone(bill.default_account)
+        self.assertEqual(bill.financial_owner, self.shared_owner)
+
+    def test_bill_update_view(self):
+        bill = RecurringBill.objects.create(
+            household=self.household,
+            user=self.user,
+            financial_owner=self.shared_owner,
+            name='Academia',
+            amount=Decimal('120.00'),
+            due_day=5,
+            type=RecurringBill.EXPENSE,
+            category=self.category,
+        )
+
+        response = self.client.post(reverse('bills:update', kwargs={'pk': bill.pk}), {
+            'name': 'Academia Premium',
+            'amount': '150.00',
+            'due_day': 5,
+            'type': RecurringBill.EXPENSE,
+            'category': self.category.pk,
+            'default_account': '',
+            'financial_owner': self.shared_owner.pk,
+            'is_active': True,
+        })
+        self.assertRedirects(response, reverse('bills:list'))
+        bill.refresh_from_db()
+        self.assertEqual(bill.name, 'Academia Premium')
+        self.assertEqual(bill.amount, Decimal('150.00'))
+
