@@ -302,8 +302,10 @@
             </p>
             <div class="flex flex-wrap items-center gap-2 mt-3">
               <span class="text-xs text-[#8D958D]">{{ bill.category.name }}</span>
-              <span class="text-xs text-[#5C665F]">•</span>
-              <span class="text-xs text-[#8D958D]">{{ bill.financial_owner.get_type_display }}</span>
+              {% if bill.financial_owner %}
+                <span class="text-xs text-[#5C665F]">•</span>
+                <span class="text-xs text-[#8D958D]">{{ bill.financial_owner.get_type_display }}</span>
+              {% endif %}
             </div>
           </div>
 
