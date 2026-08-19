@@ -7,6 +7,7 @@ import '../application/auth_controller.dart';
 
 final class MoreScreen extends ConsumerWidget {
   const MoreScreen({
+    this.onOpenBills,
     this.onOpenImport,
     this.onOpenCategories,
     this.onOpenReports,
@@ -14,6 +15,7 @@ final class MoreScreen extends ConsumerWidget {
   });
 
   /// Navigation is injected: this screen never builds its own transport.
+  final VoidCallback? onOpenBills;
   final VoidCallback? onOpenImport;
   final VoidCallback? onOpenCategories;
   final VoidCallback? onOpenReports;
@@ -50,7 +52,8 @@ final class MoreScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: LarSpacing.xs),
                 Text(lastSync),
-                if (onOpenReports != null ||
+                if (onOpenBills != null ||
+                    onOpenReports != null ||
                     onOpenCategories != null ||
                     onOpenImport != null) ...<Widget>[
                   const SizedBox(height: LarSpacing.xl),
@@ -58,6 +61,14 @@ final class MoreScreen extends ConsumerWidget {
                     'Cadastros & Ferramentas',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
+                  if (onOpenBills != null) ...[
+                    const SizedBox(height: LarSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: onOpenBills,
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      label: const Text('Contas Fixas & Vencimentos'),
+                    ),
+                  ],
                   if (onOpenReports != null) ...[
                     const SizedBox(height: LarSpacing.sm),
                     OutlinedButton.icon(

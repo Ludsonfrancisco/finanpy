@@ -8,6 +8,13 @@ from api.auth_views import (
     RefreshView,
     RevokeDeviceView,
 )
+from api.bills_views import (
+    BillDetailResourceView,
+    BillsMetricsResourceView,
+    BillsResourceView,
+    PayBillResourceView,
+    ReopenBillResourceView,
+)
 from api.import_views import (
     BindImportAccountView,
     CancelImportView,
@@ -43,6 +50,11 @@ urlpatterns = [
     path('bootstrap/', BootstrapView.as_view(), name='bootstrap'),
     path('sync/push/', SyncPushView.as_view(), name='sync-push'),
     path('sync/changes/', SyncPullView.as_view(), name='sync-changes'),
+    path('bills/', BillsResourceView.as_view(), name='bills-list'),
+    path('bills/<int:pk>/', BillDetailResourceView.as_view(), name='bills-detail'),
+    path('bills/instances/<int:pk>/pay/', PayBillResourceView.as_view(), name='bills-pay'),
+    path('bills/instances/<int:pk>/reopen/', ReopenBillResourceView.as_view(), name='bills-reopen'),
+    path('bills/metrics/', BillsMetricsResourceView.as_view(), name='bills-metrics'),
     path('imports/ofx/preview/', OfxPreviewView.as_view(), name='ofx-preview'),
     path(
         'imports/<uuid:batch_uuid>/',

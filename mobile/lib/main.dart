@@ -21,6 +21,7 @@ import 'features/auth/application/auth_controller.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/secure_token_store.dart';
 import 'features/auth/domain/session.dart';
+import 'features/bills/data/bills_repository.dart';
 import 'features/categories/data/categories_repository.dart';
 import 'features/home/data/home_repository.dart';
 import 'features/imports/data/import_repository.dart';
@@ -70,6 +71,7 @@ Future<void> main() async {
   final categoriesRepository = DriftCategoriesRepository(database);
   final reportsRepository = DriftReportsRepository(database);
   final importRepository = DjangoImportRepository(sessionTransport);
+  final billsRepository = HttpBillsRepository(sessionTransport);
   runApp(
     MyApp(
       appConfig: config,
@@ -80,6 +82,7 @@ Future<void> main() async {
       transactionsRepository: transactionsRepository,
       categoriesRepository: categoriesRepository,
       reportsRepository: reportsRepository,
+      billsRepository: billsRepository,
       valueVisibilityController: valueVisibilityController,
       importRepository: importRepository,
     ),
@@ -96,6 +99,7 @@ class MyApp extends StatelessWidget {
     this.transactionsRepository,
     this.categoriesRepository,
     this.reportsRepository,
+    this.billsRepository,
     this.valueVisibilityController,
     this.importRepository,
     this.ofxFilePicker,
@@ -110,6 +114,7 @@ class MyApp extends StatelessWidget {
          transactionsRepository: transactionsRepository,
          categoriesRepository: categoriesRepository,
          reportsRepository: reportsRepository,
+         billsRepository: billsRepository,
          valueVisibilityController: valueVisibilityController,
          importRepository: importRepository,
          ofxFilePicker: ofxFilePicker,
@@ -123,6 +128,7 @@ class MyApp extends StatelessWidget {
   final TransactionsRepository? transactionsRepository;
   final CategoriesRepository? categoriesRepository;
   final ReportsRepository? reportsRepository;
+  final BillsRepository? billsRepository;
   final ValueVisibilityController? valueVisibilityController;
   final ImportRepository? importRepository;
   final OfxFilePicker? ofxFilePicker;

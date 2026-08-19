@@ -14,6 +14,9 @@ import '../features/auth/presentation/device_owner_screen.dart';
 import '../features/auth/presentation/initial_sync_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/more_screen.dart';
+import '../features/bills/application/bills_controller.dart';
+import '../features/bills/data/bills_repository.dart';
+import '../features/bills/presentation/bills_screen.dart';
 import '../features/categories/application/categories_controller.dart';
 import '../features/categories/data/categories_repository.dart';
 import '../features/categories/presentation/categories_screen.dart';
@@ -44,6 +47,7 @@ GoRouter createAppRouter(
   TransactionsRepository? transactionsRepository,
   CategoriesRepository? categoriesRepository,
   ReportsRepository? reportsRepository,
+  BillsRepository? billsRepository,
   ValueVisibilityController? valueVisibilityController,
   ImportRepository? importRepository,
   OfxFilePicker? ofxFilePicker,
@@ -158,8 +162,16 @@ GoRouter createAppRouter(
             ),
           ),
           GoRoute(
+            path: '/bills',
+            builder: (context, state) => _BillsShell(
+              billsRepository: billsRepository,
+              accountsRepository: accountsRepository,
+            ),
+          ),
+          GoRoute(
             path: '/more',
             builder: (context, state) => MoreScreen(
+              onOpenBills: () => context.go('/bills'),
               onOpenImport: importRepository == null
                   ? null
                   : () => context.go('/more/import-ofx'),
@@ -630,6 +642,66 @@ final class _ReportsShellState extends State<_ReportsShell> {
       return ReportsScreen(controller: controller);
     }
     return const _RouteNotice(title: 'Relatórios & Gráficos');
+  }
+}
+
+final class _BillsShell extends StatefulWidget {
+  const _BillsShell({
+    required this.billsRepository,
+    required this.accountsRepository,
+  });
+
+  final BillsRepository? billsRepository;
+  final AccountsRepository? accountsRepository;
+
+  @override
+  State<_BillsShell> createState() => _BillsShellState();
+}
+
+final class _BillsShellState extends State<_BillsShell> {
+  BillsController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _createController();
+  }
+
+  @override
+  void didUpdateWidget(_BillsShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.billsRepository == widget.billsRepository) {
+      return;
+    }
+    _controller?.dispose();
+    _createController();
+  }
+
+  void _createController() {
+    final repository = widget.billsRepository;
+    _controller = repository == null
+        ? null
+        : BillsController(
+            repository: repository,
+          );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller != null) {
+      return BillsScreen(
+        controller: controller,
+        accountsRepository: widget.accountsRepository,
+      );
+    }
+    return const _RouteNotice(title: 'Contas Fixas & Vencimentos');
   }
 }
 

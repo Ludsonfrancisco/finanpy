@@ -516,6 +516,85 @@
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       }
+    },
+    "/bills/": {
+      "get": {
+        "operationId": "listBills",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Bills and monthly instances", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "post": {
+        "operationId": "createBill",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "201": {"description": "Created recurring bill", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/bills/{id}/": {
+      "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+      "put": {
+        "operationId": "updateBillPut",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Updated bill", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "patch": {
+        "operationId": "updateBillPatch",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Updated bill", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "delete": {
+        "operationId": "deleteBill",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Deleted bill", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/bills/instances/{id}/pay/": {
+      "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+      "post": {
+        "operationId": "payBillInstance",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Paid bill instance", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/bills/instances/{id}/reopen/": {
+      "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+      "post": {
+        "operationId": "reopenBillInstance",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Reopened bill instance", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/bills/metrics/": {
+      "get": {
+        "operationId": "getBillsMetrics",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Bills dashboard metrics", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
     }
   },
   "components": {

@@ -17,7 +17,7 @@ OPENAPI_EXPECTATIONS = (
     ('version', '3.1.0'),
     ('security_scheme', 'opaqueBearer'),
     ('error_schema', 'ErrorEnvelope'),
-    ('route_count', 21),
+    ('route_count', 26),
 )
 
 REQUIRED_SCHEMAS = {
@@ -90,8 +90,10 @@ def runtime_api_operations(patterns=None, prefix=''):
             operations.update(runtime_api_operations(pattern.url_patterns, route))
         elif isinstance(pattern, URLPattern) and route.startswith('api/v1/'):
             relative = route.removeprefix('api/v1')
-            normalized = relative.replace('<uuid:device_uuid>', '{device_uuid}').replace(
-                '<uuid:batch_uuid>', '{batch_uuid}'
+            normalized = (
+                relative.replace('<uuid:device_uuid>', '{device_uuid}')
+                .replace('<uuid:batch_uuid>', '{batch_uuid}')
+                .replace('<int:pk>', '{id}')
             )
             view_class = pattern.callback.view_class
             methods = {
@@ -166,7 +168,7 @@ class OpenApiContractTest(SimpleTestCase):
     def test_all_api_routes_are_represented(self):
         routes = runtime_api_operations()
 
-        self.assertEqual(len(routes), 21)
+        self.assertEqual(len(routes), 26)
         self.assertEqual(set(self.contract['paths']), set(routes))
 
     def test_path_http_methods_are_exact(self):

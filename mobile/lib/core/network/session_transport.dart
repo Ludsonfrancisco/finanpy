@@ -60,6 +60,9 @@ final class SessionTransport {
     Map<String, Object?> data,
   ) => _requestObject(path, method: 'PATCH', data: data);
 
+  Future<Map<String, Object?>> deleteObject(String path) =>
+      _requestObject(path, method: 'DELETE');
+
   Future<void> postEmpty(String path) async {
     await _request(path, method: 'POST');
   }
