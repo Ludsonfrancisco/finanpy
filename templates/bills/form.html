@@ -1,0 +1,162 @@
+{% extends "layouts/base_app.html" %}
+
+{% block title %}{% if object %}Editar Conta Fixa{% else %}Nova Conta Fixa{% endif %} — Lar Finance{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl mx-auto py-4">
+  
+  <!-- Back Link & Header -->
+  <div class="mb-6">
+    <a href="{% url 'bills:list' %}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-[#8D958D] hover:text-[#E8ECE9] transition mb-3">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+      </svg>
+      Voltar para Contas Fixas
+    </a>
+    <h1 class="text-3xl font-bold text-[#E8ECE9] tracking-tight">
+      {% if object %}Editar Conta Fixa{% else %}Nova Conta Fixa / Recorrente{% endif %}
+    </h1>
+    <p class="text-xs text-[#8D958D] mt-1">
+      {% if object %}Atualize as regras deste compromisso fixo.{% else %}Cadastre despesas e receitas regulares para acompanhar os vencimentos automáticos.{% endif %}
+    </p>
+  </div>
+
+  <!-- Form Card -->
+  <div class="lar-card rounded-2xl p-6 sm:p-8">
+    <form method="post" novalidate class="space-y-6">
+      {% csrf_token %}
+
+      <!-- Nome -->
+      <div>
+        <label for="{{ form.name.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
+          Nome da Conta / Compromisso*
+        </label>
+        {{ form.name }}
+        {% if form.name.errors %}
+          {% for error in form.name.errors %}
+            <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Valor Base e Dia de Vencimento -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="{{ form.amount.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
+            Valor Estimado (R$)*
+          </label>
+          {{ form.amount }}
+          {% if form.amount.errors %}
+            {% for error in form.amount.errors %}
+              <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <div>
+          <label for="{{ form.due_day.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
+            Dia do Vencimento (1 a 31)*
+          </label>
+          {{ form.due_day }}
+          {% if form.due_day.errors %}
+            {% for error in form.due_day.errors %}
+              <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Tipo e Titular -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="{{ form.type.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
+            Tipo*
+          </label>
+          {{ form.type }}
+          {% if form.type.errors %}
+            {% for error in form.type.errors %}
+              <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <div>
+          <label for="{{ form.financial_owner.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
+            Titular / Divisão
+          </label>
+          {{ form.financial_owner }}
+          {% if form.financial_owner.errors %}
+            {% for error in form.financial_owner.errors %}
+              <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Categoria e Conta Padrão -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="{{ form.category.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
+            Categoria*
+          </label>
+          {{ form.category }}
+          {% if form.category.errors %}
+            {% for error in form.category.errors %}
+              <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <div>
+          <label for="{{ form.default_account.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
+            Conta Bancária Sugerida
+          </label>
+          {{ form.default_account }}
+          {% if form.default_account.errors %}
+            {% for error in form.default_account.errors %}
+              <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Observações -->
+      <div>
+        <label for="{{ form.notes.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-[#8D958D] mb-1.5">
+          Observações / Código de Barras
+        </label>
+        {{ form.notes }}
+        {% if form.notes.errors %}
+          {% for error in form.notes.errors %}
+            <span class="mt-1 block text-xs font-medium text-danger-light">{{ error }}</span>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Ativa Checkbox -->
+      <div class="flex items-center gap-3 pt-2">
+        {{ form.is_active }}
+        <label for="{{ form.is_active.id_for_label }}" class="text-xs font-medium text-[#E8ECE9] cursor-pointer select-none">
+          Manter esta conta ativa para gerar cobranças nos próximos meses
+        </label>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-[#24302A]">
+        <a href="{% url 'bills:list' %}"
+           class="px-5 py-2.5 rounded-xl border border-[#24302A] text-xs font-semibold text-[#8D958D] hover:text-[#E8ECE9] hover:bg-[#222C27] transition">
+          Cancelar
+        </a>
+        <button type="submit"
+                class="px-6 py-2.5 rounded-xl bg-mineral hover:bg-mineral-hover text-xs font-bold text-white shadow-md shadow-mineral/20 transition focus:outline-none focus:ring-2 focus:ring-mineral-light">
+          {% if object %}Salvar Alterações{% else %}Cadastrar Conta Fixa{% endif %}
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+
+{% endblock %}

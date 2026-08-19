@@ -9,6 +9,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from accounts.models import Account
+from bills.services import get_bills_dashboard_metrics
 from households.mixins import HouseholdContextMixin
 from households.models import FinancialOwner
 from transactions.models import Transaction
@@ -127,7 +128,14 @@ class DashboardView(LoginRequiredMixin, HouseholdContextMixin, TemplateView):
             base_tx_qs.select_related('account', 'category', 'financial_owner')[:10]
         )
 
+        bills_metrics = get_bills_dashboard_metrics(household, today.month, today.year, selected_owner)
+
         context['total_balance'] = total_balance
+        context['bills_metrics'] = bills_metrics
+        context['free_cash_balance'] = bills_metrics['free_cash_balance']
+        context['pending_bills_total'] = bills_metrics['pending_expenses_total']
+        context['upcoming_bills'] = bills_metrics['upcoming_bills']
+        context['overdue_bills_count'] = bills_metrics['overdue_count']
         context['monthly_income'] = monthly_income
         context['monthly_expenses'] = monthly_expenses
         context['monthly_net'] = monthly_net

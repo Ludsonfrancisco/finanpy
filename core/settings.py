@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     'imports',
     'api',
     'sync.apps.SyncConfig',
+    'bills',
 ]
 
 MIDDLEWARE = [

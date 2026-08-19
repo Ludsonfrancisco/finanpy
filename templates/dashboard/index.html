@@ -54,6 +54,43 @@
     </div>
 </header>
 
+<!-- ===== Hero Banner: Saldo Livre Real do Lar ===== -->
+<div class="lar-card rounded-2xl p-6 mb-8 border-mineral/40 bg-gradient-to-r from-[#171F1B] via-[#1B2420] to-mineral/10 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-glow-mineral">
+  <div class="flex items-start gap-4">
+    <div class="h-12 w-12 rounded-2xl bg-mineral/20 text-mineral-light flex items-center justify-center flex-shrink-0 shadow-inner">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+    </div>
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-mineral-light">Saldo Livre Real do Lar</span>
+        {% if overdue_bills_count > 0 %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-danger/20 text-danger-light border border-danger/30">
+            {{ overdue_bills_count }} conta{{ overdue_bills_count|pluralize }} em atraso
+          </span>
+        {% endif %}
+      </div>
+      <p class="text-3xl font-extrabold tracking-tight mt-1 tabular-nums {% if free_cash_balance >= 0 %}text-[#E8ECE9]{% else %}text-danger-light{% endif %}">
+        R$&nbsp;{{ free_cash_balance|floatformat:2 }}
+      </p>
+      <p class="text-xs text-[#8D958D] mt-1">
+        Saldo em Contas (R$&nbsp;{{ total_balance|floatformat:2 }}) menos R$&nbsp;{{ pending_bills_total|floatformat:2 }} em contas fixas a vencer no mês.
+      </p>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+    <a href="{% url 'bills:list' %}"
+       class="inline-flex items-center gap-2 rounded-xl bg-mineral/20 hover:bg-mineral/30 border border-mineral/40 px-4 py-2.5 text-xs font-bold text-mineral-light hover:text-white transition">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+      <span>Central de Contas Fixas ({{ upcoming_bills.count }})</span>
+    </a>
+  </div>
+</div>
+
 <!-- ===== Summary metric cards (4 Cards Grid) ===== -->
 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
 
