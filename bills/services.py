@@ -28,17 +28,26 @@ def ensure_monthly_bill_instances(household, month: int = None, year: int = None
     active_bills = RecurringBill.objects.filter(
         household=household,
         is_active=True,
-    )
+    ).select_related('financial_owner', 'default_account')
 
     for bill in active_bills:
         due_date = get_month_due_date(year, month, bill.due_day)
+        fin_owner = bill.financial_owner
+        if not fin_owner:
+            from households.models import FinancialOwner
+            from households.services import get_financial_owner
+            try:
+                fin_owner = get_financial_owner(household, FinancialOwner.SHARED)
+            except Exception:
+                fin_owner = FinancialOwner.objects.filter(household=household).first()
+
         BillInstance.objects.get_or_create(
             bill=bill,
             month=month,
             year=year,
             defaults={
                 'household': household,
-                'financial_owner': bill.financial_owner,
+                'financial_owner': fin_owner,
                 'due_date': due_date,
                 'amount': bill.amount,
                 'status': BillInstance.STATUS_PENDING,

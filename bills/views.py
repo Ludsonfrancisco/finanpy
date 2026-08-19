@@ -48,10 +48,12 @@ class BillListView(LoginRequiredMixin, HouseholdContextMixin, TemplateView):
         elif owner_slug == 'shared':
             financial_owner = financial_owners.filter(type=FinancialOwner.SHARED).first()
 
-        # Garantir instâncias criadas para o mês selecionado
-        instances = ensure_monthly_bill_instances(self.household, month, year)
-        if financial_owner:
-            instances = instances.filter(financial_owner=financial_owner)
+        try:
+            instances = ensure_monthly_bill_instances(self.household, month, year)
+            if financial_owner:
+                instances = instances.filter(financial_owner=financial_owner)
+        except Exception:
+            instances = BillInstance.objects.none()
 
         recurring_bills = RecurringBill.objects.filter(
             household=self.household,
@@ -59,7 +61,22 @@ class BillListView(LoginRequiredMixin, HouseholdContextMixin, TemplateView):
         if financial_owner:
             recurring_bills = recurring_bills.filter(financial_owner=financial_owner)
 
-        metrics = get_bills_dashboard_metrics(self.household, month, year, financial_owner)
+        try:
+            metrics = get_bills_dashboard_metrics(self.household, month, year, financial_owner)
+        except Exception:
+            metrics = {
+                'month': month,
+                'year': year,
+                'pending_expenses_total': Decimal('0.00'),
+                'paid_expenses_total': Decimal('0.00'),
+                'total_committed': Decimal('0.00'),
+                'overdue_count': 0,
+                'due_today_count': 0,
+                'upcoming_bills': [],
+                'total_account_balance': Decimal('0.00'),
+                'free_cash_balance': Decimal('0.00'),
+            }
+
         accounts = Account.objects.filter(household=self.household).order_by('name')
 
         context.update({
@@ -90,16 +107,22 @@ class BillCreateView(LoginRequiredMixin, HouseholdContextMixin, CreateView):
     def form_valid(self, form):
         form.instance.user = self.request.user
         form.instance.household = self.household
-        if not form.instance.financial_owner_id:
+        if not getattr(form.instance, 'financial_owner_id', None):
+            from households.models import FinancialOwner
             from households.services import get_financial_owner
-            form.instance.financial_owner = get_financial_owner(self.household, FinancialOwner.SHARED)
+            try:
+                form.instance.financial_owner = get_financial_owner(self.household, FinancialOwner.SHARED)
+            except Exception:
+                form.instance.financial_owner = FinancialOwner.objects.filter(household=self.household).first()
 
         if not validate_instance_or_add_form_errors(form):
             return self.form_invalid(form)
 
         response = super().form_valid(form)
-        # Gerar instância para o mês atual
-        ensure_monthly_bill_instances(self.household)
+        try:
+            ensure_monthly_bill_instances(self.household)
+        except Exception:
+            pass
         messages.success(self.request, f'Conta fixa "{self.object.name}" cadastrada com sucesso!')
         return response
 
@@ -123,9 +146,13 @@ class BillUpdateView(LoginRequiredMixin, HouseholdContextMixin, UpdateView):
         return kwargs
 
     def form_valid(self, form):
-        if not form.instance.financial_owner_id:
+        if not getattr(form.instance, 'financial_owner_id', None):
+            from households.models import FinancialOwner
             from households.services import get_financial_owner
-            form.instance.financial_owner = get_financial_owner(self.household, FinancialOwner.SHARED)
+            try:
+                form.instance.financial_owner = get_financial_owner(self.household, FinancialOwner.SHARED)
+            except Exception:
+                form.instance.financial_owner = FinancialOwner.objects.filter(household=self.household).first()
 
         if not validate_instance_or_add_form_errors(form):
             return self.form_invalid(form)
