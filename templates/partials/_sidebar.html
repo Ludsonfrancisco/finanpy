@@ -57,6 +57,12 @@
             <div class="absolute -left-4 w-4 h-[200%] border-[#28352E] rounded-bl-xl border-b border-l -top-[150%]"></div>
             <span>Contas Fixas</span>
         </a>
+
+        <a href="{% url 'cards:list' %}"
+           class="relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition {% if 'cards' in request.resolver_match.app_name %}text-mineral-light font-bold{% else %}text-[#8D958D] hover:text-[#E8ECE9]{% endif %} group">
+            <div class="absolute -left-4 w-4 h-[250%] border-[#28352E] rounded-bl-xl border-b border-l -top-[200%]"></div>
+            <span>Cartões</span>
+        </a>
     </div>
 
     <div class="mt-2">

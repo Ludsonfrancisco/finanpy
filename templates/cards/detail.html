@@ -1,0 +1,550 @@
+{% extends "layouts/base_app.html" %}
+
+{% block title %}{{ card.name }} — Fatura e Cartão — Lar Finance{% endblock %}
+
+{% block content %}
+
+<div x-data="{ 
+  newExpenseModalOpen: false,
+  editCardModalOpen: false,
+  payModalOpen: false,
+  deleteExpenseModalOpen: false,
+  selectedExpenseId: null,
+  selectedExpenseIsInstallment: false,
+  openDeleteExpenseModal(id, isInstallment) {
+    this.selectedExpenseId = id;
+    this.selectedExpenseIsInstallment = isInstallment;
+    this.deleteExpenseModalOpen = true;
+  }
+}">
+
+  <!-- Top Breadcrumb & Actions -->
+  <div class="flex items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-2 text-xs text-[#8D958D]">
+      <a href="{% url 'cards:list' %}" class="hover:text-mineral-light transition">← Voltar para Cartões</a>
+      <span>/</span>
+      <span class="text-[#E8ECE9] font-bold">{{ card.name }}</span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button @click="editCardModalOpen = true"
+              class="px-3.5 py-2 rounded-xl bg-[#1A221E] hover:bg-[#222C27] border border-[#28352E] text-xs font-bold text-[#8D958D] hover:text-[#E8ECE9] transition">
+        Editar Cartão
+      </button>
+
+      <button @click="newExpenseModalOpen = true"
+              class="inline-flex items-center gap-2 rounded-xl bg-champagne hover:bg-champagne/90 px-4 py-2 text-xs font-bold text-slate-950 shadow-md shadow-champagne/20 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        <span>Nova Compra</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Header Bento: Cartão Visual + Resumo de Limites -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+    <!-- Card Físico Estilizado -->
+    <div class="w-full rounded-2xl p-6 relative overflow-hidden shadow-2xl border border-white/10 flex flex-col justify-between"
+         style="background: linear-gradient(135deg, {{ card.color|default:'#2F756A' }} 0%, #0F1714 100%);">
+      
+      <div class="absolute -right-10 -bottom-10 w-40 h-40 rounded-full bg-white/5 pointer-events-none"></div>
+
+      <div>
+        <div class="flex items-center justify-between mb-8">
+          <!-- Chip EMV SVG -->
+          <div class="w-11 h-8 rounded-md bg-gradient-to-tr from-amber-300 to-amber-100 border border-amber-400/40 flex items-center justify-center shadow-inner">
+            <div class="w-7 h-5 border border-amber-600/40 rounded-sm"></div>
+          </div>
+          <span class="text-xs font-black tracking-widest uppercase px-3 py-1 rounded-md bg-black/40 text-white backdrop-blur-sm border border-white/10">
+            {{ card.get_brand_display|default:"CARTÃO" }}
+          </span>
+        </div>
+
+        <div class="text-xl font-bold text-white tracking-wide truncate mb-1">{{ card.name }}</div>
+        <div class="text-xs text-white/70">
+          Titular: {{ card.financial_owner.name|default:"Lar" }}
+          {% if card.last_digits %} •••• {{ card.last_digits }}{% endif %}
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between text-xs text-white/80 pt-4 border-t border-white/10 mt-6">
+        <div>Fechamento: <span class="font-bold text-white">Dia {{ card.closing_day }}</span></div>
+        <div>Vencimento: <span class="font-bold text-white">Dia {{ card.due_day }}</span></div>
+      </div>
+    </div>
+
+    <!-- Limite Total e Consumo -->
+    <div class="lar-card rounded-2xl p-6 border-[#28352E] flex flex-col justify-between">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-[#8D958D]">Visão Geral do Limite</span>
+        <div class="mt-4 flex items-baseline justify-between">
+          <span class="text-2xl font-bold text-[#E8ECE9]">R$ {{ metrics.available_limit|floatformat:2 }}</span>
+          <span class="text-xs text-mineral-light font-bold">Disponível</span>
+        </div>
+
+        <!-- Barra de Progresso -->
+        <div class="w-full bg-[#1A221E] rounded-full h-3 overflow-hidden border border-[#28352E] my-4">
+          <div class="bg-gradient-to-r from-mineral to-champagne h-3 rounded-full transition-all duration-500" 
+               style="width: {{ metrics.limit_usage_percent }}%;"></div>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between text-[#8D958D]">
+            <span>Total Comprometido:</span>
+            <span class="font-bold text-danger-light">R$ {{ metrics.unpaid_expenses_total|floatformat:2 }}</span>
+          </div>
+          <div class="flex justify-between text-[#8D958D]">
+            <span>Limite Total Cadastrado:</span>
+            <span class="font-bold text-[#E8ECE9]">R$ {{ card.limit|floatformat:2 }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-[#28352E] text-[11px] text-[#8D958D]">
+        Comprometimento: <span class="font-bold text-[#E8ECE9]">{{ metrics.limit_usage_percent|floatformat:1 }}%</span> do limite
+      </div>
+    </div>
+
+    <!-- Painel da Fatura Atual / Selecionada -->
+    <div class="lar-card rounded-2xl p-6 border-mineral/40 bg-gradient-to-br from-[#171F1B] to-mineral/10 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-champagne">Fatura {{ selected_month|stringformat:"02d" }}/{{ selected_year }}</span>
+          
+          {% if selected_invoice.status == 'paid' %}
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-mineral/20 text-mineral-light border border-mineral/30">
+              PAGA
+            </span>
+          {% elif selected_invoice.status == 'closed' %}
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-champagne/20 text-champagne border border-champagne/30">
+              FECHADA
+            </span>
+          {% elif selected_invoice.status == 'overdue' %}
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-danger/20 text-danger-light border border-danger/30">
+              ATRASADA
+            </span>
+          {% else %}
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              ABERTA
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="mt-4">
+          <div class="text-3xl font-bold text-[#E8ECE9]">
+            R$ {{ selected_invoice.total_amount|floatformat:2 }}
+          </div>
+          <div class="text-xs text-[#8D958D] mt-1">
+            Vencimento em: <span class="text-[#E8ECE9] font-bold">{{ selected_invoice.due_date|date:"d/m/Y" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-[#28352E]">
+        {% if selected_invoice.status == 'paid' %}
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-mineral-light">Paga em {{ selected_invoice.paid_at|date:"d/m/Y" }}</span>
+            <form method="post" action="{% url 'cards:reopen_invoice' pk=selected_invoice.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="text-xs text-[#8D958D] hover:text-danger-light underline transition">
+                Estornar
+              </button>
+            </form>
+          </div>
+        {% else %}
+          {% if selected_invoice.total_amount > 0 %}
+            <button @click="payModalOpen = true"
+                    class="w-full py-2.5 px-4 rounded-xl bg-mineral hover:bg-mineral-hover text-xs font-bold text-white shadow-md shadow-mineral/20 transition flex items-center justify-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Pagar Fatura</span>
+            </button>
+          {% else %}
+            <div class="text-xs text-center text-[#8D958D] py-1">Nenhum lançamento nesta fatura</div>
+          {% endif %}
+        {% endif %}
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Navegação de Meses e Faturas -->
+  <div class="flex items-center justify-between mb-6 bg-[#1A221E] border border-[#28352E] rounded-2xl p-3">
+    <div class="flex items-center gap-2">
+      <!-- Mês Anterior -->
+      <a href="?month={% if selected_month == 1 %}12{% else %}{{ selected_month|add:'-1' }}{% endif %}&year={% if selected_month == 1 %}{{ selected_year|add:'-1' }}{% else %}{{ selected_year }}{% endif %}"
+         class="h-9 w-9 rounded-xl bg-[#222C27] hover:bg-[#28352E] text-[#8D958D] hover:text-white flex items-center justify-center transition">
+        ←
+      </a>
+
+      <div class="px-3 text-sm font-bold text-[#E8ECE9]">
+        Fatura de {{ selected_month|stringformat:"02d" }}/{{ selected_year }}
+      </div>
+
+      <!-- Próximo Mês -->
+      <a href="?month={% if selected_month == 12 %}1{% else %}{{ selected_month|add:'1' }}{% endif %}&year={% if selected_month == 12 %}{{ selected_year|add:'1' }}{% else %}{{ selected_year }}{% endif %}"
+         class="h-9 w-9 rounded-xl bg-[#222C27] hover:bg-[#28352E] text-[#8D958D] hover:text-white flex items-center justify-center transition">
+        →
+      </a>
+    </div>
+
+    <div class="text-xs text-[#8D958D] hidden sm:block">
+      Fechamento: {{ selected_invoice.closing_date|date:"d/m/Y" }} | Vencimento: {{ selected_invoice.due_date|date:"d/m/Y" }}
+    </div>
+  </div>
+
+  <!-- Conteúdo Principal: Compras da Fatura + Projeção Futura -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+    <!-- Lista de Compras da Fatura Selecionada (2 colunas) -->
+    <div class="lg:col-span-2 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-[#E8ECE9]">Lançamentos desta Fatura ({{ expenses|length }})</h3>
+        <button @click="newExpenseModalOpen = true" class="text-xs font-bold text-champagne hover:underline">
+          + Adicionar Compra
+        </button>
+      </div>
+
+      {% if expenses %}
+        <div class="lar-card rounded-2xl border-[#28352E] overflow-hidden">
+          <div class="divide-y divide-[#28352E]">
+            {% for exp in expenses %}
+              <div class="p-4 flex items-center justify-between hover:bg-[#222C27]/50 transition group">
+                <div class="flex items-center gap-4">
+                  <!-- Categoria Icon / Badge -->
+                  <div class="h-10 w-10 rounded-xl bg-[#222C27] flex items-center justify-center text-sm font-bold text-mineral-light border border-[#28352E]">
+                    💳
+                  </div>
+
+                  <div>
+                    <div class="text-sm font-bold text-[#E8ECE9] flex items-center gap-2">
+                      <span>{{ exp.description }}</span>
+                      {% if exp.installments_count > 1 %}
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-champagne/10 text-champagne border border-champagne/20">
+                          {{ exp.installment_number }}/{{ exp.installments_count }}x
+                        </span>
+                      {% endif %}
+                    </div>
+                    <div class="text-xs text-[#8D958D] flex items-center gap-2 mt-0.5">
+                      <span>{{ exp.date|date:"d/m/Y" }}</span>
+                      <span>•</span>
+                      <span>{{ exp.category.name|default:"Geral" }}</span>
+                      <span>•</span>
+                      <span>{{ exp.financial_owner.name|default:"Lar" }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                  <div class="text-right">
+                    <span class="text-sm font-bold text-[#E8ECE9]">R$ {{ exp.amount|floatformat:2 }}</span>
+                  </div>
+
+                  <!-- Botão Excluir -->
+                  <button @click="openDeleteExpenseModal('{{ exp.pk }}', {% if exp.installments_count > 1 %}true{% else %}false{% endif %})"
+                          class="opacity-0 group-hover:opacity-100 text-[#8D958D] hover:text-danger-light transition p-1"
+                          title="Remover lançamento">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% else %}
+        <div class="lar-card rounded-2xl p-8 text-center border-dashed border-[#28352E]">
+          <div class="text-xs text-[#8D958D]">Nenhum lançamento registrado nesta fatura.</div>
+          <button @click="newExpenseModalOpen = true" class="mt-3 text-xs font-bold text-champagne hover:underline">
+            + Lançar primeira compra
+          </button>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Projeção de Faturas Futuras / Parcelamentos (1 coluna) -->
+    <div class="space-y-4">
+      <h3 class="text-base font-bold text-[#E8ECE9]">Próximas Faturas (Futuras)</h3>
+
+      {% if future_invoices %}
+        <div class="space-y-3">
+          {% for f_inv in future_invoices %}
+            <a href="?month={{ f_inv.month }}&year={{ f_inv.year }}"
+               class="lar-card rounded-2xl p-4 border-[#28352E] hover:border-mineral/50 transition flex items-center justify-between block group">
+              <div>
+                <div class="text-xs font-bold text-[#E8ECE9] group-hover:text-mineral-light transition">
+                  Fatura {{ f_inv.month|stringformat:"02d" }}/{{ f_inv.year }}
+                </div>
+                <div class="text-[11px] text-[#8D958D] mt-0.5">
+                  Vencimento: {{ f_inv.due_date|date:"d/m/Y" }}
+                </div>
+              </div>
+
+              <div class="text-right">
+                <span class="text-sm font-bold text-champagne">R$ {{ f_inv.total_amount|floatformat:2 }}</span>
+                <div class="text-[10px] text-[#8D958D]">{{ f_inv.expenses.count }} parcela{{ f_inv.expenses.count|pluralize:"s" }}</div>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="lar-card rounded-2xl p-6 text-center border-dashed border-[#28352E]">
+          <div class="text-xs text-[#8D958D]">Nenhuma parcela futura projetada para os próximos meses.</div>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Modal: Nova Compra -->
+  <div x-show="newExpenseModalOpen" 
+       x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div @click.away="newExpenseModalOpen = false" 
+         class="bg-[#1A221E] border border-[#28352E] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-[#28352E] mb-5">
+        <h3 class="text-lg font-bold text-[#E8ECE9]">Lançar Compra em {{ card.name }}</h3>
+        <button @click="newExpenseModalOpen = false" class="text-[#8D958D] hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form method="post" action="{% url 'cards:expense_create' %}" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'cards:detail' pk=card.pk %}?month={{ selected_month }}&year={{ selected_year }}">
+        <input type="hidden" name="credit_card" value="{{ card.pk }}">
+
+        <div>
+          <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Descrição</label>
+          {{ expense_form.description }}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Valor Total (R$)</label>
+            {{ expense_form.amount }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Data da Compra</label>
+            {{ expense_form.date }}
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Categoria</label>
+            {{ expense_form.category }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Nº de Parcelas</label>
+            {{ expense_form.installments_count }}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Titular (Opcional)</label>
+          {{ expense_form.financial_owner }}
+        </div>
+
+        <div class="pt-4 flex items-center justify-end gap-3 border-t border-[#28352E]">
+          <button type="button" @click="newExpenseModalOpen = false" class="px-4 py-2.5 rounded-xl text-xs font-bold text-[#8D958D] hover:bg-[#222C27] transition">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-champagne hover:bg-champagne/90 text-xs font-bold text-slate-950 shadow-md shadow-champagne/20 transition">
+            Lançar na Fatura
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Modal: Pagar Fatura -->
+  <div x-show="payModalOpen" 
+       x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div @click.away="payModalOpen = false" 
+         class="bg-[#1A221E] border border-[#28352E] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-[#28352E] mb-5">
+        <h3 class="text-lg font-bold text-[#E8ECE9]">Baixa de Pagamento da Fatura</h3>
+        <button @click="payModalOpen = false" class="text-[#8D958D] hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form method="post" action="{% url 'cards:pay_invoice' pk=selected_invoice.pk %}" class="space-y-4">
+        {% csrf_token %}
+
+        <div class="p-4 rounded-xl bg-[#222C27] border border-[#28352E] mb-4">
+          <div class="text-xs text-[#8D958D]">Fatura selecionada:</div>
+          <div class="text-sm font-bold text-[#E8ECE9] mt-0.5">{{ card.name }} ({{ selected_month|stringformat:"02d" }}/{{ selected_year }})</div>
+          <div class="text-lg font-bold text-mineral-light mt-1">Total: R$ {{ selected_invoice.total_amount|floatformat:2 }}</div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Conta para Débito</label>
+          {{ pay_form.payment_account }}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Valor Pago (R$)</label>
+            {{ pay_form.paid_amount }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Data do Pagamento</label>
+            {{ pay_form.payment_date }}
+          </div>
+        </div>
+
+        <div class="pt-4 flex items-center justify-end gap-3 border-t border-[#28352E]">
+          <button type="button" @click="payModalOpen = false" class="px-4 py-2.5 rounded-xl text-xs font-bold text-[#8D958D] hover:bg-[#222C27] transition">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-mineral hover:bg-mineral-hover text-xs font-bold text-white shadow-md shadow-mineral/20 transition">
+            Confirmar Pagamento
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Modal: Editar Cartão -->
+  <div x-show="editCardModalOpen" 
+       x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div @click.away="editCardModalOpen = false" 
+         class="bg-[#1A221E] border border-[#28352E] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-[#28352E] mb-5">
+        <h3 class="text-lg font-bold text-[#E8ECE9]">Editar Cartão</h3>
+        <button @click="editCardModalOpen = false" class="text-[#8D958D] hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form method="post" action="{% url 'cards:edit' pk=card.pk %}" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Nome do Cartão</label>
+          {{ card_form.name }}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Limite Total (R$)</label>
+            {{ card_form.limit }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Bandeira</label>
+            {{ card_form.brand }}
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Dia Fechamento</label>
+            {{ card_form.closing_day }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Dia Vencimento</label>
+            {{ card_form.due_day }}
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Titular Familiar</label>
+            {{ card_form.financial_owner }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Últimos 4 Dígitos</label>
+            {{ card_form.last_digits }}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Cor do Cartão</label>
+          {{ card_form.color }}
+        </div>
+
+        <div class="pt-4 flex items-center justify-between border-t border-[#28352E]">
+          <button type="button" 
+                  onclick="if(confirm('Tem certeza que deseja arquivar este cartão?')) { document.getElementById('delete-card-form').submit(); }"
+                  class="text-xs text-danger-light hover:underline font-bold">
+            Arquivar Cartão
+          </button>
+
+          <div class="flex items-center gap-3">
+            <button type="button" @click="editCardModalOpen = false" class="px-4 py-2.5 rounded-xl text-xs font-bold text-[#8D958D] hover:bg-[#222C27] transition">
+              Cancelar
+            </button>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-mineral hover:bg-mineral-hover text-xs font-bold text-white shadow-md shadow-mineral/20 transition">
+              Salvar Alterações
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <form id="delete-card-form" method="post" action="{% url 'cards:delete' pk=card.pk %}" class="hidden">
+        {% csrf_token %}
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Modal: Excluir Lançamento -->
+  <div x-show="deleteExpenseModalOpen" 
+       x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div @click.away="deleteExpenseModalOpen = false" 
+         class="bg-[#1A221E] border border-[#28352E] rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+      
+      <h3 class="text-base font-bold text-[#E8ECE9] mb-2">Excluir Lançamento</h3>
+      <p class="text-xs text-[#8D958D] mb-5">
+        Tem certeza que deseja remover este lançamento da fatura?
+      </p>
+
+      <form :action="'/cartoes/expenses/' + selectedExpenseId + '/delete/'" method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'cards:detail' pk=card.pk %}?month={{ selected_month }}&year={{ selected_year }}">
+
+        <template x-if="selectedExpenseIsInstallment">
+          <div class="p-3 rounded-xl bg-[#222C27] border border-[#28352E]">
+            <label class="flex items-center gap-2 cursor-pointer text-xs text-[#E8ECE9]">
+              <input type="checkbox" name="delete_all_installments" value="true" class="rounded bg-slate-800 border-slate-700 text-mineral focus:ring-mineral">
+              <span>Excluir todas as parcelas restantes desta compra</span>
+            </label>
+          </div>
+        </template>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-[#28352E]">
+          <button type="button" @click="deleteExpenseModalOpen = false" class="px-4 py-2 rounded-xl text-xs font-bold text-[#8D958D] hover:bg-[#222C27] transition">
+            Cancelar
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-danger hover:bg-danger/90 text-xs font-bold text-white transition">
+            Confirmar Exclusão
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

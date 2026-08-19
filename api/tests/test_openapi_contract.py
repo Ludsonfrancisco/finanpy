@@ -17,7 +17,7 @@ OPENAPI_EXPECTATIONS = (
     ('version', '3.1.0'),
     ('security_scheme', 'opaqueBearer'),
     ('error_schema', 'ErrorEnvelope'),
-    ('route_count', 26),
+    ('route_count', 32),
 )
 
 REQUIRED_SCHEMAS = {
@@ -168,7 +168,7 @@ class OpenApiContractTest(SimpleTestCase):
     def test_all_api_routes_are_represented(self):
         routes = runtime_api_operations()
 
-        self.assertEqual(len(routes), 26)
+        self.assertEqual(len(routes), 32)
         self.assertEqual(set(self.contract['paths']), set(routes))
 
     def test_path_http_methods_are_exact(self):

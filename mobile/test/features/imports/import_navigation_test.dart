@@ -22,6 +22,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Importar OFX'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Importar OFX'));
     await tester.tap(find.text('Importar OFX'));
     await tester.pumpAndSettle();
 
@@ -81,6 +82,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.more_horiz));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Importar OFX'));
     await tester.tap(find.text('Importar OFX'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Selecionar arquivo OFX'));
@@ -106,6 +108,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.more_horiz));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Importar OFX'));
     await tester.tap(find.text('Importar OFX'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Selecionar arquivo OFX'));

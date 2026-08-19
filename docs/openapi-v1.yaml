@@ -595,6 +595,105 @@
           "401": {"$ref": "#/components/responses/Unauthorized"}
         }
       }
+    },
+    "/cards/": {
+      "get": {
+        "operationId": "listCards",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Credit cards and global metrics", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "post": {
+        "operationId": "createCard",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "201": {"description": "Created credit card", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/cards/{id}/": {
+      "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+      "get": {
+        "operationId": "getCardDetail",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Card details and selected invoice", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "put": {
+        "operationId": "updateCardPut",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Updated card", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "patch": {
+        "operationId": "updateCardPatch",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Updated card", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "delete": {
+        "operationId": "deleteCard",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Archived card", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/cards/expenses/": {
+      "post": {
+        "operationId": "createCardExpense",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "201": {"description": "Created card expense with installments", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/cards/expenses/{id}/": {
+      "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+      "delete": {
+        "operationId": "deleteCardExpense",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Deleted card expense", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/cards/invoices/{id}/pay/": {
+      "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+      "post": {
+        "operationId": "payCardInvoice",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Paid card invoice", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/cards/invoices/{id}/reopen/": {
+      "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+      "post": {
+        "operationId": "reopenCardInvoice",
+        "security": [{"opaqueBearer": []}],
+        "responses": {
+          "200": {"description": "Reopened card invoice", "headers": {"X-Request-ID": {"$ref": "#/components/headers/RequestId"}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
     }
   },
   "components": {

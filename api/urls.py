@@ -15,6 +15,14 @@ from api.bills_views import (
     PayBillResourceView,
     ReopenBillResourceView,
 )
+from api.cards_views import (
+    CardDetailResourceView,
+    CardExpenseDetailResourceView,
+    CardExpenseResourceView,
+    CardsResourceView,
+    PayCardInvoiceResourceView,
+    ReopenCardInvoiceResourceView,
+)
 from api.import_views import (
     BindImportAccountView,
     CancelImportView,
@@ -55,6 +63,12 @@ urlpatterns = [
     path('bills/instances/<int:pk>/pay/', PayBillResourceView.as_view(), name='bills-pay'),
     path('bills/instances/<int:pk>/reopen/', ReopenBillResourceView.as_view(), name='bills-reopen'),
     path('bills/metrics/', BillsMetricsResourceView.as_view(), name='bills-metrics'),
+    path('cards/', CardsResourceView.as_view(), name='cards-list'),
+    path('cards/<int:pk>/', CardDetailResourceView.as_view(), name='cards-detail'),
+    path('cards/expenses/', CardExpenseResourceView.as_view(), name='cards-expenses'),
+    path('cards/expenses/<int:pk>/', CardExpenseDetailResourceView.as_view(), name='cards-expense-detail'),
+    path('cards/invoices/<int:pk>/pay/', PayCardInvoiceResourceView.as_view(), name='cards-invoice-pay'),
+    path('cards/invoices/<int:pk>/reopen/', ReopenCardInvoiceResourceView.as_view(), name='cards-invoice-reopen'),
     path('imports/ofx/preview/', OfxPreviewView.as_view(), name='ofx-preview'),
     path(
         'imports/<uuid:batch_uuid>/',

@@ -8,6 +8,7 @@ import '../application/auth_controller.dart';
 final class MoreScreen extends ConsumerWidget {
   const MoreScreen({
     this.onOpenBills,
+    this.onOpenCards,
     this.onOpenImport,
     this.onOpenCategories,
     this.onOpenReports,
@@ -16,6 +17,7 @@ final class MoreScreen extends ConsumerWidget {
 
   /// Navigation is injected: this screen never builds its own transport.
   final VoidCallback? onOpenBills;
+  final VoidCallback? onOpenCards;
   final VoidCallback? onOpenImport;
   final VoidCallback? onOpenCategories;
   final VoidCallback? onOpenReports;
@@ -53,6 +55,7 @@ final class MoreScreen extends ConsumerWidget {
                 const SizedBox(height: LarSpacing.xs),
                 Text(lastSync),
                 if (onOpenBills != null ||
+                    onOpenCards != null ||
                     onOpenReports != null ||
                     onOpenCategories != null ||
                     onOpenImport != null) ...<Widget>[
@@ -61,6 +64,14 @@ final class MoreScreen extends ConsumerWidget {
                     'Cadastros & Ferramentas',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
+                  if (onOpenCards != null) ...[
+                    const SizedBox(height: LarSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: onOpenCards,
+                      icon: const Icon(Icons.credit_card_outlined),
+                      label: const Text('Cartões de Crédito & Faturas'),
+                    ),
+                  ],
                   if (onOpenBills != null) ...[
                     const SizedBox(height: LarSpacing.sm),
                     OutlinedButton.icon(

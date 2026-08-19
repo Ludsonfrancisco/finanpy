@@ -1,0 +1,376 @@
+{% extends "layouts/base_app.html" %}
+
+{% block title %}Cartões de Crédito — Lar Finance{% endblock %}
+
+{% block content %}
+
+<div x-data="{ 
+  newCardModalOpen: false,
+  newExpenseModalOpen: false,
+  selectedCardId: null
+}">
+
+  <!-- Header Section -->
+  <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+    <div>
+      <div class="flex items-center gap-3">
+        <h1 class="text-3xl font-bold text-[#E8ECE9] tracking-tight">Cartões de Crédito</h1>
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-mineral-muted text-mineral-light border border-mineral/30">
+          {{ cards|length }} Cartão{{ cards|length|pluralize:"ões" }}
+        </span>
+      </div>
+      <p class="text-xs text-[#8D958D] mt-1">Gestão de limites, faturas abertas, projeção de parcelamentos e pagamentos</p>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex flex-wrap items-center gap-3 self-start lg:self-center">
+      <!-- Botão Nova Compra -->
+      <button @click="newExpenseModalOpen = true"
+              class="inline-flex items-center gap-2 rounded-xl bg-champagne hover:bg-champagne/90 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-md shadow-champagne/20 transition focus:outline-none focus:ring-2 focus:ring-champagne">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        <span>Lançar Compra</span>
+      </button>
+
+      <!-- Botão Novo Cartão -->
+      <button @click="newCardModalOpen = true"
+              class="inline-flex items-center gap-2 rounded-xl bg-mineral hover:bg-mineral-hover px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-mineral/20 transition focus:outline-none focus:ring-2 focus:ring-mineral-light">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+        <span>Novo Cartão</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Bento Cards: Métricas Globais de Cartões -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+
+    <!-- Card 1: Limite Disponível Global -->
+    <div class="lar-card rounded-2xl p-5 border-mineral/40 bg-gradient-to-br from-[#171F1B] to-mineral/10 relative overflow-hidden">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-mineral-light">Limite Disponível</span>
+        <div class="h-8 w-8 rounded-xl bg-mineral/20 text-mineral-light flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+      <div class="mt-3">
+        <span class="text-2xl font-bold text-[#E8ECE9]">R$ {{ total_available|floatformat:2 }}</span>
+      </div>
+      <div class="mt-2 text-xs text-[#8D958D]">
+        Livre para novas compras
+      </div>
+    </div>
+
+    <!-- Card 2: Faturas do Mês Atual -->
+    <div class="lar-card rounded-2xl p-5 border-[#28352E]">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-champagne">Faturas do Mês</span>
+        <div class="h-8 w-8 rounded-xl bg-champagne/10 text-champagne flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        </div>
+      </div>
+      <div class="mt-3">
+        <span class="text-2xl font-bold text-champagne">R$ {{ total_current_invoices|floatformat:2 }}</span>
+      </div>
+      <div class="mt-2 text-xs text-[#8D958D]">
+        Vencendo em {{ current_month }}/{{ current_year }}
+      </div>
+    </div>
+
+    <!-- Card 3: Total Comprometido (Faturas + Parcelas) -->
+    <div class="lar-card rounded-2xl p-5 border-[#28352E]">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-danger-light">Total Comprometido</span>
+        <div class="h-8 w-8 rounded-xl bg-danger/10 text-danger-light flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+      <div class="mt-3">
+        <span class="text-2xl font-bold text-danger-light">R$ {{ total_used|floatformat:2 }}</span>
+      </div>
+      <div class="mt-2 text-xs text-[#8D958D]">
+        {{ overall_usage_percent|floatformat:1 }}% do limite total usado
+      </div>
+    </div>
+
+    <!-- Card 4: Limite Total Somado -->
+    <div class="lar-card rounded-2xl p-5 border-[#28352E]">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-[#8D958D]">Limite Total</span>
+        <div class="h-8 w-8 rounded-xl bg-[#222C27] text-[#8D958D] flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
+        </div>
+      </div>
+      <div class="mt-3">
+        <span class="text-2xl font-bold text-[#E8ECE9]">R$ {{ total_limit|floatformat:2 }}</span>
+      </div>
+      <div class="mt-2 text-xs text-[#8D958D]">
+        Soma de todos os cartões
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Grid de Cartões Estilizados -->
+  <div class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-[#E8ECE9]">Meus Cartões</h2>
+    </div>
+
+    {% if cards_data %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for item in cards_data %}
+          {% with card=item.credit_card %}
+          <div class="lar-card rounded-2xl p-6 border-[#28352E] flex flex-col justify-between hover:border-mineral/50 transition duration-200">
+            
+            <!-- Cartão Visual Físico -->
+            <div class="w-full rounded-2xl p-5 mb-5 relative overflow-hidden shadow-xl border border-white/10"
+                 style="background: linear-gradient(135deg, {{ card.color|default:'#2F756A' }} 0%, #101B18 100%);">
+              
+              <!-- Background Chip Pattern -->
+              <div class="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/5 pointer-events-none"></div>
+
+              <div class="flex items-center justify-between mb-6">
+                <!-- Chip EMV SVG -->
+                <div class="w-10 h-7 rounded-md bg-gradient-to-tr from-amber-300 to-amber-100 border border-amber-400/40 flex items-center justify-center shadow-inner">
+                  <div class="w-6 h-4 border border-amber-600/40 rounded-sm"></div>
+                </div>
+
+                <!-- Bandeira -->
+                <span class="text-xs font-black tracking-widest uppercase px-2.5 py-1 rounded bg-black/40 text-white backdrop-blur-sm border border-white/10">
+                  {{ card.get_brand_display|default:"CARTÃO" }}
+                </span>
+              </div>
+
+              <!-- Nome e Titular -->
+              <div class="mb-4">
+                <div class="text-base font-bold text-white tracking-wide truncate">{{ card.name }}</div>
+                <div class="text-xs text-white/70">
+                  Titular: {{ card.financial_owner.name|default:"Lar" }}
+                  {% if card.last_digits %} •••• {{ card.last_digits }}{% endif %}
+                </div>
+              </div>
+
+              <!-- Datas de Fechamento e Vencimento -->
+              <div class="flex items-center justify-between text-[11px] text-white/80 pt-2 border-t border-white/10">
+                <div>Fecha dia: <span class="font-bold text-white">{{ card.closing_day }}</span></div>
+                <div>Vence dia: <span class="font-bold text-white">{{ card.due_day }}</span></div>
+              </div>
+            </div>
+
+            <!-- Detalhes de Limite e Fatura Atual -->
+            <div class="space-y-3 mb-5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-[#8D958D]">Fatura Atual ({{ current_month }}/{{ current_year }}):</span>
+                <span class="font-bold text-champagne text-sm">R$ {{ item.current_invoice_total|floatformat:2 }}</span>
+              </div>
+
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-[#8D958D]">Limite Disponível:</span>
+                <span class="font-bold text-mineral-light">R$ {{ item.available_limit|floatformat:2 }}</span>
+              </div>
+
+              <!-- Barra de Progresso do Limite -->
+              <div class="w-full bg-[#1A221E] rounded-full h-2 overflow-hidden border border-[#28352E]">
+                <div class="bg-gradient-to-r from-mineral to-champagne h-2 rounded-full" 
+                     style="width: {{ item.limit_usage_percent }}%;"></div>
+              </div>
+
+              <div class="flex items-center justify-between text-[10px] text-[#8D958D]">
+                <span>Usado: R$ {{ item.unpaid_expenses_total|floatformat:2 }}</span>
+                <span>Total: R$ {{ card.limit|floatformat:2 }}</span>
+              </div>
+            </div>
+
+            <!-- Botão de Ação -->
+            <div class="pt-3 border-t border-[#28352E] flex items-center justify-between">
+              <a href="{% url 'cards:detail' pk=card.pk %}"
+                 class="w-full text-center py-2.5 px-4 rounded-xl bg-[#222C27] hover:bg-mineral hover:text-white text-xs font-bold text-[#E8ECE9] transition">
+                Ver Fatura & Compras →
+              </a>
+            </div>
+
+          </div>
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <!-- Empty State -->
+      <div class="lar-card rounded-2xl p-12 text-center border-dashed border-[#28352E]">
+        <div class="h-16 w-16 rounded-2xl bg-mineral/10 text-mineral-light flex items-center justify-center mx-auto mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
+        </div>
+        <h3 class="text-base font-bold text-[#E8ECE9]">Nenhum cartão cadastrado</h3>
+        <p class="text-xs text-[#8D958D] mt-1 max-w-sm mx-auto">
+          Cadastre seu primeiro cartão de crédito para acompanhar faturas, compras parceladas e limites.
+        </p>
+        <button @click="newCardModalOpen = true"
+                class="mt-5 inline-flex items-center gap-2 rounded-xl bg-mineral hover:bg-mineral-hover px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-mineral/20 transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Adicionar Primeiro Cartão</span>
+        </button>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Modal: Novo Cartão -->
+  <div x-show="newCardModalOpen" 
+       x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div @click.away="newCardModalOpen = false" 
+         class="bg-[#1A221E] border border-[#28352E] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-[#28352E] mb-5">
+        <h3 class="text-lg font-bold text-[#E8ECE9]">Novo Cartão de Crédito</h3>
+        <button @click="newCardModalOpen = false" class="text-[#8D958D] hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form method="post" action="{% url 'cards:create' %}" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Nome do Cartão</label>
+          {{ card_form.name }}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Limite Total (R$)</label>
+            {{ card_form.limit }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Bandeira</label>
+            {{ card_form.brand }}
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Dia Fechamento</label>
+            {{ card_form.closing_day }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Dia Vencimento</label>
+            {{ card_form.due_day }}
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Titular Familiar</label>
+            {{ card_form.financial_owner }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Últimos 4 Dígitos</label>
+            {{ card_form.last_digits }}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Cor do Cartão</label>
+          {{ card_form.color }}
+        </div>
+
+        <div class="pt-4 flex items-center justify-end gap-3 border-t border-[#28352E]">
+          <button type="button" @click="newCardModalOpen = false" class="px-4 py-2.5 rounded-xl text-xs font-bold text-[#8D958D] hover:bg-[#222C27] transition">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-mineral hover:bg-mineral-hover text-xs font-bold text-white shadow-md shadow-mineral/20 transition">
+            Salvar Cartão
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Modal: Nova Compra -->
+  <div x-show="newExpenseModalOpen" 
+       x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div @click.away="newExpenseModalOpen = false" 
+         class="bg-[#1A221E] border border-[#28352E] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-[#28352E] mb-5">
+        <h3 class="text-lg font-bold text-[#E8ECE9]">Lançar Compra no Cartão</h3>
+        <button @click="newExpenseModalOpen = false" class="text-[#8D958D] hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form method="post" action="{% url 'cards:expense_create' %}" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'cards:list' %}">
+
+        <div>
+          <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Cartão de Crédito</label>
+          {{ expense_form.credit_card }}
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Descrição</label>
+          {{ expense_form.description }}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Valor Total (R$)</label>
+            {{ expense_form.amount }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Data da Compra</label>
+            {{ expense_form.date }}
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Categoria</label>
+            {{ expense_form.category }}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Nº de Parcelas</label>
+            {{ expense_form.installments_count }}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#8D958D] uppercase mb-1">Titular (Opcional)</label>
+          {{ expense_form.financial_owner }}
+        </div>
+
+        <div class="pt-4 flex items-center justify-end gap-3 border-t border-[#28352E]">
+          <button type="button" @click="newExpenseModalOpen = false" class="px-4 py-2.5 rounded-xl text-xs font-bold text-[#8D958D] hover:bg-[#222C27] transition">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-champagne hover:bg-champagne/90 text-xs font-bold text-slate-950 shadow-md shadow-champagne/20 transition">
+            Confirmar Lançamento
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

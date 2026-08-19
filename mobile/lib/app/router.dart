@@ -17,6 +17,9 @@ import '../features/auth/presentation/more_screen.dart';
 import '../features/bills/application/bills_controller.dart';
 import '../features/bills/data/bills_repository.dart';
 import '../features/bills/presentation/bills_screen.dart';
+import '../features/cards/application/cards_controller.dart';
+import '../features/cards/data/cards_repository.dart';
+import '../features/cards/presentation/cards_screen.dart';
 import '../features/categories/application/categories_controller.dart';
 import '../features/categories/data/categories_repository.dart';
 import '../features/categories/presentation/categories_screen.dart';
@@ -48,6 +51,7 @@ GoRouter createAppRouter(
   CategoriesRepository? categoriesRepository,
   ReportsRepository? reportsRepository,
   BillsRepository? billsRepository,
+  CardsRepository? cardsRepository,
   ValueVisibilityController? valueVisibilityController,
   ImportRepository? importRepository,
   OfxFilePicker? ofxFilePicker,
@@ -169,9 +173,18 @@ GoRouter createAppRouter(
             ),
           ),
           GoRoute(
+            path: '/cards',
+            builder: (context, state) => _CardsShell(
+              cardsRepository: cardsRepository,
+              accountsRepository: accountsRepository,
+              categoriesRepository: categoriesRepository,
+            ),
+          ),
+          GoRoute(
             path: '/more',
             builder: (context, state) => MoreScreen(
               onOpenBills: () => context.go('/bills'),
+              onOpenCards: () => context.go('/cards'),
               onOpenImport: importRepository == null
                   ? null
                   : () => context.go('/more/import-ofx'),
@@ -702,6 +715,69 @@ final class _BillsShellState extends State<_BillsShell> {
       );
     }
     return const _RouteNotice(title: 'Contas Fixas & Vencimentos');
+  }
+}
+
+final class _CardsShell extends StatefulWidget {
+  const _CardsShell({
+    required this.cardsRepository,
+    required this.accountsRepository,
+    required this.categoriesRepository,
+  });
+
+  final CardsRepository? cardsRepository;
+  final AccountsRepository? accountsRepository;
+  final CategoriesRepository? categoriesRepository;
+
+  @override
+  State<_CardsShell> createState() => _CardsShellState();
+}
+
+final class _CardsShellState extends State<_CardsShell> {
+  CardsController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _createController();
+  }
+
+  @override
+  void didUpdateWidget(_CardsShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.cardsRepository == widget.cardsRepository) {
+      return;
+    }
+    _controller?.dispose();
+    _createController();
+  }
+
+  void _createController() {
+    final repository = widget.cardsRepository;
+    _controller = repository == null
+        ? null
+        : CardsController(
+            repository: repository,
+          );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller != null) {
+      return CardsScreen(
+        controller: controller,
+        accountsRepository: widget.accountsRepository,
+        categoriesRepository: widget.categoriesRepository,
+      );
+    }
+    return const _RouteNotice(title: 'Cartões de Crédito & Faturas');
   }
 }
 

@@ -22,6 +22,7 @@ import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/secure_token_store.dart';
 import 'features/auth/domain/session.dart';
 import 'features/bills/data/bills_repository.dart';
+import 'features/cards/data/cards_repository.dart';
 import 'features/categories/data/categories_repository.dart';
 import 'features/home/data/home_repository.dart';
 import 'features/imports/data/import_repository.dart';
@@ -72,6 +73,7 @@ Future<void> main() async {
   final reportsRepository = DriftReportsRepository(database);
   final importRepository = DjangoImportRepository(sessionTransport);
   final billsRepository = HttpBillsRepository(sessionTransport);
+  final cardsRepository = HttpCardsRepository(sessionTransport);
   runApp(
     MyApp(
       appConfig: config,
@@ -83,6 +85,7 @@ Future<void> main() async {
       categoriesRepository: categoriesRepository,
       reportsRepository: reportsRepository,
       billsRepository: billsRepository,
+      cardsRepository: cardsRepository,
       valueVisibilityController: valueVisibilityController,
       importRepository: importRepository,
     ),
@@ -100,6 +103,7 @@ class MyApp extends StatelessWidget {
     this.categoriesRepository,
     this.reportsRepository,
     this.billsRepository,
+    this.cardsRepository,
     this.valueVisibilityController,
     this.importRepository,
     this.ofxFilePicker,
@@ -115,6 +119,7 @@ class MyApp extends StatelessWidget {
          categoriesRepository: categoriesRepository,
          reportsRepository: reportsRepository,
          billsRepository: billsRepository,
+         cardsRepository: cardsRepository,
          valueVisibilityController: valueVisibilityController,
          importRepository: importRepository,
          ofxFilePicker: ofxFilePicker,
@@ -129,6 +134,7 @@ class MyApp extends StatelessWidget {
   final CategoriesRepository? categoriesRepository;
   final ReportsRepository? reportsRepository;
   final BillsRepository? billsRepository;
+  final CardsRepository? cardsRepository;
   final ValueVisibilityController? valueVisibilityController;
   final ImportRepository? importRepository;
   final OfxFilePicker? ofxFilePicker;
