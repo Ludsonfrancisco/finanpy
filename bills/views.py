@@ -39,18 +39,14 @@ class BillListView(LoginRequiredMixin, HouseholdContextMixin, TemplateView):
             year = today.year
 
         owner_slug = self.request.GET.get('owner', 'household')
+        financial_owners = FinancialOwner.objects.filter(household=self.household)
         financial_owner = None
         if owner_slug == 'self':
-            financial_owner = FinancialOwner.objects.filter(
-                household=self.household,
-                type=FinancialOwner.INDIVIDUAL,
-                user=self.request.user,
-            ).first()
+            financial_owner = financial_owners.filter(type=FinancialOwner.SELF).first()
         elif owner_slug == 'spouse':
-            financial_owner = FinancialOwner.objects.filter(
-                household=self.household,
-                type=FinancialOwner.INDIVIDUAL,
-            ).exclude(user=self.request.user).first()
+            financial_owner = financial_owners.filter(type=FinancialOwner.SPOUSE).first()
+        elif owner_slug == 'shared':
+            financial_owner = financial_owners.filter(type=FinancialOwner.SHARED).first()
 
         # Garantir instâncias criadas para o mês selecionado
         instances = ensure_monthly_bill_instances(self.household, month, year)
@@ -95,10 +91,8 @@ class BillCreateView(LoginRequiredMixin, HouseholdContextMixin, CreateView):
         form.instance.user = self.request.user
         form.instance.household = self.household
         if not form.cleaned_data.get('financial_owner'):
-            form.instance.financial_owner = FinancialOwner.objects.filter(
-                household=self.household,
-                type=FinancialOwner.SHARED,
-            ).first()
+            from households.services import get_financial_owner
+            form.instance.financial_owner = get_financial_owner(self.household, FinancialOwner.SHARED)
 
         if not validate_instance_or_add_form_errors(form):
             return self.form_invalid(form)
