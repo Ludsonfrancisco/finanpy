@@ -334,14 +334,6 @@ def check_card_expense_duplicate(credit_card: CreditCard, tx) -> bool:
     ext_id = getattr(tx, 'external_id', None) or (
         tx.get('external_id') if isinstance(tx, dict) else None
     )
-    if (
-        ext_id
-        and CreditCardExpense.objects.filter(
-            credit_card=credit_card, external_id=ext_id
-        ).exists()
-    ):
-        return True
-
     p_date = getattr(tx, 'posted_on', None) or (
         date.fromisoformat(tx['date'])
         if isinstance(tx.get('date'), str)
@@ -353,6 +345,13 @@ def check_card_expense_duplicate(credit_card: CreditCard, tx) -> bool:
         else Decimal(str(tx['amount']))
     )
     desc = getattr(tx, 'description', None) or tx.get('description')
+
+    if ext_id:
+        # Verifica external_id + valor (pois compras internacionais e IOF compartilham o mesmo FITID no Nubank)
+        if CreditCardExpense.objects.filter(
+            credit_card=credit_card, external_id=ext_id, amount=amt
+        ).exists():
+            return True
 
     return CreditCardExpense.objects.filter(
         credit_card=credit_card,
@@ -372,7 +371,8 @@ def import_card_ofx_expenses(
 ) -> dict:
     """
     Importa compras de extrato OFX para despesas de cartão:
-    - Deduplica despesas com base em external_id (FITID) ou (credit_card, date, amount, description).
+    - Ignora pagamentos de fatura recebidos (não são despesas novas).
+    - Deduplica despesas com base em external_id (FITID) + valor ou (credit_card, date, amount, description).
     - Projeta a fatura de destino (CreditCardInvoice) com base na data de compra e regras de fechamento/vencimento.
     - Persiste instâncias de CreditCardExpense.
     - Retorna resumo com quantidade importada, duplicadas ignoradas, faturas afetadas e valor total.
@@ -392,14 +392,26 @@ def import_card_ofx_expenses(
                 else tx['date']
             )
             desc = tx['description']
-            amt = Decimal(str(tx['amount']))
+            raw_amt = Decimal(str(tx['amount']))
             is_dup = tx.get('is_duplicate', False)
+            is_payment = tx.get('is_payment', False)
         else:
             ext_id = tx.external_id
             p_date = tx.posted_on
             desc = tx.description
-            amt = abs(tx.amount)
+            raw_amt = tx.amount
             is_dup = False
+            is_payment = (
+                raw_amt > 0
+                and any(
+                    p in desc.lower() for p in ('pagamento', 'pgto', 'pago')
+                )
+            )
+
+        if is_payment:
+            continue
+
+        amt = abs(raw_amt)
 
         if is_dup:
             duplicate_count += 1
@@ -408,7 +420,7 @@ def import_card_ofx_expenses(
         if (
             ext_id
             and CreditCardExpense.objects.filter(
-                credit_card=credit_card, external_id=ext_id
+                credit_card=credit_card, external_id=ext_id, amount=amt
             ).exists()
         ):
             duplicate_count += 1

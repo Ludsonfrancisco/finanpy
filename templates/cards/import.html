@@ -205,15 +205,19 @@
             </thead>
             <tbody class="divide-y divide-[#24302A]">
               {% for item in preview_data.items %}
-                <tr class="hover:bg-[#222C27] transition-colors {% if item.is_duplicate %}opacity-50{% endif %}">
+                <tr class="hover:bg-[#222C27] transition-colors {% if item.is_duplicate or item.is_payment %}opacity-60{% endif %}">
                   <td class="px-6 py-3 whitespace-nowrap">
-                    {% if item.is_duplicate %}
+                    {% if item.is_payment %}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        Pagamento
+                      </span>
+                    {% elif item.is_duplicate %}
                       <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-champagne-muted text-champagne border border-champagne/30">
                         Duplicada
                       </span>
                     {% else %}
                       <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-mineral-muted text-mineral-light border border-mineral/30">
-                        Nova
+                        Nova Compra
                       </span>
                     {% endif %}
                   </td>
@@ -224,10 +228,14 @@
                     {{ item.description }}
                   </td>
                   <td class="px-6 py-3 text-xs text-[#8D958D] whitespace-nowrap">
-                    <span class="text-[#E8ECE9] font-medium">{{ item.target_invoice }}</span> (Vence {{ item.due_date }})
+                    {% if item.is_payment %}
+                      <span class="text-[#5C665F]">Pagamento de fatura anterior</span>
+                    {% else %}
+                      <span class="text-[#E8ECE9] font-medium">{{ item.target_invoice }}</span> (Vence {{ item.due_date }})
+                    {% endif %}
                   </td>
-                  <td class="px-6 py-3 text-right text-xs font-bold text-danger-light tabular-nums whitespace-nowrap">
-                    R$&nbsp;{{ item.amount|floatformat:2 }}
+                  <td class="px-6 py-3 text-right text-xs font-bold tabular-nums whitespace-nowrap {% if item.is_payment %}text-mineral-light{% else %}text-danger-light{% endif %}">
+                    {% if item.is_payment %}+{% endif %}R$&nbsp;{{ item.amount|floatformat:2 }}
                   </td>
                 </tr>
               {% endfor %}

@@ -399,19 +399,30 @@ class CreditCardImportOFXView(LoginRequiredMixin, HouseholdContextMixin, View):
             items = []
             duplicate_count = 0
             new_count = 0
+            payment_count = 0
             total_imported_amount = Decimal('0.00')
             invoices_summary = {}
 
             for tx in parsed.transactions:
-                # Compras no cartão vêm como débito/expense
-                is_duplicate = check_card_expense_duplicate(card, tx)
+                is_payment = (
+                    tx.amount > 0
+                    and any(
+                        p in tx.description.lower()
+                        for p in ('pagamento', 'pgto', 'pago')
+                    )
+                )
+                is_duplicate = (
+                    check_card_expense_duplicate(card, tx)
+                    if not is_payment
+                    else False
+                )
                 target_month, target_year = calculate_target_invoice_for_purchase(
                     card, tx.posted_on
                 )
                 _, due_date = get_invoice_dates(card, target_month, target_year)
 
                 inv_key = f'{target_month:02d}/{target_year}'
-                if inv_key not in invoices_summary:
+                if inv_key not in invoices_summary and not is_payment:
                     invoices_summary[inv_key] = {
                         'month': target_month,
                         'year': target_year,
@@ -421,7 +432,9 @@ class CreditCardImportOFXView(LoginRequiredMixin, HouseholdContextMixin, View):
                     }
 
                 amt = abs(tx.amount)
-                if is_duplicate:
+                if is_payment:
+                    payment_count += 1
+                elif is_duplicate:
                     duplicate_count += 1
                 else:
                     new_count += 1
@@ -434,11 +447,16 @@ class CreditCardImportOFXView(LoginRequiredMixin, HouseholdContextMixin, View):
                         'date': tx.posted_on.strftime('%Y-%m-%d'),
                         'description': tx.description,
                         'amount': float(amt),
-                        'type': tx.transaction_type,
+                        'type': 'payment' if is_payment else tx.transaction_type,
                         'external_id': tx.external_id,
                         'is_duplicate': is_duplicate,
-                        'target_invoice': inv_key,
-                        'due_date': due_date.strftime('%d/%m/%Y'),
+                        'is_payment': is_payment,
+                        'target_invoice': inv_key if not is_payment else '-',
+                        'due_date': (
+                            due_date.strftime('%d/%m/%Y')
+                            if not is_payment
+                            else '-'
+                        ),
                     }
                 )
 
