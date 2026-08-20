@@ -359,16 +359,15 @@ class CreditCardOFXImportTest(TestCase):
             CreditCardExpense.objects.filter(credit_card=self.card).count(), 2
         )
 
-        # Compra dia 05/08 (antes do fechamento 10) -> Fatura 08/2026
+        # Todas as compras do extrato pertencem à fatura correspondente ao período do extrato (08/2026)
         tx1 = CreditCardExpense.objects.get(external_id='card-tx-001')
         self.assertEqual(tx1.amount, Decimal('150.50'))
         self.assertEqual(tx1.invoice.month, 8)
         self.assertEqual(tx1.invoice.year, 2026)
 
-        # Compra dia 15/08 (após o fechamento 10) -> Fatura 09/2026
         tx2 = CreditCardExpense.objects.get(external_id='card-tx-002')
         self.assertEqual(tx2.amount, Decimal('89.90'))
-        self.assertEqual(tx2.invoice.month, 9)
+        self.assertEqual(tx2.invoice.month, 8)
         self.assertEqual(tx2.invoice.year, 2026)
 
     def test_import_ofx_deduplication(self):

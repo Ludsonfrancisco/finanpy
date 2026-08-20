@@ -27,4 +27,9 @@ urlpatterns = [
         views.ReopenInvoiceView.as_view(),
         name='reopen_invoice',
     ),
+    path(
+        'invoices/<int:pk>/clear/',
+        views.ClearInvoiceExpensesView.as_view(),
+        name='clear_invoice',
+    ),
 ]

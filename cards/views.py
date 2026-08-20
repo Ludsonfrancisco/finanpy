@@ -49,10 +49,42 @@ class CreditCardListView(LoginRequiredMixin, HouseholdContextMixin, ListView):
 
         for card in context['cards']:
             metrics = calculate_card_metrics(card, now.month, now.year)
+            # Determina a fatura ativa para exibição no card
+            if metrics['current_invoice_total'] == Decimal('0.00'):
+                active_inv = (
+                    CreditCardInvoice.objects.filter(
+                        credit_card=card,
+                        status__in=[
+                            CreditCardInvoice.STATUS_OPEN,
+                            CreditCardInvoice.STATUS_CLOSED,
+                            CreditCardInvoice.STATUS_OVERDUE,
+                        ],
+                    )
+                    .annotate(exp_count=models.Count('expenses'))
+                    .filter(exp_count__gt=0)
+                    .order_by('year', 'month')
+                    .first()
+                )
+                if active_inv:
+                    metrics['display_invoice_month'] = active_inv.month
+                    metrics['display_invoice_year'] = active_inv.year
+                    metrics['display_invoice_total'] = active_inv.total_amount
+                    metrics['display_invoice_due_date'] = active_inv.due_date
+                else:
+                    metrics['display_invoice_month'] = now.month
+                    metrics['display_invoice_year'] = now.year
+                    metrics['display_invoice_total'] = Decimal('0.00')
+                    metrics['display_invoice_due_date'] = metrics['current_invoice'].due_date
+            else:
+                metrics['display_invoice_month'] = now.month
+                metrics['display_invoice_year'] = now.year
+                metrics['display_invoice_total'] = metrics['current_invoice_total']
+                metrics['display_invoice_due_date'] = metrics['current_invoice'].due_date
+
             cards_data.append(metrics)
             total_limit += card.limit
             total_used += metrics['unpaid_expenses_total']
-            total_current_invoices += metrics['current_invoice_total']
+            total_current_invoices += metrics['display_invoice_total']
 
         total_available = max(Decimal('0.00'), total_limit - total_used)
         overall_usage_percent = (
@@ -91,12 +123,35 @@ class CreditCardDetailView(LoginRequiredMixin, HouseholdContextMixin, DetailView
         card = self.object
         now = timezone.localdate()
 
+        has_explicit_month = 'month' in self.request.GET
         try:
             month = int(self.request.GET.get('month', now.month))
             year = int(self.request.GET.get('year', now.year))
         except (ValueError, TypeError):
             month = now.month
             year = now.year
+
+        # Se o usuário não pediu um mês específico e o mês atual não tem compras, abre a fatura com lançamentos
+        if not has_explicit_month:
+            current_inv = resolve_or_create_invoice(card, month, year)
+            if not current_inv.expenses.exists():
+                active_with_exp = (
+                    CreditCardInvoice.objects.filter(
+                        credit_card=card,
+                        status__in=[
+                            CreditCardInvoice.STATUS_OPEN,
+                            CreditCardInvoice.STATUS_CLOSED,
+                            CreditCardInvoice.STATUS_OVERDUE,
+                        ],
+                    )
+                    .annotate(exp_count=models.Count('expenses'))
+                    .filter(exp_count__gt=0)
+                    .order_by('year', 'month')
+                    .first()
+                )
+                if active_with_exp:
+                    month = active_with_exp.month
+                    year = active_with_exp.year
 
         # Fatura selecionada
         selected_invoice = resolve_or_create_invoice(card, month, year)
@@ -297,6 +352,21 @@ class ReopenInvoiceView(LoginRequiredMixin, HouseholdContextMixin, View):
         return redirect('cards:detail', pk=invoice.credit_card_id)
 
 
+class ClearInvoiceExpensesView(LoginRequiredMixin, HouseholdContextMixin, View):
+    """Permite remover todos os lançamentos de uma fatura para reimportação limpa."""
+
+    def post(self, request, pk):
+        invoice = get_object_or_404(CreditCardInvoice, pk=pk, household=self.household)
+        card_pk = invoice.credit_card_id
+        count = invoice.expenses.count()
+        invoice.expenses.all().delete()
+        messages.success(
+            request,
+            f'{count} lançamentos removidos da fatura de {invoice.month:02d}/{invoice.year}.',
+        )
+        return redirect('cards:detail', pk=card_pk)
+
+
 class CreditCardImportOFXView(LoginRequiredMixin, HouseholdContextMixin, View):
     """Permite fazer upload, pré-visualizar deduplicação e confirmar importação de OFX de Cartão de Crédito."""
 
@@ -403,6 +473,20 @@ class CreditCardImportOFXView(LoginRequiredMixin, HouseholdContextMixin, View):
             total_imported_amount = Decimal('0.00')
             invoices_summary = {}
 
+            # O período final do extrato OFX define o ciclo de fechamento/vencimento da fatura
+            target_month = parsed.statement_end.month
+            target_year = parsed.statement_end.year
+            _, due_date = get_invoice_dates(card, target_month, target_year)
+            inv_key = f'{target_month:02d}/{target_year}'
+
+            invoices_summary[inv_key] = {
+                'month': target_month,
+                'year': target_year,
+                'due_date': due_date.strftime('%d/%m/%Y'),
+                'amount': Decimal('0.00'),
+                'count': 0,
+            }
+
             for tx in parsed.transactions:
                 is_payment = (
                     tx.amount > 0
@@ -416,20 +500,6 @@ class CreditCardImportOFXView(LoginRequiredMixin, HouseholdContextMixin, View):
                     if not is_payment
                     else False
                 )
-                target_month, target_year = calculate_target_invoice_for_purchase(
-                    card, tx.posted_on
-                )
-                _, due_date = get_invoice_dates(card, target_month, target_year)
-
-                inv_key = f'{target_month:02d}/{target_year}'
-                if inv_key not in invoices_summary and not is_payment:
-                    invoices_summary[inv_key] = {
-                        'month': target_month,
-                        'year': target_year,
-                        'due_date': due_date.strftime('%d/%m/%Y'),
-                        'amount': Decimal('0.00'),
-                        'count': 0,
-                    }
 
                 amt = abs(tx.amount)
                 if is_payment:
@@ -451,6 +521,8 @@ class CreditCardImportOFXView(LoginRequiredMixin, HouseholdContextMixin, View):
                         'external_id': tx.external_id,
                         'is_duplicate': is_duplicate,
                         'is_payment': is_payment,
+                        'target_month': target_month,
+                        'target_year': target_year,
                         'target_invoice': inv_key if not is_payment else '-',
                         'due_date': (
                             due_date.strftime('%d/%m/%Y')

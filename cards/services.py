@@ -435,9 +435,13 @@ def import_card_ofx_expenses(
             duplicate_count += 1
             continue
 
-        target_month, target_year = calculate_target_invoice_for_purchase(
-            credit_card, p_date
-        )
+        if isinstance(tx, dict) and tx.get('target_month') and tx.get('target_year'):
+            target_month = tx['target_month']
+            target_year = tx['target_year']
+        else:
+            target_month, target_year = calculate_target_invoice_for_purchase(
+                credit_card, p_date
+            )
         invoice = resolve_or_create_invoice(credit_card, target_month, target_year)
         invoices_affected.add(invoice)
 

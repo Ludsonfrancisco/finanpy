@@ -213,9 +213,19 @@
     <div class="lg:col-span-2 space-y-4">
       <div class="flex items-center justify-between">
         <h3 class="text-base font-bold text-[#E8ECE9]">Lançamentos desta Fatura ({{ expenses|length }})</h3>
-        <button @click="newExpenseModalOpen = true" class="text-xs font-bold text-champagne hover:underline">
-          + Adicionar Compra
-        </button>
+        <div class="flex items-center gap-3">
+          {% if expenses %}
+            <form method="post" action="{% url 'cards:clear_invoice' pk=selected_invoice.pk %}" onsubmit="return confirm('Deseja realmente remover todas as compras desta fatura para reimportar?');">
+              {% csrf_token %}
+              <button type="submit" class="text-xs font-semibold text-danger-light hover:underline">
+                Limpar Fatura
+              </button>
+            </form>
+          {% endif %}
+          <button @click="newExpenseModalOpen = true" class="text-xs font-bold text-champagne hover:underline">
+            + Adicionar Compra
+          </button>
+        </div>
       </div>
 
       {% if expenses %}
