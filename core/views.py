@@ -141,11 +141,12 @@ class DashboardView(LoginRequiredMixin, HouseholdContextMixin, TemplateView):
             cat_budget = item.get('category__budget') or Decimal('0.00')
             cat_budget_pct = round(float((tot / cat_budget) * 100), 1) if cat_budget > Decimal('0.00') else None
             cat_is_over = tot > cat_budget if cat_budget > Decimal('0.00') else False
+            cat_name = item['category__name'] or 'Sem Categoria'
 
             expenses_by_category.append({
-                'name': item['category__name'],
+                'name': cat_name,
                 'color': item['category__color'] or '#2F756A',
-                'category__name': item['category__name'],
+                'category__name': cat_name,
                 'category__color': item['category__color'] or '#2F756A',
                 'total': tot,
                 'percentage': round(pct, 1),
