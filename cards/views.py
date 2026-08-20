@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import models
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -15,7 +16,6 @@ from .forms import CreditCardExpenseForm, CreditCardForm, PayInvoiceForm
 from .models import CreditCard, CreditCardExpense, CreditCardInvoice
 from .services import (
     calculate_card_metrics,
-    calculate_target_invoice_for_purchase,
     check_card_expense_duplicate,
     create_card_expense,
     get_invoice_dates,
