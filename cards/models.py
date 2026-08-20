@@ -206,6 +206,9 @@ class CreditCardExpense(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(48)],
     )
     installment_group_id = models.UUIDField(default=uuid.uuid4, db_index=True)
+    external_id = models.CharField(
+        'ID Externo (FITID)', max_length=255, blank=True, null=True, db_index=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

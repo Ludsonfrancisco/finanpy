@@ -327,3 +327,130 @@ def reopen_card_invoice(invoice: CreditCardInvoice) -> CreditCardInvoice:
     )
 
     return invoice
+
+
+def check_card_expense_duplicate(credit_card: CreditCard, tx) -> bool:
+    """Verifica se uma transação do extrato OFX já existe como despesa no cartão."""
+    ext_id = getattr(tx, 'external_id', None) or (
+        tx.get('external_id') if isinstance(tx, dict) else None
+    )
+    if (
+        ext_id
+        and CreditCardExpense.objects.filter(
+            credit_card=credit_card, external_id=ext_id
+        ).exists()
+    ):
+        return True
+
+    p_date = getattr(tx, 'posted_on', None) or (
+        date.fromisoformat(tx['date'])
+        if isinstance(tx.get('date'), str)
+        else tx.get('date')
+    )
+    amt = abs(
+        getattr(tx, 'amount', None)
+        if not isinstance(tx, dict)
+        else Decimal(str(tx['amount']))
+    )
+    desc = getattr(tx, 'description', None) or tx.get('description')
+
+    return CreditCardExpense.objects.filter(
+        credit_card=credit_card,
+        date=p_date,
+        amount=amt,
+        description=desc,
+    ).exists()
+
+
+@transaction.atomic
+def import_card_ofx_expenses(
+    credit_card: CreditCard,
+    transactions: list,
+    default_category: Category,
+    user,
+    financial_owner: FinancialOwner | None = None,
+) -> dict:
+    """
+    Importa compras de extrato OFX para despesas de cartão:
+    - Deduplica despesas com base em external_id (FITID) ou (credit_card, date, amount, description).
+    - Projeta a fatura de destino (CreditCardInvoice) com base na data de compra e regras de fechamento/vencimento.
+    - Persiste instâncias de CreditCardExpense.
+    - Retorna resumo com quantidade importada, duplicadas ignoradas, faturas afetadas e valor total.
+    """
+    owner = financial_owner or credit_card.financial_owner
+    imported_expenses = []
+    duplicate_count = 0
+    invoices_affected = set()
+    total_amount = Decimal('0.00')
+
+    for tx in transactions:
+        if isinstance(tx, dict):
+            ext_id = tx.get('external_id')
+            p_date = (
+                date.fromisoformat(tx['date'])
+                if isinstance(tx['date'], str)
+                else tx['date']
+            )
+            desc = tx['description']
+            amt = Decimal(str(tx['amount']))
+            is_dup = tx.get('is_duplicate', False)
+        else:
+            ext_id = tx.external_id
+            p_date = tx.posted_on
+            desc = tx.description
+            amt = abs(tx.amount)
+            is_dup = False
+
+        if is_dup:
+            duplicate_count += 1
+            continue
+
+        if (
+            ext_id
+            and CreditCardExpense.objects.filter(
+                credit_card=credit_card, external_id=ext_id
+            ).exists()
+        ):
+            duplicate_count += 1
+            continue
+
+        if (
+            not ext_id
+            and CreditCardExpense.objects.filter(
+                credit_card=credit_card, date=p_date, amount=amt, description=desc
+            ).exists()
+        ):
+            duplicate_count += 1
+            continue
+
+        target_month, target_year = calculate_target_invoice_for_purchase(
+            credit_card, p_date
+        )
+        invoice = resolve_or_create_invoice(credit_card, target_month, target_year)
+        invoices_affected.add(invoice)
+
+        expense = CreditCardExpense.objects.create(
+            credit_card=credit_card,
+            invoice=invoice,
+            household=credit_card.household,
+            user=user,
+            financial_owner=owner,
+            category=default_category,
+            description=desc,
+            amount=amt,
+            date=p_date,
+            installments_count=1,
+            installment_number=1,
+            installment_group_id=uuid.uuid4(),
+            external_id=ext_id,
+        )
+        imported_expenses.append(expense)
+        total_amount += amt
+
+    return {
+        'imported_count': len(imported_expenses),
+        'duplicate_count': duplicate_count,
+        'invoices': list(invoices_affected),
+        'total_amount': total_amount,
+        'expenses': imported_expenses,
+    }

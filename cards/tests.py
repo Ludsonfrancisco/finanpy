@@ -207,3 +207,251 @@ class CreditCardDomainServicesTest(TestCase):
             ],
         )
         self.assertIsNone(reopened_invoice.payment_transaction)
+
+
+SAMPLE_CARD_OFX = b"""OFXHEADER:100
+DATA:OFXSGML
+VERSION:102
+SECURITY:NONE
+ENCODING:USASCII
+CHARSET:1252
+COMPRESSION:NONE
+OLDFILEUID:NONE
+NEWFILEUID:NONE
+
+<OFX>
+  <SIGNONMSGSRSV1>
+    <SONRS>
+      <STATUS>
+        <CODE>0
+        <SEVERITY>INFO
+      </STATUS>
+      <DTSERVER>20260819120000[-3:BRT]
+      <LANGUAGE>POR
+    </SONRS>
+  </SIGNONMSGSRSV1>
+  <CREDITCARDMSGSRSV1>
+    <CCSTMTTRNRS>
+      <TRNUID>1001
+      <STATUS>
+        <CODE>0
+        <SEVERITY>INFO
+      </STATUS>
+      <CCSTMTRS>
+        <CURDEF>BRL
+        <CCACCTFROM>
+          <ACCTID>card-nubank-1234
+        </CCACCTFROM>
+        <BANKTRANLIST>
+          <DTSTART>20260801120000[-3:BRT]
+          <DTEND>20260820120000[-3:BRT]
+          <STMTTRN>
+            <TRNTYPE>DEBIT
+            <DTPOSTED>20260805120000[-3:BRT]
+            <TRNAMT>-150.50
+            <FITID>card-tx-001
+            <MEMO>Supermercado Pao de Acucar
+          </STMTTRN>
+          <STMTTRN>
+            <TRNTYPE>DEBIT
+            <DTPOSTED>20260815120000[-3:BRT]
+            <TRNAMT>-89.90
+            <FITID>card-tx-002
+            <MEMO>Farmacia Drogasil
+          </STMTTRN>
+        </BANKTRANLIST>
+      </CCSTMTRS>
+    </CCSTMTTRNRS>
+  </CREDITCARDMSGSRSV1>
+</OFX>"""
+
+
+class CreditCardOFXImportTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='card-ofx@example.com',
+            password='testpassword123',
+        )
+        self.household = ensure_household_for_user(self.user)
+        self.owner_shared = FinancialOwner.objects.get(
+            household=self.household, type='shared'
+        )
+
+        self.card = CreditCard.objects.create(
+            household=self.household,
+            user=self.user,
+            financial_owner=self.owner_shared,
+            name='Nubank Roxinho',
+            limit=Decimal('4000.00'),
+            closing_day=10,
+            due_day=17,
+            color='#820AD1',
+            brand='mastercard',
+            last_digits='4321',
+            is_active=True,
+        )
+
+        self.category = Category.objects.create(
+            user=self.user,
+            household=self.household,
+            name='Alimentação',
+            type='expense',
+        )
+
+        self.client.force_login(self.user)
+
+    def test_import_ofx_preview_flow(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.urls import reverse
+
+        ofx_file = SimpleUploadedFile(
+            'fatura.ofx', SAMPLE_CARD_OFX, content_type='application/x-ofx'
+        )
+
+        response = self.client.post(
+            reverse('cards:import_ofx'),
+            {
+                'action': 'preview',
+                'card': self.card.pk,
+                'category': self.category.pk,
+                'ofx_file': ofx_file,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('preview_data', response.context)
+        preview = response.context['preview_data']
+        self.assertEqual(preview['total_count'], 2)
+        self.assertEqual(preview['new_count'], 2)
+        self.assertEqual(preview['duplicate_count'], 0)
+        self.assertEqual(Decimal(str(preview['total_amount'])), Decimal('240.40'))
+
+    def test_import_ofx_confirm_creates_expenses_and_invoices(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.urls import reverse
+
+        from cards.models import CreditCardExpense
+
+        ofx_file = SimpleUploadedFile(
+            'fatura.ofx', SAMPLE_CARD_OFX, content_type='application/x-ofx'
+        )
+
+        # 1. Preview
+        self.client.post(
+            reverse('cards:import_ofx'),
+            {
+                'action': 'preview',
+                'card': self.card.pk,
+                'category': self.category.pk,
+                'ofx_file': ofx_file,
+            },
+        )
+
+        # 2. Confirm
+        response = self.client.post(
+            reverse('cards:import_ofx'),
+            {'action': 'confirm'},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            CreditCardExpense.objects.filter(credit_card=self.card).count(), 2
+        )
+
+        # Compra dia 05/08 (antes do fechamento 10) -> Fatura 08/2026
+        tx1 = CreditCardExpense.objects.get(external_id='card-tx-001')
+        self.assertEqual(tx1.amount, Decimal('150.50'))
+        self.assertEqual(tx1.invoice.month, 8)
+        self.assertEqual(tx1.invoice.year, 2026)
+
+        # Compra dia 15/08 (após o fechamento 10) -> Fatura 09/2026
+        tx2 = CreditCardExpense.objects.get(external_id='card-tx-002')
+        self.assertEqual(tx2.amount, Decimal('89.90'))
+        self.assertEqual(tx2.invoice.month, 9)
+        self.assertEqual(tx2.invoice.year, 2026)
+
+    def test_import_ofx_deduplication(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.urls import reverse
+
+        from cards.models import CreditCardExpense
+
+        ofx_file = SimpleUploadedFile(
+            'fatura.ofx', SAMPLE_CARD_OFX, content_type='application/x-ofx'
+        )
+
+        # 1ª Importação
+        self.client.post(
+            reverse('cards:import_ofx'),
+            {
+                'action': 'preview',
+                'card': self.card.pk,
+                'category': self.category.pk,
+                'ofx_file': ofx_file,
+            },
+        )
+        self.client.post(reverse('cards:import_ofx'), {'action': 'confirm'})
+        self.assertEqual(
+            CreditCardExpense.objects.filter(credit_card=self.card).count(), 2
+        )
+
+        # 2ª Importação com o mesmo arquivo
+        ofx_file2 = SimpleUploadedFile(
+            'fatura_repetida.ofx', SAMPLE_CARD_OFX, content_type='application/x-ofx'
+        )
+        preview_resp = self.client.post(
+            reverse('cards:import_ofx'),
+            {
+                'action': 'preview',
+                'card': self.card.pk,
+                'category': self.category.pk,
+                'ofx_file': ofx_file2,
+            },
+        )
+        preview = preview_resp.context['preview_data']
+        self.assertEqual(preview['new_count'], 0)
+        self.assertEqual(preview['duplicate_count'], 2)
+
+        self.client.post(reverse('cards:import_ofx'), {'action': 'confirm'})
+        # Contagem de despesas permanece inalterada em 2
+        self.assertEqual(
+            CreditCardExpense.objects.filter(credit_card=self.card).count(), 2
+        )
+
+    def test_import_ofx_household_isolation(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.urls import reverse
+
+        other_user = User.objects.create_user(
+            email='other-user-card@example.com',
+            password='password123',
+        )
+        other_household = ensure_household_for_user(other_user)
+        other_owner = FinancialOwner.objects.get(
+            household=other_household, type='shared'
+        )
+        other_card = CreditCard.objects.create(
+            household=other_household,
+            user=other_user,
+            financial_owner=other_owner,
+            name='Cartão Vizinho',
+            limit=Decimal('2000.00'),
+            closing_day=5,
+            due_day=12,
+        )
+
+        ofx_file = SimpleUploadedFile(
+            'fatura.ofx', SAMPLE_CARD_OFX, content_type='application/x-ofx'
+        )
+
+        # Usuário tenta postar no cartão de outro lar
+        response = self.client.post(
+            reverse('cards:import_ofx'),
+            {
+                'action': 'preview',
+                'card': other_card.pk,
+                'ofx_file': ofx_file,
+            },
+        )
+        self.assertEqual(response.status_code, 302)

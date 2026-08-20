@@ -6,6 +6,7 @@ app_name = 'cards'
 
 urlpatterns = [
     path('', views.CreditCardListView.as_view(), name='list'),
+    path('importar/', views.CreditCardImportOFXView.as_view(), name='import_ofx'),
     path('create/', views.CreditCardCreateView.as_view(), name='create'),
     path('<int:pk>/', views.CreditCardDetailView.as_view(), name='detail'),
     path('<int:pk>/edit/', views.CreditCardUpdateView.as_view(), name='edit'),

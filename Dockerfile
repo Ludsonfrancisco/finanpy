@@ -20,7 +20,5 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-RUN chmod +x /app/deploy/entrypoint.sh
-
-# Entrypoint automatically runs database migrations on container startup before supervisord
-ENTRYPOINT ["/app/deploy/entrypoint.sh"]
+# Supervisor is PID 1 and keeps the single SQLite web worker and backup scheduler isolated.
+CMD ["supervisord", "-c", "/app/deploy/supervisord.conf"]
