@@ -152,6 +152,7 @@ class CreditCardDetailView(LoginRequiredMixin, HouseholdContextMixin, DetailView
 class CreditCardCreateView(LoginRequiredMixin, HouseholdContextMixin, CreateView):
     model = CreditCard
     form_class = CreditCardForm
+    template_name = 'cards/form.html'
     success_url = reverse_lazy('cards:list')
 
     def get_form_kwargs(self):
@@ -171,6 +172,7 @@ class CreditCardCreateView(LoginRequiredMixin, HouseholdContextMixin, CreateView
 class CreditCardUpdateView(LoginRequiredMixin, HouseholdContextMixin, UpdateView):
     model = CreditCard
     form_class = CreditCardForm
+    template_name = 'cards/form.html'
     success_url = reverse_lazy('cards:list')
 
     def get_queryset(self):

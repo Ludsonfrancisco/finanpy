@@ -455,3 +455,63 @@ class CreditCardOFXImportTest(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
+
+
+class CreditCardCRUDViewsTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='crud-test@example.com',
+            password='password123',
+        )
+        self.household = ensure_household_for_user(self.user)
+        self.owner = FinancialOwner.objects.get(
+            household=self.household, type='shared'
+        )
+        self.client.login(email='crud-test@example.com', password='password123')
+
+    def test_credit_card_create_view_get(self):
+        from django.urls import reverse
+
+        response = self.client.get(reverse('cards:create'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'cards/form.html')
+        self.assertContains(response, 'Novo Cartão de Crédito')
+
+    def test_credit_card_create_view_post(self):
+        from django.urls import reverse
+
+        response = self.client.post(
+            reverse('cards:create'),
+            {
+                'name': 'Inter Gold',
+                'limit': '3500.00',
+                'closing_day': 15,
+                'due_day': 22,
+                'color': '#FF7A00',
+                'brand': 'mastercard',
+                'last_digits': '9988',
+                'financial_owner': self.owner.pk,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        card = CreditCard.objects.get(name='Inter Gold')
+        self.assertEqual(card.limit, Decimal('3500.00'))
+        self.assertEqual(card.household, self.household)
+
+    def test_credit_card_update_view_get(self):
+        from django.urls import reverse
+
+        card = CreditCard.objects.create(
+            household=self.household,
+            user=self.user,
+            financial_owner=self.owner,
+            name='C6 Carbon',
+            limit=Decimal('10000.00'),
+            closing_day=1,
+            due_day=8,
+        )
+        response = self.client.get(reverse('cards:edit', kwargs={'pk': card.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'cards/form.html')
+        self.assertContains(response, 'Editar Cartão de Crédito')
+
