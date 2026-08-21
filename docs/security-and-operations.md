@@ -219,9 +219,11 @@ Checklist operacional sem segredos:
 - volume SQLite atual; PostgreSQL e rede privada somente após a migração futura;
 - healthcheck, SHA e restart;
 - entrypoint da imagem preservado, sem migration manual paralela;
-- rollback manual da imagem: parar processos, preservar o banco que falhou,
-  verificar/restaurar uma cópia staged no mesmo filesystem e selecionar o digest
-  anterior quando suportado;
+- rollback manual da imagem: antes da parada, capturar UID/GID/mode do banco e a
+  identidade efetiva da aplicação; depois parar processos, bloquear e preservar
+  qualquer sidecar `-wal`, `-shm` ou `-journal`, validar a cópia staged, reaplicar
+  e revalidar a metadata exata antes/depois da promoção no mesmo filesystem e
+  selecionar o digest anterior quando suportado;
 - retenção de logs;
 - backup e restauração;
 - acesso administrativo.

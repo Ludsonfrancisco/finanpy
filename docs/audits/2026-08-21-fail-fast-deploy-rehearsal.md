@@ -143,9 +143,12 @@ locais em prova de container ou R2.
 - health: exatamente `status`, `api_version`, `version`;
 - release: tag `sha-<40-char-sha>` versionada/controlada; digest OCI é a
   identidade imutável que a Task 7 deve resolver e registrar;
-- rollback: manter manutenção, parar todos os processos, preservar o banco que
-  falhou, validar a restauração staged fora do path ativo, promover no mesmo
-  filesystem e selecionar a imagem anterior por digest quando suportado;
+- rollback: antes da parada, capturar UID/GID/mode e a identidade efetiva da
+  aplicação; manter manutenção, parar todos os processos, bloquear e preservar
+  sidecars `-wal`, `-shm` e `-journal`, preservar o banco que falhou, restaurar
+  UID/GID/mode exatos, validar a cópia staged fora do path ativo, promover no
+  mesmo filesystem, revalidar metadata e acesso da aplicação e selecionar a
+  imagem anterior por digest quando suportado;
 - nunca executar migration manual em paralelo nem sobrescrever o command da
   imagem.
 
