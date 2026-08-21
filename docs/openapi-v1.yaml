@@ -27,7 +27,8 @@
                       "type": "string",
                       "pattern": "^(development|[0-9a-f]{40})$"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               }
             }

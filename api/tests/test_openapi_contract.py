@@ -131,6 +131,11 @@ class OpenApiContractTest(SimpleTestCase):
         ]['application/json']['schema']
         self.assertEqual(schema['required'], ['status', 'api_version', 'version'])
         self.assertEqual(
+            set(schema['properties']),
+            {'status', 'api_version', 'version'},
+        )
+        self.assertIs(schema['additionalProperties'], False)
+        self.assertEqual(
             schema['properties']['version'],
             {
                 'type': 'string',
