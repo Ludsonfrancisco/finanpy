@@ -1,174 +1,215 @@
-# Direção visual do Lar Finance
+# Design System Lar Finance — Casa de Valores 2.0
 
-> Status: **direção Casa de Valores aprovada em 13/08/2026**. Tokens exatos serão validados durante a Sprint 4.
+> Status: **direção híbrida aprovada em 20/08/2026**. Web e Flutter usam a
+> mesma identidade; cada plataforma adapta composição e interação. O Flutter
+> fornece os tokens já implementados e a Web fornece parte da densidade,
+> indicadores e linguagem analítica que agradam ao proprietário.
 
-## Decisões firmes
+## Princípios firmes
 
 - nome público: Lar Finance;
-- linguagem: fintech premium, confiável, adulta e doméstica, sem parecer planilha amadora;
+- produto privado, doméstico, adulto e confiável;
 - dados e números são protagonistas;
-- nunca usar roxo, lavanda, violeta, magenta arroxeado ou gradiente azul-roxo;
-- não copiar marca, logo, fonte proprietária, cartões ou composição de outro banco;
-- não usar “AI slop”: glassmorphism gratuito, blobs, neon, cards flutuantes e gráfico sem propósito;
-- claro e escuro devem ser projetados juntos;
-- acessibilidade AA e redução de movimento são requisitos, não acabamento.
+- nunca usar roxo, lavanda, violeta ou gradiente azul-roxo;
+- não copiar marca, logo, fonte proprietária ou componentes de bancos;
+- sem aparência genérica de IA, glassmorphism, neon ou decoração sem função;
+- claro e escuro acompanham automaticamente o sistema, sem botão de tema;
+- acessibilidade AA, foco visível e redução de movimento são requisitos;
+- Web, Windows, Android e iOS devem parecer o mesmo produto, sem serem cópias
+  pixel a pixel.
 
-## Referência candidata: princípios observados no C6 Bank
+## Direção — Casa de Valores 2.0
 
-O usuário citou o C6 Bank como preferência. A referência oficial descreve uma identidade inspirada em carbono, com contraste, tipografia precisa, iconografia geométrica sóbria e linguagem sofisticada. Isso pode orientar princípios, nunca reprodução.
+- **Intenção:** painel financeiro familiar completo, privado e controlável.
+- **Tom:** calma, clareza, proteção e domínio.
+- **Densidade:** média no mobile e média-alta em Web/Windows.
+- **Visual:** superfícies minerais foscas, marfim quente, champanhe restrito e
+  verde mineral.
+- **Composição:** editorial e orientada a dados, com cards apenas quando ajudam
+  agrupamento ou comparação.
+- **Motion:** discreto e funcional, respeitando redução de movimento.
 
-Fontes para análise:
+C6 Bank continua uma referência de acabamento e sobriedade, nunca um modelo a
+ser copiado. A referência interna aprovada é
+[Home Casa de Valores](design-assets/casa-de-valores-home-reference.png).
 
-- [Carbon Brand Space](https://www.c6bank.com.br/carbon-brand-space/)
-- [Iconografia C6](https://www.c6bank.com.br/carbon-brand-space/iconografia/)
-- [Aplicativo C6 Bank na App Store](https://apps.apple.com/br/app/c6-bank-cart%C3%A3o-conta-e-mais/id1463463143)
+## Autoridade compartilhada Web × Flutter
 
-Princípios potencialmente aproveitáveis:
+### Preservar da Web
 
-- superfícies minerais e contraste controlado;
-- hierarquia numérica forte;
-- espaço negativo e composição calma;
-- um acento quente usado com economia;
-- geometria sóbria, não infantil;
-- sensação de segurança e autonomia.
+- cards de métricas quando permitem comparação;
+- gráficos com propósito explícito e alternativa textual;
+- Saldo Livre Real, compromissos, orçamento diário e alertas relevantes;
+- maior densidade no desktop;
+- ações rápidas e leitura analítica.
 
-## Direção aprovada — Casa de Valores
+### Preservar do Flutter
 
-- **Intenção:** painel financeiro familiar confiável, completo e privado.
-- **Tom emocional:** calma, clareza, domínio e proteção.
-- **Densidade:** média-alta por ser produto de dados, com respiro entre blocos.
-- **Motion:** baixo a moderado, funcional.
-- **Plataforma:** cross-platform premium neutral, com adaptações nativas.
-- **Referência visual:** grafite esverdeado, marfim quente, champanhe restrito e verde mineral.
-- **Referência aprovada:** [Home Casa de Valores](design-assets/casa-de-valores-home-reference.png), com dados sintéticos e sem autoridade literal sobre logo, ícones ou tipografia.
+- tokens de cor e spacing implementados;
+- tema automático do sistema;
+- números tabulares e hierarquia financeira;
+- superfícies mais planas, menos box-in-box e mais divisores;
+- shell adaptativo a partir de 900 px;
+- navegação inferior compacta;
+- estados de sincronização, offline, privacidade e erro;
+- comportamento nativo por plataforma.
 
-## Dials provisórios
+### Regra de paridade
 
-- `DESIGN_VARIANCE = 5`
-- `MOTION_INTENSITY = 3`
-- `VISUAL_DENSITY = 6`
+Paridade significa mesma identidade, nomenclatura, prioridade de informação,
+componentes e estados. Não significa reproduzir a mesma geometria:
 
-Esses números documentam intenção, não tokens de código.
+- Web/Windows: sidebar de 232 px, painéis simultâneos e gráficos mais largos;
+- Android/iPhone: conteúdo empilhado, navegação inferior e ações próprias para
+  toque;
+- abaixo de 900 px: nenhuma sidebar fixa reduzindo a área útil;
+- conteúdo Web adicional fica abaixo da hierarquia principal compartilhada.
 
-## Gate de decisão visual
+## Tokens oficiais atuais
 
-Antes de implementar componentes finais:
+Fonte canônica enquanto não houver pacote compartilhado:
+`mobile/lib/design_system/`.
 
-- [x] coletar referências de produtos financeiros reais;
-- [x] registrar os princípios aproveitáveis sem copiar identidade;
-- [x] criar três direções próprias, sem copiar marca;
-- [x] escolher Casa de Valores e projetar claro/escuro;
-- [ ] validar paleta completa em contraste e daltonismo;
-- [ ] validar tipografia aberta/licenciada em iOS, Android e Windows;
-- [ ] criar na implementação os conceitos de Login, Início e estados essenciais;
-- [x] testar a direção com textos e valores financeiros sintéticos;
-- [x] aprovar o conceito; documentar tokens exatos durante a Sprint 4;
-- [ ] registrar a escolha em ADR-008.
+### Cores
 
-Até a validação de contraste, licença e plataformas, os hexadecimais e famílias tipográficas continuam referências, não tokens definitivos.
+| Token | Hex | Uso |
+|---|---|---|
+| `surface.canvas.dark` | `#091311` | canvas escuro |
+| `surface.base.dark` | `#101B18` | superfícies escuras |
+| `surface.canvas.light` | `#F3EFE6` | canvas claro |
+| `surface.base.light` | `#FFFCF5` | superfícies claras |
+| `accent.champagne` | `#C7A35A` | seleção e destaque restrito |
+| `accent.champagneSelectedDark` | `#4B4027` | fundo selecionado escuro |
+| `accent.mineral` | `#2F756A` | ação e informação positiva |
+| `accent.mineralOnDark` | `#72B8AC` | mineral acessível no escuro |
+| `semantic.warning` | `#B9782D` | atenção |
+| `semantic.danger` | `#B8534F` | erro/despesa perigosa |
+| `text.primary.dark` | `#E8E3D8` | texto principal escuro |
+| `text.primary.light` | `#17201D` | texto principal claro |
 
-## Territórios avaliados
+Cores semânticas não devem competir como acentos decorativos. Receitas e
+despesas sempre combinam cor com sinal, texto ou ícone.
 
-### A. Mineral quente
+### Espaçamento
 
-Grafite, pedra clara e acento dourado/âmbar. É o território mais próximo dos princípios admirados no C6, mas precisa de personalidade própria ligada ao lar.
+Escala oficial: `4, 8, 12, 16, 24, 32, 48` px. Valores novos precisam de
+justificativa de layout, não conveniência local.
 
-### B. Editorial financeiro
+### Tipografia
 
-Off-white, carvão, tipografia editorial e acento azul petróleo ou verde profundo. Mais leve e informativo, com menos associação a banco tradicional.
+- stack nativa: Segoe UI no Windows, SF no ecossistema Apple, Roboto no Android
+  e `system-ui` como fallback Web;
+- não depender de Google Fonts para a interface principal;
+- display financeiro atual: 32 px, peso 600 e números tabulares;
+- dinheiro sempre usa formatação pt-BR e representação monetária exata;
+- labels não substituem títulos e valores críticos não usam caption;
+- textos essenciais devem funcionar em 200% de escala.
 
-### C. Arquitetura doméstica
+### Forma e elevação
 
-Neutros quentes, materiais foscos e acento terracota ou verde oliva. Reforça o conceito de lar sem perder precisão financeira.
+- radius moderado e consistente;
+- sombras discretas apenas para elevação real;
+- bordas e divisores preferidos a glows;
+- sem card dentro de card quando spacing/divisor resolver;
+- pills somente para seleção compacta, filtro ou status.
 
-Todos excluem roxo. **Casa de Valores** escolhe o território mineral quente com uma camada editorial e identidade doméstica própria.
+### Motion
 
-## Tokens que serão obrigatórios
-
-Os valores hexadecimais ainda não estão decididos. O sistema final deve declarar:
-
-- `surface.canvas`, `surface.base`, `surface.raised`, `surface.sunken`;
-- `text.primary`, `text.secondary`, `text.muted`, `text.inverse`;
-- `border.subtle`, `border.strong`, `focus`;
-- `accent.primary`, `accent.onPrimary`;
-- `semantic.income`, `semantic.expense`, `semantic.warning`, `semantic.info`, `semantic.success`;
-- `data.series.*`, com padrões/labels além de cor;
-- escalas de spacing, radius, elevation, type e motion;
-- tokens equivalentes light/dark.
-
-Regra de cor: uma cor de marca principal. Cores semânticas são reservadas a significado e não competem como acentos decorativos.
-
-## Tipografia
-
-Critérios:
-
-- licença aberta ou distribuição permitida;
-- números tabulares para dinheiro/tabelas;
-- boa leitura de `R$`, vírgula decimal e números longos;
-- pesos suficientes sem carregar muitos arquivos;
-- acentos pt-BR completos;
-- compatibilidade consistente nas três plataformas.
-
-Inter não será adotada automaticamente apenas por ser comum. Candidatas serão testadas `[INVESTIGAR]`.
-
-Escala mínima proposta, sujeita a teste: display financeiro, título de tela, título de seção, corpo, label e caption. Valores críticos não usam caption.
+- faixa inicial de 160–240 ms;
+- movimento explica navegação ou mudança de estado;
+- nada se move perpetuamente;
+- redução de movimento troca transição por fade curto ou estado instantâneo.
 
 ## Componentes estruturais
 
-- app shell adaptativo;
-- owner switcher “Lar / Eu / Esposa”;
-- money value com esconder/mostrar;
-- data freshness/source badge sem formato de pill excessivo;
+- shell adaptativo;
+- navegação desktop e compacta;
+- owner selector `Lar / Eu / Esposa`;
+- `FinancialAmount` com ocultar/mostrar;
+- status de atualização e origem;
+- saldo consolidado e compromissos;
+- metric card;
 - transaction row;
-- account/card/loan/investment summary;
-- statement progress e due-date status;
-- import progress, mapping table e reconciliation issue;
-- empty/error/offline/stale/conflict states;
-- chart + table alternative;
-- confirmation sheet/dialog;
-- secure file picker e export receipt.
+- account/card/bill summary;
+- progresso de fatura e vencimento;
+- gráfico com tabela/legenda alternativa;
+- fluxo de importação e reconciliação;
+- loading, vazio útil, erro, offline, stale e conflito;
+- sheet/dialog de confirmação;
+- file picker e recibo de exportação.
 
-Componentes evitam box-in-box. Pills ficam restritas a status, filtro compacto e seleção, não a todo texto.
+## Hierarquia da Home
 
-## Iconografia
+A primeira dobra compartilhada deve responder, nesta ordem:
 
-- uma família coerente e licenciada;
-- traço/peso consistente;
-- símbolos financeiros reconhecíveis e rótulos quando houver ambiguidade;
-- não misturar packs;
-- não usar emoji como ícone funcional;
-- categorias podem usar ícone + nome, nunca só cor.
+1. qual visão está ativa: `Lar`, `Eu` ou `Esposa`;
+2. quão atualizados estão os dados;
+3. quanto há disponível/consolidado;
+4. quanto está comprometido e gasto no período;
+5. quais movimentos recentes exigem leitura.
 
-## Motion
+Web/Windows podem acrescentar Saldo Livre Real, Ano da Seca, evolução mensal,
+orçamento e distribuição por categoria na mesma tela, mas não antes de ocultar a
+hierarquia principal.
 
-- 160 a 240 ms como faixa inicial `[INVESTIGAR por plataforma]`;
-- movimento explica mudança de estado, hierarquia ou navegação;
-- nada se move perpetuamente;
-- sincronização/importação usa progresso acessível;
-- `Reduce Motion` troca movimentos por fade/estado instantâneo.
+## Responsividade e interação
 
-## Auditoria da interface atual
+- `>= 900 px`: sidebar/rail e painéis múltiplos;
+- `< 900 px`: navegação inferior e conteúdo empilhado;
+- 375 px e 320 px com escala 200% são matrizes obrigatórias;
+- alvos mínimos seguem a plataforma: 48 dp Android e 44 pt iOS;
+- Web/Windows cobrem teclado, Tab, Enter/Espaço, hover e foco;
+- ações críticas exigem confirmação e feedback seguro.
 
-Problemas observados nas screenshots:
+## Auditoria da Web atual
 
-- identidade “Finanpy” e teal dominam sem relação com “Lar Finance”;
-- cadastro público contradiz o uso privado;
-- dashboard replica padrão de três cards e gráfico vazio;
-- cartão é uma linha genérica de conta, sem limite/fatura;
-- excesso de containers e grandes áreas vazias;
-- tela pensada para desktop, não para celular;
-- zero é exibido onde o dado pode simplesmente não existir;
-- sem estados de sincronização, origem, confiança ou proprietário.
+Aspectos que permanecem:
 
-O frontend taste skill foi aplicado como crítica e princípios para login/fallback web. Ele não define dashboards nativos; a direção mobile governa as telas Flutter.
+- conteúdo rico do dashboard;
+- cards financeiros úteis;
+- gráficos, orçamento diário e contas fixas;
+- skip link, headings, tabelas e foco já presentes.
 
-## Critérios de aprovação
+Aspectos que devem convergir:
 
-- leitura clara em 5 segundos do estado financeiro;
-- visual reconhecível como Lar Finance sem logo de terceiros;
-- números e ações principais acessíveis;
-- nenhuma ocorrência de roxo, inclusive gráficos/ilustrações;
-- sem mais de um acento de marca;
-- telas variadas, mas pertencentes ao mesmo sistema;
-- versões mobile e Windows parecem nativas, não páginas web esticadas;
-- estados vazios/erro/offline são tão projetados quanto o happy path.
+- modo escuro hoje é fixo;
+- fundos atuais não correspondem aos tokens Flutter;
+- 821 cores hexadecimais, 315 classes de radius e 121 classes de sombra tornam
+  manutenção e consistência frágeis;
+- gradientes, glows e containers aninhados excedem a direção aprovada;
+- tablet mantém sidebar abaixo do breakpoint oficial;
+- mobile usa menu hambúrguer em vez da navegação compacta comum;
+- valores monetários não são formatados de modo uniforme;
+- Tailwind, Alpine, Chart.js e Inter dependem de CDN.
+
+A meta não é eliminar os elementos Web apreciados. É reduzir aproximadamente
+25% da ornamentação, centralizar tokens e fazer a interface pertencer ao mesmo
+sistema do Flutter.
+
+## Critérios de aceite por tela
+
+- leitura do estado financeiro principal em até 5 segundos;
+- mesma nomenclatura e prioridade entre plataformas;
+- claro/escuro de sistema sem flash de tema incorreto;
+- nenhum roxo, inclusive em gráficos;
+- valores financeiros exatos, localizados e tabulares;
+- sem overflow em 320 px/200%;
+- teclado/foco/semântica testados quando aplicável;
+- loading, vazio, erro, offline e stale projetados;
+- screenshots/goldens aprovados para breakpoints relevantes;
+- nenhum gráfico decorativo ou card sem função.
+
+## Sequência incremental
+
+1. tokens e shell;
+2. login;
+3. dashboard;
+4. contas e transações;
+5. categorias e orçamentos;
+6. cartões e faturas;
+7. contas fixas;
+8. importação;
+9. relatórios e perfil.
+
+Cada grupo é uma task independente, com teste, revisão, commit e push antes da
+próxima autorização.

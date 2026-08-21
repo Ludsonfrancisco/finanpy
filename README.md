@@ -15,15 +15,21 @@ modernização incremental.
 - SQLite persistido em `/app/data/db.sqlite3` no container;
 - backup R2 diário ativo em produção, com agenda supervisionada, retenção
   `14/8/12`, idempotência após restart e restauração isolada comprovada;
-- 487 testes Django e cobertura acima do gate de 90%; 285 testes Flutter e
-  duas jornadas de integração Windows; CI multiplataforma verde;
+- 526 testes Django e 336 testes Flutter não-golden passaram na auditoria de
+  20/08/2026; a CI atual está vermelha por lint, formato e goldens;
 - cadastro público removido;
 - piloto de importação manual OFX Nubank de conta/cartão, com prévia, confirmação
   explícita, deduplicação e sincronização;
 - cliente Flutter com login, cache offline, sincronização pull, Home Casa de
   Valores e builds Windows/Android/iOS comprovados pela CI;
 - importação manual de OFX Nubank pelo próprio app, com prévia paginada e
-  confirmação explícita; nenhuma escrita offline entrou no cliente.
+  confirmação explícita;
+- cartões/faturas, contas fixas, orçamento por categoria, saldo livre e
+  relatórios já implementados na Web e/ou Flutter;
+- ledger principal sincronizado/offline; cartões e contas fixas usam servidor
+  autoritativo e escrita online;
+- Design System **Casa de Valores 2.0** comum a Web e Flutter, com paridade
+  visual incremental ainda pendente.
 
 O backend será preservado e evoluído por sprints. Não há proposta de rewrite
 total.
@@ -31,6 +37,7 @@ total.
 ## Documentação
 
 - [PRD e estado do produto](PRD.md)
+- [Contexto do produto e marca](PRODUCT.md)
 - [Roadmap por sprints](docs/ROADMAP.md)
 - [Arquitetura](docs/architecture.md)
 - [Modelo de dados](docs/data-model.md)
@@ -45,6 +52,8 @@ total.
 - [Sprint 3 — Importação OFX Nubank](docs/sprints/sprint-3-ofx-import.md)
 - [Sprint 4 — Fundação Flutter e Home Casa de Valores](docs/sprints/sprint-4-flutter-foundation.md)
 - [Sprint 5 — Importação OFX no Flutter](docs/sprints/sprint-5-ofx-flutter-import.md)
+- [Casa de Valores 2.0](docs/design-system.md)
+- [Auditoria do estado e paridade em 20/08/2026](docs/audits/2026-08-20-product-state-and-design-parity.md)
 
 ## Acesso privado e criação do Lar
 
@@ -87,9 +96,10 @@ no servidor caseiro, siga o [runbook do EasyPanel](docs/deploy-easypanel.md).
 ## API privada v1
 
 O contrato OpenAPI está em [`docs/openapi-v1.yaml`](docs/openapi-v1.yaml). A API
-entrega 21 rotas sob `/api/v1/`: health, login/refresh/logout, dispositivos,
-household/owners, contas, categorias, transações, resumo, bootstrap e push/pull
-de sincronização. Access tokens duram 15 minutos e refresh tokens 30 dias; os
+entrega 32 rotas sob `/api/v1/`: health, autenticação, dispositivos,
+household/owners, contas, categorias, transações, resumo, bootstrap, sync,
+importação OFX, cartões/faturas e contas fixas. Access tokens duram 15 minutos e
+refresh tokens 30 dias; os
 tokens são opacos, rotacionados e persistidos somente como digest. Login aceita
 5 tentativas/minuto e refresh 30/minuto.
 
@@ -152,14 +162,18 @@ coverage report --fail-under=90
 
 ## Situação de produção
 
-O commit `0d85999f4e66290fa06484d802d08fbb310ad164` está implantado no EasyPanel
-`v2.33.1`. Schema atual, integridade, auditoria, Supervisor, um worker, scheduler,
-proxy e smoke público de health/login foram validados em 2026-08-13. A automação
-diária criou uma única chave no bucket R2 privado, permaneceu idempotente após
-restart e foi restaurada com hash idêntico em cópia descartável. Consulte a
+O EasyPanel acompanha o GitHub `main`, conforme confirmado pelo proprietário.
+Em 20/08/2026, `/api/v1/health/` respondeu HTTP 200 e `/` redirecionou para
+login. O health ainda não expõe o SHA, portanto o commit efetivo deve ser
+considerado `[INVESTIGAR]` até o ciclo R1 adicionar versão observável.
+
+Supervisor, um worker, scheduler, proxy e backup R2 foram validados no ensaio
+operacional de 2026-08-13. A automação diária criou objeto no bucket privado,
+permaneceu idempotente após restart e foi restaurada com hash idêntico em cópia
+descartável. Consulte a
 [auditoria sanitizada](docs/audits/automatic-r2-backup-production.md).
 
 Enquanto o banco for SQLite, a operação permanece limitada a uma réplica e um
-worker. O aceite global do runbook ainda precisa de rollback por digest imutável,
-rate limit persistente de login e evidência completa de espaço/migrations. Também
-permanecem a retirada segura de credencial R2 anterior e alertas externos.
+worker, topologia suficiente para o uso pessoal. O fechamento exige CI verde,
+migrations fail-fast, rollback por imagem imutável, rate limit persistente e
+alertas externos.

@@ -33,6 +33,11 @@ privado: não há cadastro público. O login usa e-mail por meio do modelo
 | `accounts` | contas financeiras do Lar |
 | `categories` | categorias de receita e despesa do Lar |
 | `transactions` | movimentações vinculadas a conta, categoria e responsável |
+| `imports` | prévia, vínculo, deduplicação e confirmação OFX |
+| `cards` | cartões, compras, faturas, limites e pagamentos |
+| `bills` | contas fixas, ocorrências, vencimentos e pagamentos |
+| `api` | API privada, autenticação por dispositivo e recursos online |
+| `sync` | delta/idempotência de Account, Category e Transaction |
 | `ai` | app instalado sem fluxo financeiro ativo documentado [INVESTIGAR] |
 
 ## Fronteira de dados
@@ -52,6 +57,10 @@ Todas as views financeiras autenticadas devem:
 
 As FKs legadas `user` permanecem para rastreabilidade e usam `PROTECT`.
 
+O sync central cobre apenas Account, Category e Transaction. Cartões e contas
+fixas são servidor-autoritativos e usam API direta; não alegue escrita offline
+ou delta para esses módulos sem implementar e testar o contrato.
+
 ## Migrações e integridade
 
 - Não reescreva migrations aplicadas.
@@ -70,6 +79,10 @@ As FKs legadas `user` permanecem para rastreabilidade e usam `PROTECT`.
   como erros gerais, nunca provocar HTTP 500.
 - Novas mudanças precisam de testes, Ruff, Django check, migrations check e
   revisão antes de commit/push.
+- Dinheiro usa `Decimal` no backend e minor units/tipo decimal exato no
+  Flutter; `double` fica restrito a percentuais e animações.
+- Web e Flutter seguem `docs/design-system.md` — Casa de Valores 2.0 — com a
+  mesma identidade e composição adaptada por plataforma.
 - A composição de cada sprint e tarefa segue
   `docs/ai-model-routing.md`: inventário confirmado, routing curto antes da
   execução, escalonamento por evidência e auditoria ao concluir.
@@ -82,6 +95,9 @@ As FKs legadas `user` permanecem para rastreabilidade e usam `PROTECT`.
 - `SQLITE_PATH` absoluto em volume persistente.
 - TLS termina no proxy; configure os flags seguros documentados no runbook.
 - Uma réplica, um worker e migrations controladas.
+- A execução atual de `migrate` em `core/wsgi.py` é dívida registrada no
+  ciclo R1; não ampliar esse padrão. O alvo é preflight/migration fail-fast antes
+  de iniciar Supervisor.
 - Rate limit de `POST /login/` no proxy/EasyPanel.
 - Credencial histórica rotacionada no EasyPanel em 2026-08-12; não reproduzir ou
   reutilizar o valor antigo ainda presente no histórico Git.

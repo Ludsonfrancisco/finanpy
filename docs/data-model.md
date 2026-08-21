@@ -1,154 +1,139 @@
 # Modelo de dados do Lar Finance
 
+> Estado extraído dos models e migrations no `main` `4810af4`, em 20/08/2026.
+> Propostas antigas de cartão, recorrência, empréstimos e investimentos não devem
+> ser confundidas com o schema atual.
+
 ## Princípios
 
-- fonte canônica no servidor e cache operacional local;
-- valores monetários em decimal, moeda obrigatória;
-- nenhum dado ausente é convertido em zero;
-- evento importado preserva origem e hash;
-- propriedade individual e consolidação familiar coexistem;
-- lançamentos contábeis relacionados têm vínculo explícito;
-- exclusão sincronizada e auditável.
+- `Household` é a fronteira de autorização e consolidação;
+- `FinancialOwner` representa `Eu`, `Esposa` e `Conjunto`, não uma credencial;
+- dinheiro usa `Decimal` no backend e representação exata no cliente;
+- campos ausentes não viram zero por conveniência;
+- importação preserva hash/referência, não o arquivo OFX bruto;
+- entidades sincronizáveis usam UUID, versão e mudança/tombstone;
+- vínculos entre Lar, owner, conta e categoria são validados.
 
-## Estado atual
-
-```mermaid
-erDiagram
-    USER ||--|| PROFILE : has
-    USER ||--o{ HOUSEHOLD_MEMBERSHIP : accesses
-    HOUSEHOLD ||--o{ HOUSEHOLD_MEMBERSHIP : grants
-    HOUSEHOLD ||--o{ FINANCIAL_OWNER : classifies
-    HOUSEHOLD ||--o{ ACCOUNT : owns
-    HOUSEHOLD ||--o{ CATEGORY : owns
-    HOUSEHOLD ||--o{ TRANSACTION : owns
-    FINANCIAL_OWNER ||--o{ ACCOUNT : classifies
-    FINANCIAL_OWNER ||--o{ TRANSACTION : classifies
-    ACCOUNT ||--o{ TRANSACTION : contains
-    CATEGORY ||--o{ TRANSACTION : classifies
-```
-
-O modelo atual cobre usuário, perfil, Lar, associação ativa, responsáveis `self`, `spouse` e `shared`, conta genérica, categoria e transação receita/despesa. As entidades financeiras ainda preservam a FK legada de usuário com `PROTECT` para migração e auditoria.
-
-## Modelo alvo conceitual
+## Schema atual
 
 ```mermaid
 erDiagram
-    USER ||--o{ HOUSEHOLD_MEMBERSHIP : accesses
-    HOUSEHOLD ||--o{ HOUSEHOLD_MEMBERSHIP : grants
-    HOUSEHOLD ||--o{ FINANCIAL_OWNER : contains
-    FINANCIAL_OWNER ||--o{ FINANCIAL_ACCOUNT : owns
-    INSTITUTION ||--o{ FINANCIAL_ACCOUNT : provides
-    FINANCIAL_ACCOUNT ||--o{ TRANSACTION : posts
-    FINANCIAL_OWNER ||--o{ CREDIT_CARD : owns
-    CREDIT_CARD ||--o{ CARD_STATEMENT : bills
-    CARD_STATEMENT ||--o{ CARD_TRANSACTION : contains
-    FINANCIAL_OWNER ||--o{ LOAN : owes
-    LOAN ||--o{ LOAN_INSTALLMENT : schedules
-    FINANCIAL_OWNER ||--o{ INVESTMENT_POSITION : holds
-    HOUSEHOLD ||--o{ BUDGET : plans
-    HOUSEHOLD ||--o{ GOAL : targets
-    HOUSEHOLD ||--o{ IMPORT_BATCH : imports
-    IMPORT_BATCH ||--o{ IMPORT_RECORD : contains
-    IMPORT_RECORD }o--o| TRANSACTION : creates
-    HOUSEHOLD ||--o{ AUDIT_EVENT : records
+    USER ||--|| PROFILE : possui
+    USER ||--o{ HOUSEHOLD_MEMBERSHIP : participa
+    HOUSEHOLD ||--o{ HOUSEHOLD_MEMBERSHIP : autoriza
+    HOUSEHOLD ||--o{ FINANCIAL_OWNER : classifica
+    HOUSEHOLD ||--o{ ACCOUNT : contem
+    HOUSEHOLD ||--o{ CATEGORY : contem
+    HOUSEHOLD ||--o{ TRANSACTION : contem
+    ACCOUNT ||--o{ TRANSACTION : recebe
+    CATEGORY ||--o{ TRANSACTION : classifica
+    HOUSEHOLD ||--o{ IMPORT_BATCH : importa
+    IMPORT_BATCH ||--o{ IMPORT_RECORD : normaliza
+    IMPORT_RECORD }o--o| TRANSACTION : cria
+    HOUSEHOLD ||--o{ CREDIT_CARD : contem
+    CREDIT_CARD ||--o{ CREDIT_CARD_INVOICE : gera
+    CREDIT_CARD_INVOICE ||--o{ CREDIT_CARD_EXPENSE : agrupa
+    HOUSEHOLD ||--o{ RECURRING_BILL : contem
+    RECURRING_BILL ||--o{ BILL_INSTANCE : gera
 ```
 
-## Entidades e campos mínimos
+## Identidade, Lar e sessão
 
-### Identidade e lar
-
-| Entidade | Campos mínimos |
+| Entidade | Campos/regras principais |
 |---|---|
-| `Household` | UUID, nome, timezone, moeda base, timestamps, versão |
-| `HouseholdMembership` | user, household, role, status, timestamps |
-| `FinancialOwner` | UUID, household, nome de exibição, tipo pessoa/conjunto, ativo |
-| `SyncDevice` | UUID, user, plataforma, nome, último cursor, revogado em |
+| `users.User` | email único, senha/flags Django e timestamps |
+| `profiles.Profile` | dados de perfil e avatar, 1:1 com User |
+| `Household` | UUID, nome, ativo e timestamps |
+| `HouseholdMembership` | user, Lar, papel, ativo; uma associação ativa por usuário |
+| `FinancialOwner` | UUID, Lar, nome, código `self/spouse/shared`, ativo |
+| `DeviceSession` | UUID, user, Lar, owner padrão, plataforma, digests, expiração e revogação |
+| `UsedRefreshToken` | digest de refresh consumido e sessão relacionada |
 
-O backfill entregue cria um `Household`, uma associação ativa e os responsáveis `Eu`, `Esposa` e `Conjunto`, ligando os dados existentes ao Lar e ao responsável padrão. Nesta fase haverá um login familiar compartilhado, com sessão e responsável padrão independentes por dispositivo. O modelo aceita mais de um usuário para uma evolução futura sem migrar o ledger.
+O primeiro uso mantém um login familiar compartilhado e owners separados. O
+modelo aceita evolução futura para dois logins sem migrar o ledger.
 
-### Instituições, contas e caixa
+## Ledger principal
 
-| Entidade | Campos mínimos |
+| Entidade | Campos/regras principais |
 |---|---|
-| `Institution` | UUID, código interno, nome, país, aliases, ativo |
-| `FinancialAccount` | UUID, owner, institution opcional, nome, tipo, moeda, saldo inicial, saldo informado, data do saldo, status |
-| `Transaction` | UUID, account, owner, data efetiva, data de lançamento, descrição original/normalizada, valor assinado, moeda, status, categoria, contraparte, origem, fingerprint |
-| `Transfer` | UUID, transação de origem, transação de destino, status de conciliação |
-| `BalanceSnapshot` | account, instante, saldo informado, origem, import batch |
+| `Account` | UUID, versão, Lar, owner, nome, tipo, saldo inicial e moeda |
+| `Category` | UUID, versão, Lar, nome, tipo, cor, ícone e teto mensal |
+| `Transaction` | UUID, versão, Lar, owner, conta, categoria, descrição, Decimal, data e tipo |
+| `SyncChange` | cursor, entidade, UUID, versão, operação e payload por Lar |
+| `IdempotentOperation` | dispositivo, operation ID, hash, resposta e status |
 
-O tipo do lançamento alvo é derivado pelo sinal/contexto. Manter `income/expense` como classificação gerencial, não como único mecanismo contábil.
+Account, Category e Transaction são as únicas entidades registradas atualmente
+em `sync/registry.py`. Elas formam o ledger com pull/delta, idempotência e
+tombstones.
 
-### Cartões
+## Importação OFX
 
-| Entidade | Campos mínimos |
+| Entidade | Campos/regras principais |
 |---|---|
-| `CreditCard` | UUID, owner, institution, apelido, final opcional, bandeira opcional, limite informado, moeda, fechamento, vencimento, status |
-| `CardStatement` | UUID, card, competência, abertura, fechamento, vencimento, total informado, total calculado, pagamento mínimo opcional, status |
-| `CardTransaction` | UUID, statement, data compra/lançamento, descrição, valor, categoria, parcela atual/total, compra raiz, status |
-| `StatementPayment` | statement, transaction da conta pagadora, valor, data, status de conciliação |
+| `ImportAccountLink` | Lar, conta, provider, tipo de produto e conta externa; chave única |
+| `ImportBatch` | UUID, Lar, sessão, conta/owner opcionais, provider, produto, hash, período, expiração, status e contagens |
+| `ImportRecord` | UUID, lote, linha, external ID, data, Decimal, descrição, tipo, fingerprint, resultado e Transaction opcional |
+| `SourceReference` | conta, provider, external ID e Transaction; chave única |
 
-Limite disponível nunca é calculado se limite total estiver ausente. Parcelas futuras devem alimentar previsão, sem duplicar o valor já lançado.
+Prévia fica acionável pelo prazo definido no fluxo, pode ser cancelada/expirada e
+só altera o ledger após confirmação atômica. OFX bruto é descartado depois da
+normalização.
 
-### Planejamento
+## Cartões e faturas
 
-| Entidade | Campos mínimos |
+| Entidade | Campos/regras principais |
 |---|---|
-| `RecurringRule` | household/owner, tipo, frequência, próxima data, valor previsto, variação, ativo |
-| `Budget` | household, período, categoria/owner, valor planejado, rollover |
-| `Goal` | household/owner, nome, alvo, prazo, valor atual calculado/manual, status |
-| `PlannedCashFlow` | data, valor, origem recorrência/fatura/parcela/manual, confiança |
+| `CreditCard` | Lar, user legado, owner, nome, limite Decimal > 0, fechamento, vencimento, cor, bandeira, últimos dígitos e ativo |
+| `CreditCardInvoice` | cartão, Lar, mês/ano único, fechamento, vencimento, status, valor pago, conta e Transaction de pagamento |
+| `CreditCardExpense` | cartão, fatura, Lar, user, owner, categoria, descrição, Decimal > 0, data, parcela atual/total, grupo e external ID |
 
-### Crédito e patrimônio
+O total da fatura é agregado das despesas. Pagamento pode gerar vínculo com conta
+e Transaction. Cartões usam IDs inteiros e não participam do registro central de
+sync/Drift.
 
-| Entidade | Campos mínimos |
+## Contas fixas
+
+| Entidade | Campos/regras principais |
 |---|---|
-| `Loan` | owner, institution, tipo, principal, saldo devedor informado, taxa, CET, sistema amortização, início/fim, status |
-| `LoanInstallment` | loan, número, vencimento, principal, juros, encargos, total, pago em, status |
-| `InvestmentPosition` | owner, institution, classe, ativo/ticker opcional, quantidade, custo, valor informado, data de referência, moeda |
-| `Asset` | owner/household, tipo, descrição, valor estimado, data de avaliação, método |
-| `Liability` | owner/household, tipo, descrição, saldo, data de referência; pode referenciar Loan |
+| `RecurringBill` | Lar, user, owner, nome, Decimal > 0, vencimento, receita/despesa, categoria, conta padrão, ativo e notas |
+| `BillInstance` | regra, Lar, owner, mês/ano único, data, Decimal > 0, status, pagamento, conta e Transaction vinculada |
 
-Taxa, CET, amortização, posição e cotação podem não existir em exportações. São opcionais e exibidos como não informados.
+As instâncias representam o compromisso mensal e podem ser pagas ou reabertas.
+Contas fixas também usam IDs inteiros e API direta, sem delta central/Drift.
 
-### Importação e auditoria
+## Restrições essenciais
 
-| Entidade | Campos mínimos |
-|---|---|
-| `ImportBatch` | UUID, household, owner, institution, formato, arquivo hash, período, estado, contagens, timestamps |
-| `ImportRecord` | batch, índice, payload normalizado, fingerprint, estado, warnings, entidade criada |
-| `ReconciliationIssue` | tipo, entidades candidatas, severidade, estado, decisão e autor |
-| `SourceReference` | provider/arquivo, external_id opcional, entidade, capturado em |
-| `AuditEvent` | actor, device, ação, entidade/id, metadados seguros, instante |
+- owner pertence ao mesmo Lar da entidade;
+- conta, categoria, cartão e conta fixa não atravessam Lar;
+- dinheiro persistido no backend é Decimal com duas casas;
+- limite, despesa de cartão e conta fixa exigem valor positivo;
+- uma fatura é única por cartão/mês/ano;
+- uma instância é única por regra/mês/ano;
+- parcela atual/total fica entre 1 e 48;
+- SourceReference impede external ID repetido na mesma conta/provider;
+- refresh consumido não pode ser reutilizado;
+- timestamp do cliente não decide sozinho qual versão vence.
 
-## Restrições de integridade
+## Dívidas atuais
 
-- owner precisa pertencer ao mesmo household da entidade;
-- conta/cartão e instituição precisam estar ativos para novos lançamentos;
-- `amount != 0`, salvo ajuste explicitamente justificado `[INVESTIGAR]`;
-- categoria pertence ao household e é compatível com a classificação;
-- fingerprint é único no escopo de fonte+conta quando confiável;
-- um pagamento não quita mais que o saldo da fatura sem registrar crédito;
-- soma de parcelas deve reconciliar com a compra dentro da regra de arredondamento;
-- moeda de valores comparados deve coincidir ou haver cotação explícita;
-- `updated_at` do cliente não decide sozinho qual versão vence.
+- Flutter Cards/Bills representa quantias com `double`; migrar para minor units
+  ou decimal exato no ciclo R1;
+- cartões e contas fixas não possuem UUID, versão, tombstone ou cache Drift;
+- não existe `Institution` normalizada;
+- transferência não possui duas pontas explícitas;
+- não existe auditoria financeira genérica além de import/sync;
+- migration automática dentro do WSGI é fail-open e será retirada.
 
-## Migrações planejadas
+## Evolução aprovada para a V1
 
-1. adicionar UUID, versionamento e soft delete às entidades existentes;
-2. criar lar/owner e backfill transacional;
-3. criar instituição e ligar contas quando conhecidas;
-4. criar entidades de cartão e migrar `Account.type=credit` com relatório de exceções;
-5. introduzir transferências e rever saldos;
-6. criar importação/auditoria;
-7. acrescentar planejamento, crédito e patrimônio em sprints separados.
+1. corrigir precisão monetária no Flutter sem migration destrutiva do backend;
+2. manter servidor como autoridade de Cards/Bills;
+3. adicionar cache somente leitura desses módulos se necessário;
+4. preservar o ledger atual e suas migrations;
+5. não introduzir PostgreSQL, empréstimos ou investimentos sem dor real.
 
-Cada data migration deve ter teste, dry-run, contagem antes/depois e rollback documentado.
+## Backlog opcional
 
-## Investigar com dados reais
-
-- identificadores persistentes presentes em OFX/CSV de cada banco;
-- representação de parcelamento e cartão adicional;
-- saldo/limite disponível nas exportações;
-- formato de empréstimos e investimentos;
-- necessidade de múltiplas moedas;
-- tratamento de compras pendentes e estornos.
+`Institution`, `Transfer`, `AuditEvent`, `Loan`, `LoanInstallment`,
+`InvestmentPosition`, `Asset`, `Liability`, `ProviderConnection`, múltiplas
+moedas e novas fontes de importação não bloqueiam a primeira versão pessoal.

@@ -8,10 +8,12 @@ adaptive
 
 ## Stack
 
-- Cliente alvo: Flutter para Windows, Android e iOS. O aplicativo para macOS será tratado em uma sprint posterior, depois das três plataformas iniciais estarem em funcionamento.
+- Interfaces: Web Django e Flutter para Windows, Android e iOS. macOS não
+  bloqueia a V1 pessoal.
 - Backend existente: Python 3.12, Django 5.2.13 e Django REST Framework 3.17.1, preservados no servidor Linux/EasyPanel.
 - Persistência canônica atual: SQLite no servidor, com uma réplica e um worker. A API privada v1 é o contrato do cliente.
-- Persistência local alvo: SQLite no dispositivo para abertura rápida, leitura offline e sincronização posterior.
+- Persistência local entregue: Drift/SQLite para o ledger principal; cartões e
+  contas fixas usam API online direta.
 
 ## Users
 
@@ -34,22 +36,27 @@ Painel financeiro doméstico privado, operado pelo próprio casal e hospedado em
 - Uso cotidiano em Windows, Android e iPhone, com interface adaptada ao dispositivo.
 - Backend online permanentemente no servidor doméstico via EasyPanel.
 - Importação manual de arquivos bancários como primeira estratégia; o piloto atual aceita OFX estruturalmente compatível com os arquivos Nubank testados.
-- Sincronização online entre dispositivos, com cache local para abertura rápida e evolução planejada para operações offline.
+- Sincronização online entre dispositivos, com cache local do ledger; recursos
+  online-only devem declarar indisponibilidade e freshness.
 - Um único administrador familiar importa arquivos, resolve pendências e acompanha a visão consolidada.
 - Automação bancária paga poderá ser avaliada somente depois que o produto manual estiver maduro e em uso.
 
 ## Capabilities and Constraints
 
-- Estado entregue: autenticação privada, sessões por dispositivo, Lar compartilhado, responsáveis financeiros, contas, categorias, transações, resumo, sincronização incremental e importação OFX com prévia e confirmação.
-- A primeira sprint Flutter entregará a fundação adaptativa, login, sessão segura, sincronização inicial, dashboard real somente leitura e primeiro executável Windows.
-- Android e iOS devem nascer no mesmo workspace Flutter; validação real do iOS depende de macOS/Xcode.
+- Estado entregue: autenticação privada, sessões por dispositivo, Lar, owners,
+  contas, categorias, transações, sync, OFX, cartões/faturas, contas fixas,
+  orçamento, relatórios e Flutter multiplataforma.
+- Flutter já possui fundação adaptativa, login, sessão segura, Drift, Home,
+  importação e módulos financeiros recentes.
+- Android e iOS pertencem ao mesmo workspace; builds sem assinatura passam na CI.
 - A Home inicial não deve ser dominada pela importação. Importação e detalhes permanecem acessíveis como fluxos secundários.
 - A tela inicial deve carregar em menos de 2 segundos usando dados locais previamente sincronizados.
 - Valores financeiros usam representação decimal; conflitos não podem ser sobrescritos silenciosamente.
 - Tokens e material de renovação ficam no armazenamento seguro nativo, nunca no SQLite ou nos logs.
 - O produto não inicia Pix, pagamentos, transferências ou investimentos.
 - Não existe cadastro público, landing page, múltiplas famílias ou cobrança de assinatura nesta fase.
-- Open Finance direto, cartões/faturas completos, empréstimos, investimentos e patrimônio ampliado permanecem em sprints futuras.
+- Open Finance, empréstimos, investimentos e patrimônio ampliado são backlog
+  opcional; cartões/faturas já existem e precisam de estabilização monetária.
 
 ## Brand Commitments
 
@@ -58,7 +65,9 @@ Painel financeiro doméstico privado, operado pelo próprio casal e hospedado em
 - Deve transmitir a confiança e o acabamento de um aplicativo bancário, sem parecer um template ou interface gerada por IA.
 - A preferência pelo acabamento premium percebido no C6 Bank é uma referência de qualidade e disciplina, não autorização para copiar identidade, componentes ou marca.
 - Roxo é proibido em cores de marca, estados, gráficos, ilustrações e gradientes.
-- A direção visual aprovada chama-se **Casa de Valores**: grafite esverdeado, marfim quente, champanhe com uso restrito e verde mineral para ações e estados positivos.
+- A direção aprovada chama-se **Casa de Valores 2.0**: Web e Flutter usam o
+  mesmo Design System. Preservar cards, indicadores e gráficos úteis da Web,
+  junto aos tokens, tema de sistema, precisão e adaptação do Flutter.
 - A identidade será original e fundamentada em pesquisa comparativa de produtos financeiros reais; o conceito aprovado é referência de qualidade, não especificação literal de logo, ícones ou tipografia.
 
 ## Evidence on Hand

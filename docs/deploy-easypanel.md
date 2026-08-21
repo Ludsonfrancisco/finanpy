@@ -20,9 +20,13 @@ Estado dos gates operacionais, sem registrar segredos:
   isolamento do processo web implementados e cobertos por testes locais.
 - [x] Cadastrar as variáveis R2, ativar a imagem e provar execução, restart,
   objeto remoto e restauração descartável da nova automação no EasyPanel real.
-- [x] Implantar o `main` em `0d85999f4e66290fa06484d802d08fbb310ad164`,
-  validar schema final, persistência após restart, proxy e smoke público. A ordem
-  do `migrate` durante o deploy não ficou evidenciada e permanece aberta abaixo.
+- [x] O marco `0d85999f4e66290fa06484d802d08fbb310ad164` teve schema,
+  persistência, proxy e smoke validados em 2026-08-13.
+- [x] O proprietário confirmou em 20/08/2026 que o EasyPanel acompanha o GitHub
+  `main`; health público respondeu 200.
+- [ ] Expor o SHA efetivo no health e validar o deploy candidato atual. O
+  `core/wsgi.py` passou a chamar `migrate` de forma fail-open durante startup;
+  retirar esse comportamento no ciclo R1 e usar o procedimento fail-fast abaixo.
 - [ ] `[INVESTIGAR]` Materializar rollback por digest/tag imutável da imagem e
   confirmar rate limit persistente para `POST /login/`.
 

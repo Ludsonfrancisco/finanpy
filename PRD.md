@@ -1,18 +1,25 @@
 # Lar Finance — PRD do estado atual e evolução do produto
 
-> Fonte única de verdade do produto. Atualizado em 14/08/2026 após a validação
-> local da fundação Flutter; produção permanece no estado EasyPanel/R2 já
-> registrado, sem deploy da Sprint 4.
+> Fonte única de verdade do produto. Revalidado em 20/08/2026 contra o código
+> no `main` em `4810af4`, a CI, a produção pública e as interfaces Web/Flutter.
+> Evidência detalhada:
+> [auditoria de estado e paridade](docs/audits/2026-08-20-product-state-and-design-parity.md).
 
 ## Status e convenções
 
 - **Nome oficial:** Lar Finance.
 - **Nome técnico legado:** Finanpy, mantido temporariamente no repositório, módulos Django e implantação até uma migração segura.
-- **Estado atual:** aplicação web Django privada e cliente Flutter com Lar compartilhado, responsáveis financeiros, API privada v1, sincronização incremental, cache offline, Home Casa de Valores e importação manual de OFX Nubank feita pelo próprio app, com prévia paginada e confirmação explícita. O cliente continua sem escrita offline.
+- **Estado atual:** beta pessoal avançada. Web Django e Flutter compartilham um
+  Lar privado, owners, contas, categorias, movimentações, importação OFX,
+  cartões/faturas, contas fixas, orçamento e relatórios. O ledger principal tem
+  cache/sync incremental; cartões e contas fixas usam API online direta.
 - **Produto alvo:** aplicativo Flutter para iOS, Android e Windows, sincronizado com o backend Django no servidor Linux/EasyPanel.
 - **Estratégia de dados aprovada:** importação de arquivos primeiro; integração paga automática somente após o produto estar maduro e em uso.
 - **Usuários do produto:** uma família no mesmo Lar, com um único login compartilhado nesta fase. Cada dispositivo terá sessão própria e revogável. O domínio mantém credenciais de acesso separadas dos responsáveis financeiros `Eu`, `Esposa` e `Conjunto`, permitindo dois logins no futuro sem migrar o ledger.
-- **Identidade visual:** direção **Casa de Valores** aprovada: fintech doméstica premium, grafite esverdeado, marfim quente, champanhe restrito e verde mineral. C6 Bank permanece apenas referência de acabamento, sem copiar marca ou componentes.
+- **Identidade visual:** **Casa de Valores 2.0**. Web e Flutter usam o mesmo
+  Design System; a Web preserva cards, indicadores, gráficos e densidade que
+  agradam ao proprietário, enquanto o Flutter fornece tokens, tema de sistema,
+  hierarquia financeira e comportamento adaptativo.
 - **Regra visual irrevogável:** não usar roxo.
 - **`[INVESTIGAR]`:** decisão ou comportamento sem evidência suficiente. Não deve ser implementado por suposição.
 - **`As-is`:** comportamento comprovado no código atual.
@@ -28,22 +35,20 @@ As informações financeiras do casal estão fragmentadas entre Nubank, Inter, S
 
 O Lar Finance será o painel financeiro privado da família: uma visão confiável do que entrou, saiu, está comprometido, deve ser pago, pertence a cada pessoa e compõe o patrimônio conjunto. O sistema ajuda a tomar decisões, mas não movimenta dinheiro, não guarda senhas bancárias e não substitui aconselhamento financeiro profissional.
 
-### 1.3 Escopo funcional alvo
+### 1.3 Escopo da primeira versão pessoal
 
-- Visão individual, da esposa e consolidada do lar.
-- Contas, carteiras e saldos.
-- Cartões, limites, faturas, vencimentos, fechamentos, parcelamentos e cartões adicionais.
-- Receitas, despesas, transferências, estornos, juros, tarifas e ajustes.
-- Importação OFX e CSV; PDF e planilhas por adaptadores específicos quando viável.
-- Conciliação, deduplicação e trilha de auditoria de toda importação.
-- Categorias, tags, favorecidos, regras de categorização e recorrências.
-- Orçamentos, metas, reserva de emergência e previsão de caixa.
-- Empréstimos e financiamentos, incluindo saldo, parcelas, taxa e CET quando disponíveis.
-- Investimentos, bens, direitos, dívidas e patrimônio líquido.
-- Relatórios e indicadores explicáveis, sem “score” opaco.
-- Sincronização entre Windows, iOS e Android.
-- Exportação e backup dos próprios dados.
-- Adaptador futuro para Pierre ou outro provedor, sem acoplar o domínio ao fornecedor.
+- visão `Lar`, `Eu` e `Esposa`;
+- contas, categorias, receitas, despesas e saldos;
+- cartões, limites, compras, faturas, vencimentos e pagamentos já modelados;
+- contas fixas, compromissos, orçamento por categoria e saldo livre;
+- importação OFX manual, deduplicação, prévia e confirmação;
+- relatórios explicáveis sobre o ledger disponível;
+- Web, Windows, Android e iOS com Casa de Valores 2.0;
+- sincronização do ledger e consulta online dos módulos recentes;
+- backup R2, restauração e atualização privada.
+
+Empréstimos, investimentos, Open Finance pago, CSV/PDF genérico e automações
+amplas são backlog opcional após uso real; não bloqueiam a primeira versão.
 
 ### 1.4 Fora de escopo inicial
 
@@ -59,7 +64,8 @@ O Lar Finance será o painel financeiro privado da família: uma visão confiáv
 - Toda quantia mostra origem, proprietário, data de atualização e nível de confiança.
 - Reimportar o mesmo arquivo não duplica lançamentos.
 - O app abre a visão inicial em menos de 2 segundos com dados locais já sincronizados.
-- Operações feitas offline sincronizam depois sem perda silenciosa.
+- Operações suportadas offline sincronizam sem perda silenciosa; recursos
+  online-only informam indisponibilidade em vez de simular uma mutação local.
 - O usuário consegue exportar e restaurar os dados.
 
 ## 2. Personas e jornadas
@@ -102,15 +108,15 @@ flowchart LR
 | Qualidade | Ruff 0.15.11, Coverage 7.13.5 | `requirements.txt` |
 | Backup remoto | boto3 1.43.53, filelock 3.32.0, Supervisor 4.3.0 e R2 S3 API | `requirements.txt`, `deploy/supervisord.conf`, `core/remote_backup.py` |
 | Banco | SQLite, caminho absoluto configurável; `/app/data/db.sqlite3` no container | `core/settings.py`, Docker e Compose |
-| Frontend | Django Templates, HTML/CSS/JavaScript e Tailwind via CDN | templates e documentação |
+| Frontend Web | Django Templates, Tailwind CDN, Alpine CDN, Chart.js CDN e Inter remoto | funcional, mas assets/tokens precisam convergir no ciclo R2 |
 | Fila/cache | inexistentes | settings e dependências |
 | Container | Docker multi-stage + Docker Compose | arquivos raiz |
 | Produção informada | Linux em EasyPanel, servidor doméstico | informação do proprietário; configuração externa não versionada `[INVESTIGAR]` |
 
 Flutter está instalado no workspace `mobile/`; PostgreSQL, fila e provedor
-financeiro continuam ausentes. A API REST privada usa Django REST Framework. Há
-parser OFX interno e restrito ao piloto Nubank; CSV e demais fontes não foram
-implementados.
+financeiro continuam ausentes e não bloqueiam a V1 pessoal. A API REST privada
+usa Django REST Framework. Há parser OFX interno e estruturalmente compatível
+com o piloto Nubank; CSV e demais fontes não foram implementados.
 
 ### 3.2 Stack cliente e direções ainda pendentes
 
@@ -119,21 +125,24 @@ implementados.
 | Cliente | Flutter 3.47.0 stable e Dart 3.13.0, um código-base para iOS, Android e Windows | workspace e lockfile entregues na Sprint 4; Windows/Android/iOS comprovados pela CI multiplataforma |
 | Backend | Django preservado e transformado em API versionada | API v1 entregue na Sprint 2 |
 | API | Django REST Framework 3.17.1 | entregue na Sprint 2 |
-| Banco servidor | PostgreSQL | aprovado como direção; versão/imagem EasyPanel `[INVESTIGAR]` |
-| Banco local | SQLite com Drift 2.34.3/drift_flutter 0.3.1 e pull atômico | entregue na Sprint 4; nenhuma escrita offline |
+| Banco servidor | SQLite em volume persistente | aprovado para uma família, uma réplica e um worker; PostgreSQL não bloqueia V1 |
+| Banco local | SQLite com Drift 2.34.3/drift_flutter 0.3.1 e pull atômico | ledger principal entregue; cartões/contas fixas ainda não possuem cache Drift |
 | Autenticação | login familiar único; token opaco e renovação rotativa por dispositivo | backend e cliente entregues; tokens no secure storage nativo, dados financeiros no Drift |
-| Importação | OFX Nubank de conta/cartão; CSV/PDF/XLSX por adaptadores futuros | piloto OFX entregue |
+| Importação | OFX estruturalmente compatível com conta/cartão Nubank | entregue na Web e Flutter; outros formatos são opcionais |
 | Automação futura | adaptador de provedor, inicialmente candidato Pierre | contratação e suporte a dois CPFs `[INVESTIGAR]` |
 
 Versões do cliente são fixadas em `mobile/tool/flutter-version.json`,
-`mobile/pubspec.yaml` e `mobile/pubspec.lock`. Componentes ainda ausentes, como
-PostgreSQL, continuam sem versão inventada.
+`mobile/pubspec.yaml` e `mobile/pubspec.lock`. Tecnologias opcionais ausentes
+continuam sem versão inventada.
 
 ## 4. Arquitetura
 
 ### 4.1 As-is
 
-Monólito Django que preserva a interface server-rendered e adiciona API privada DRF. A API autentica sessões por dispositivo, aplica a fronteira do Lar e compartilha os models de domínio com o serviço de sincronização append-only.
+Monólito Django que preserva a interface server-rendered e expõe API privada
+DRF. A API autentica sessões por dispositivo e aplica a fronteira do Lar. O
+serviço append-only sincroniza Account, Category e Transaction; cartões e contas
+fixas usam endpoints REST diretos.
 
 ```mermaid
 flowchart TB
@@ -145,7 +154,10 @@ flowchart TB
     Gunicorn["Gunicorn no container"] --> Views
 ```
 
-Apps: `core`, `users`, `profiles`, `households`, `accounts`, `categories`, `transactions`, `api`, `sync` e `ai`. O app `ai` está instalado, porém sua função produtiva precisa ser validada `[INVESTIGAR]`.
+Apps: `core`, `users`, `profiles`, `households`, `accounts`,
+`categories`, `transactions`, `imports`, `cards`, `bills`, `api`,
+`sync` e `ai`. O app `ai` está instalado, porém sem fluxo financeiro ativo
+comprovado `[INVESTIGAR]`.
 
 ### 4.2 To-be incremental
 
@@ -162,13 +174,13 @@ flowchart TB
     end
     Clients -->|"HTTPS / API v1"| API["Django API"]
     API --> Domain["Serviços de domínio financeiro"]
-    Domain --> PG[("PostgreSQL")]
+    Domain --> ServerDB[("SQLite persistente")]
     API --> Import["Pipeline de importação e conciliação"]
-    Import --> PG
+    Import --> ServerDB
     Provider["Adaptadores: arquivos / futuro provedor"] --> Import
     Worker["Jobs assíncronos, se necessários"] --> Import
     Ops["Logs, métricas, alertas e backup"] --> API
-    Ops --> PG
+    Ops --> ServerDB
 ```
 
 Princípios:
@@ -176,9 +188,10 @@ Princípios:
 - evolução por módulos, sem rewrite total do backend;
 - API e domínio não conhecem widgets Flutter;
 - importadores e provedores implementam contratos substituíveis;
-- PostgreSQL no servidor é a fonte canônica;
+- SQLite no servidor é a fonte canônica na topologia pessoal suportada;
 - SQLite local sustenta leitura rápida, offline e fila de mudanças;
-- todo registro sincronizável recebe UUID, versão, timestamps e marcador de exclusão;
+- o ledger sincronizável recebe UUID, versão, timestamps e marcador de exclusão;
+- módulos online-only declaram essa limitação até possuírem cache/contrato próprio;
 - conflitos financeiros nunca são sobrescritos silenciosamente.
 
 Detalhes: [arquitetura](docs/architecture.md) e [segurança/operação](docs/security-and-operations.md).
@@ -199,12 +212,22 @@ Detalhes: [arquitetura](docs/architecture.md) e [segurança/operação](docs/sec
 | `transactions.Transaction` | UUID, `sync_version`, descrição, valor, data, tipo, timestamps | N:1 Household, User legado, FinancialOwner, Account e Category |
 | `api.DeviceSession` / `UsedRefreshToken` | UUID da sessão, plataforma, digests, expiração, revogação e refresh consumido | escopo imutável por User, Household e owner padrão |
 | `sync.SyncChange` / `IdempotentOperation` | cursor, entidade/UUID/versão, operação, payload e resposta idempotente | ledger append-only por Household e operação por dispositivo |
+| `imports.ImportBatch` / `ImportRecord` / `ImportAccountLink` / `SourceReference` | lote, prévia, vínculo, hash/FITID e referência deduplicada | confirmação atômica e recibo sem guardar OFX bruto |
+| `cards.CreditCard` | nome, limite, fechamento, vencimento e owner | N:1 Household/FinancialOwner; cartão não é conta corrente |
+| `cards.CreditCardInvoice` | competência, fechamento, vencimento, status e pagamentos | N:1 CreditCard |
+| `cards.CreditCardExpense` | descrição, valor, data, categoria, parcela e status | N:1 CreditCard/Invoice |
+| `bills.RecurringBill` / `BillInstance` | regra, tipo, valor, vencimento, status e pagamento | N:1 Household/owner/account/category |
 
-Lacunas comprovadas: não há instituição normalizada, transferência com duas pontas, fatura, limite, parcela, recorrência, dívida, investimento, moeda por cotação, anexo ou `AuditEvent` de negócio. O piloto acrescenta lotes, registros e referências de importação/deduplicação, mas não substitui auditoria financeira de negócio.
+Lacunas comprovadas: não há instituição normalizada, transferência com duas
+pontas, dívida, investimento, moeda por cotação, anexo ou `AuditEvent` de
+negócio. Cartões/faturas e recorrência de contas fixas existem, mas não integram
+o registro central de sync/Drift.
 
 ### 5.2 To-be
 
-Núcleo proposto: `Household`, `FinancialOwner`, `Institution`, `FinancialAccount`, `CreditCard`, `CardStatement`, `CardTransaction`, `Transaction`, `Transfer`, `Category`, `Tag`, `Counterparty`, `RecurringRule`, `Budget`, `Goal`, `Loan`, `LoanInstallment`, `InvestmentPosition`, `Asset`, `Liability`, `ImportBatch`, `ImportRecord`, `ReconciliationIssue`, `ProviderConnection`, `SyncDevice` e `AuditEvent`.
+Para a V1, o núcleo atual será consolidado em vez de ampliado. `Institution`,
+`Transfer`, `AuditEvent`, `Loan`, `InvestmentPosition`, `Asset`,
+`Liability` e `ProviderConnection` permanecem backlog opcional.
 
 Regras essenciais:
 
@@ -238,25 +261,35 @@ Diagrama e campos: [modelo de dados](docs/data-model.md).
 | GET/POST | `/categories/<id>/editar/`, `/excluir/` | autenticado | editar/excluir categoria |
 | GET/POST | `/transacoes/`, `/transacoes/nova/` | autenticado | listar/criar transações |
 | GET/POST | `/transacoes/<id>/editar/`, `/excluir/` | autenticado | editar/excluir transação |
+| GET/POST | `/transacoes/importar/`, `/exportar-ofx/` | autenticado | importar/exportar OFX |
+| vários | `/contas-fixas/` | autenticado | regras, instâncias, pagamento e reabertura |
+| vários | `/cartoes/` | autenticado | cartões, despesas, faturas, importação, pagamento e reabertura |
 | vários | `/admin/` | staff | Django Admin |
 | GET | `/media/*` | conforme settings | mídia servida pelo Django na configuração atual |
 
 ### 6.2 API privada atual
 
-O prefixo entregue é `/api/v1/`, com 21 rotas para health, login/refresh/logout, dispositivos, household/owners, contas, categorias, transações, resumo, bootstrap, sincronização push/pull e cinco operações privadas de importação OFX. O contrato normativo OpenAPI 3.1.0 versão 1.0.0 está em [`docs/openapi-v1.yaml`](docs/openapi-v1.yaml).
+O prefixo entregue é `/api/v1/`, com 32 rotas para health,
+login/refresh/logout, dispositivos, household/owners, contas, categorias,
+transações, resumo, bootstrap, sincronização push/pull, importação OFX, cartões,
+faturas e contas fixas. O contrato normativo OpenAPI está em
+[`docs/openapi-v1.yaml`](docs/openapi-v1.yaml) e precisa permanecer alinhado a
+esse inventário.
 
 Access tokens duram 15 minutos e refresh tokens 30 dias; ambos são opacos, rotacionados e persistidos somente como digest. Login usa throttle de 5/minuto e refresh 30/minuto. Push aceita de 1 a 100 operações idempotentes com versão otimista e retorna resultados/estado/versão sem cursor. O cliente preserva o cursor anterior e só o avança com o cursor de um pull bem-sucedido, após aplicar atomicamente a página; cada pull retorna até 100 mudanças e tombstones após cursor assinado vinculado ao Lar.
 
-Instituições, cartões/faturas completos, transferências, tags, recorrências,
-orçamentos/metas, empréstimos, investimentos/patrimônio, CSV/outros bancos e
-conciliação continuam fora da API atual. O cliente Flutter consome autenticação,
-bootstrap, recursos de leitura e sync pull; não chama sync push nesta Sprint.
+Instituições, transferências com duas pontas, tags, metas, empréstimos,
+investimentos/patrimônio, CSV/outros bancos e conciliação completa continuam
+fora da API atual. O cliente Flutter usa sync no ledger principal e endpoints
+diretos para cartões e contas fixas.
 
 ### 6.3 Comandos atuais
 
 `manage.py migrate`, `collectstatic`, `runserver`, `test`, `check`,
 `makemigrations --check`, `createsuperuser`, `backup_sqlite`, `backup_to_r2`,
-`run_backup_scheduler`, `audit_household_integrity`, `coverage` e `ruff`. Os
+`run_backup_scheduler`, `purge_import_previews`,
+`run_import_preview_purge_scheduler`, `audit_household_integrity`, `coverage`
+e `ruff`. Os
 scripts de QA foram neutralizados no HEAD; a credencial histórica foi rotacionada
 pelo proprietário no EasyPanel em 2026-08-12.
 
@@ -271,12 +304,15 @@ pelo proprietário no EasyPanel em 2026-08-12.
 ### 7.2 Importação aprovada
 
 - **OFX:** primeira opção para extrato de conta e movimentações quando o banco oferece.
-- **CSV:** suportado por perfis de instituição e mapeamento revisável.
+- **CSV:** adaptador futuro; não implementado.
 - **PDF:** útil para faturas/extratos, mas exige parser específico; não entra no primeiro importador genérico.
 - **XLS/XLSX:** útil para exportações e planilhas existentes; esquema varia por origem.
 - **Manual:** obrigatório para limite, CET, bens ou posições que a fonte não exportar.
 
-Arquivos transacionais normalmente não garantem limite de cartão, empréstimos, investimentos ou patrimônio. A cobertura de Nubank, Inter, Santander e Mercado Pago será testada com arquivos reais anonimizados `[INVESTIGAR]`.
+Arquivos transacionais normalmente não garantem limite de cartão, empréstimos,
+investimentos ou patrimônio. OFX de cartão pode alimentar compras/fatura quando
+a estrutura contém os eventos, mas não autoriza inferir parcelas ou limites
+ausentes. Inter, Santander e Mercado Pago permanecem `[INVESTIGAR]`.
 
 ### 7.3 Automação futura
 
@@ -288,21 +324,17 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 | Severidade | Evidência | Impacto | Tratamento |
 |---|---|---|---|
-| Mitigado externamente | credencial existiu no histórico Git; valores foram removidos do HEAD e a senha foi rotacionada no EasyPanel em 2026-08-12 | reutilização futura do valor antigo ainda seria insegura | não reutilizar; avaliar reescrita destrutiva do histórico separadamente |
-| Resolvido | volume SQLite antes apontava para caminho de arquivo | persistência/boot não confiáveis | Sprint 1 passou a montar `/app/data`; mount, integridade e restart foram validados no EasyPanel real em 2026-08-13 |
-| Parcialmente resolvido | flags e headers de segurança de produção | exposição em produção | settings, proxy confiável e `check --deploy --fail-level WARNING` validados; rate limit persistente de login permanece `[INVESTIGAR]` |
-| Resolvido operacionalmente | ausência de backup real fora do servidor | perda do único disco/host impediria recuperação | SQLite real enviado a bucket R2 privado e restaurado com hash, migrations, auditoria e integridade em 2026-08-12 |
-| Resolvido operacionalmente | job nativo do EasyPanel incompatível com o volume Docker legado | perda de backups automáticos | scheduler supervisionado ativo usa a API do SQLite, confirma o objeto no R2, aplica retenção `14/8/12` e teve restart/idempotência/restauração comprovados em 2026-08-13 |
-| Alto `[INVESTIGAR]` | EasyPanel acompanha `main` sem digest de imagem selecionável registrado | rollback de código pode depender de rebuild de referência mutável | materializar e ensaiar rollback por digest/tag imutável |
-| Alto | SQLite com múltiplos clientes e sincronização futura | concorrência, lock e backup frágil | PostgreSQL incremental |
-| Resolvido no backend e cliente read-only | API privada v1/OpenAPI 1.0.0 e fundação Flutter entregues | escrita Flutter permanece fora do escopo | manter testes de contrato, integração sintética e compatibilidade |
-| Alto | modelo mistura cartão e conta | saldos/faturas incorretos | separar agregados antes da importação completa |
-| Resolvido no piloto | ausência de importação/deduplicação | trabalho manual e dados duplicados | pipeline OFX Nubank idempotente; outras fontes e auditoria de negócio permanecem pendentes |
-| Médio | documentação de arquitetura diz que só `/admin/` existe | onboarding e operação incorretos | documentação atualizada neste PRD |
-| Médio | UI por CDN e assets remotos | indisponibilidade/CSP | bundle local no fallback web |
-| Médio | cálculos no dashboard e propriedade `current_balance` podem causar consultas repetidas | degradação com volume | consultas agregadas/testes de performance |
-| Resolvido | cobertura percentual não estava configurada como gate | regressões invisíveis | CI exige no mínimo 90%; resultado atual 97% |
-| Resolvido | screenshots/relatórios privados estavam versionados | PII e ruído no repositório | artefatos removidos e padrões adicionados ao `.gitignore` |
+| Alto | cartões e contas fixas Flutter usam `double` para dinheiro | arredondamento e divergência de centavos | migrar para minor units/decimal exato antes da release |
+| Alto | CI do `main` falha em Ruff, formato e goldens | release não reproduzível; Windows não é empacotado | ciclo R1 deixa todos os gates verdes |
+| Alto | `core/wsgi.py` executa migration e captura qualquer exceção | web pode iniciar com schema incompatível | migration explícita e fail-fast antes do Supervisor |
+| Alto | sync central cobre só Account/Category/Transaction | cartões/contas fixas não têm a mesma garantia offline | servidor canônico, escrita online e cache de leitura vinculado à sessão |
+| Alto `[INVESTIGAR]` | EasyPanel acompanha `main` sem SHA exposto no health ou digest de rollback registrado | produção/rollback não são verificáveis pela aplicação | health com versão e imagem/tag imutável |
+| Médio | PRD, roadmap, README e instruções descreviam estado anterior | decisões e novas tasks podem duplicar trabalho pronto | auditoria datada e atualização documental |
+| Médio | Web hardcoded dark e 821 cores hex espalhadas | paridade/tema/manutenção frágeis | tokens Casa de Valores 2.0 e migração incremental |
+| Médio | Tailwind, Alpine, Chart.js e fonte vêm de CDN | supply chain, CSP e indisponibilidade | fixar e servir assets locais, sem trocar framework |
+| Médio | cálculos do dashboard podem causar consultas repetidas | degradação com volume | agregação e testes de performance na tela afetada |
+| Mitigado | credencial histórica e backup fora do host | reutilização/perda ainda exigem disciplina operacional | valor rotacionado, R2 privado e restauração ensaiada |
+| Adequado ao escopo | SQLite em uma réplica/um worker | não escala horizontalmente | manter topologia pessoal; PostgreSQL somente por dor real |
 
 ## 9. Riscos de segurança e privacidade
 
@@ -318,19 +350,21 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-Na branch da Sprint 5, 487 testes Django passaram com cobertura acima do gate
-de 90%, e 285 testes Flutter mais duas jornadas integradas Windows passaram. Ruff com a configuração oficial, warnings/deprecations,
-Django check, migrations check, deploy check estrito, format e análise Flutter
-também passaram. Há testes de isolamento por Lar, tokens/dispositivos, reutilização de
+No `main` auditado em 20/08/2026, 526 testes Django e 336 testes Flutter
+não-golden passaram; `flutter analyze`, Django check e migrations check também
+passaram. Entretanto, a CI está vermelha: Ruff tem 7 achados, 17 arquivos Dart
+divergem do formato e 10 de 12 goldens falham. Android e iOS sem assinatura
+compilaram; Windows/MSIX foi bloqueado pelo gate visual. Há testes de isolamento
+por Lar, tokens/dispositivos, reutilização de
 refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI,
 observabilidade, migrations fresh/legadas/rollback/replay, backup consistente,
 gateway R2, retenção, scheduler, concorrência e logs sanitizados.
 
 Sem cobertura comprovada:
 
-- rollback por digest imutável da imagem no EasyPanel real;
+- CI verde no estado atual e rollback por digest imutável no EasyPanel real;
 - concorrência além da topologia suportada de uma réplica/um worker;
-- CSV/outros bancos, cartões/faturas completos e escrita offline Flutter;
+- CSV/outros bancos e escrita offline de cartões/contas fixas;
 - instalação em iPhone físico, assinatura e distribuição iOS;
 - testes end-to-end autenticados no EasyPanel; a prova atual cobre health e login
   público, processos, integridade e backup, sem navegar nos dados financeiros;
@@ -340,7 +374,11 @@ Novos recursos seguirão TDD: teste falha, implementação mínima, refatoraçã
 
 ## 11. Observabilidade atual
 
-As-is: a API emite um log JSON seguro por request, propaga/gera `X-Request-ID` UUID e expõe `/api/v1/health/`. Backup SQLite e auditoria de integridade continuam disponíveis sem PII. Não há métricas, tracing, readiness externo, alertas, rastreamento de erros ou auditoria de eventos financeiros.
+As-is: a API emite log JSON seguro por request, propaga/gera `X-Request-ID`
+UUID e expõe `/api/v1/health/`. O health público responde 200, mas não informa o
+SHA da aplicação. Backup SQLite e auditoria de integridade continuam disponíveis
+sem PII. Não há métricas, tracing, alertas, rastreamento de erros ou auditoria de
+eventos financeiros.
 
 To-be mínimo:
 
@@ -357,22 +395,22 @@ flowchart TB
     Login["Login"] --> Home["Visão geral"]
     Home --> Activity["Movimentações"]
     Home --> Cards["Cartões e faturas"]
-    Home --> Plan["Planejamento"]
-    Home --> Wealth["Patrimônio"]
+    Home --> Bills["Contas fixas"]
+    Home --> Reports["Relatórios"]
     Activity --> Import["Importar e conciliar"]
     Activity --> Detail["Detalhe do lançamento"]
     Cards --> Statement["Detalhe da fatura"]
-    Plan --> Budgets["Orçamentos e recorrências"]
-    Plan --> Goals["Metas e reserva"]
-    Wealth --> Loans["Empréstimos e dívidas"]
-    Wealth --> Investments["Investimentos e bens"]
+    Bills --> BillDetail["Vencimento e pagamento"]
+    Activity --> Budgets["Categorias e orçamentos"]
     Home --> More["Mais"]
     More --> Sources["Contas, fontes e proprietários"]
-    More --> Reports["Relatórios e exportação"]
+    More --> Export["Exportação"]
     More --> Settings["Segurança, dispositivos e backup"]
 ```
 
-Navegação mobile: no máximo cinco destinos, com hierarquia a validar em protótipo. Windows usa rail/sidebar adaptativa preservando os mesmos nomes e fluxos. Especificações: [UX mobile](docs/mobile-ux.md).
+Navegação compacta usa destinos essenciais e `Mais`; Web/Windows usam
+sidebar/rail a partir de 900 px. A nomenclatura e prioridade são comuns, mas a
+geometria respeita a plataforma.
 
 ## 13. Especificação resumida das telas e estados
 
@@ -381,10 +419,10 @@ Navegação mobile: no máximo cinco destinos, com hierarquia a validar em prot�
 - **Movimentações:** busca, filtros por proprietário/conta/período/tipo, agrupamento por data, pendências de categorização.
 - **Importar:** seleção do arquivo, prévia, mapeamento, duplicatas, erros por linha, confirmação e recibo.
 - **Cartões:** limite informado, utilizado, disponível, fatura atual, melhor data, fechamento, vencimento e parcelas. Campo desconhecido aparece como “não informado”.
-- **Planejamento:** orçamento realizado/previsto, recorrências, calendário e metas.
-- **Patrimônio:** ativos, passivos, investimentos, empréstimos e evolução do patrimônio líquido.
-- **Relatórios:** fluxo de caixa, categorias, favorecidos, comparação mensal, exportação.
-- **Configurações:** proprietários, instituições, dispositivos, segurança, backups, fonte futura e tema.
+- **Contas fixas:** regras, ocorrências, vencimentos, pagamento, reabertura e saldo livre.
+- **Relatórios:** fluxo mensal, categorias, owners e indicadores explicáveis disponíveis.
+- **Configurações:** proprietários, instituições, dispositivos, segurança,
+  backups e fonte futura; aparência acompanha o sistema sem seletor manual.
 
 Toda tela deve ter loading, vazio útil, erro recuperável, offline, dado desatualizado, acesso negado e sucesso. Gráficos só entram quando respondem uma pergunta clara.
 
@@ -392,20 +430,22 @@ Toda tela deve ter loading, vazio útil, erro recuperável, offline, dado desatu
 
 | Capacidade | Uso | Permissão/fallback |
 |---|---|---|
-| Arquivos | importar OFX/CSV/PDF/XLSX | seletor nativo; digitação manual como fallback |
+| Arquivos | importar OFX; outros formatos são backlog | seletor nativo; digitação manual como fallback |
 | Câmera | fotografar documento/fatura em fase posterior | só ao acionar; seleção de arquivo como fallback |
 | Biometria | desbloqueio rápido do token local | opt-in; senha como fallback |
 | Push | avisos de sincronização, vencimento e backup | opt-in; central interna como fallback |
 | Share | receber/compartilhar arquivo financeiro/exportação | seletor de arquivo como fallback |
 | Geolocalização | sem necessidade comprovada | não solicitar |
 
-Offline-first:
+Offline por capacidade:
 
 - leitura vem do SQLite local;
-- mudanças entram em outbox com UUID e versão;
+- Account, Category e Transaction usam o ledger local/sync disponível;
+- cartões e contas fixas são servidor-autoritativos e exigem internet para
+  escrita; cache de última leitura é evolução aprovada;
 - sincronização ocorre ao abrir, por ação manual e em segundo plano quando permitido;
 - iOS/Android podem limitar execução em background, portanto “sincronização imediata” não é garantida `[INVESTIGAR]`;
-- importação pesada deve subir o arquivo/manifesto e acompanhar o job;
+- importação OFX envia o arquivo para prévia e confirmação explícita;
 - conflitos são apresentados ao usuário quando não houver regra determinística segura.
 
 ## 15. Autenticação, i18n, acessibilidade e telemetria
@@ -428,27 +468,21 @@ Offline-first:
 
 ## 17. Roadmap em sprints
 
-O roteiro completo, dependências, riscos e critérios de aceite estão em [ROADMAP.md](docs/ROADMAP.md). Ordem resumida:
+O roteiro atual, critérios e riscos estão em [ROADMAP.md](docs/ROADMAP.md). As
+Sprints 0–5 e seus incrementos posteriores entregaram operação, Lar, API/sync,
+OFX, fundação Flutter, contas/transações, cartões/faturas, contas fixas,
+orçamento e relatórios. O fechamento foi reorganizado em:
 
-- [x] Sprint 1: acesso por Lar, responsáveis, backfill e integridade do ledger legado.
-- [ ] Fundação operacional restante: backup externo e automação R2 estão ativos e
-  restaurados; deploy, restart, proxy e smoke público foram provados. Ainda faltam
-  rate limit persistente, alertas e rollback por imagem imutável.
-- [x] Sprint 2: API v1, autenticação e contrato de sincronização — concluída após revisão independente final sem achados.
-- [x] Sprint 3: piloto OFX Nubank, deduplicação, prévia e confirmação atômica.
-- [x] Sprint 4: fundação Flutter concluída; CI comprovou Windows, Android e iOS sem assinatura.
-- [~] Sprint 5: importação OFX no Flutter entregue e validada por testes
-  sintéticos; lista de movimentações, contas, escritas offline e conciliação
-  continuam pendentes.
-- [ ] Sprint 6: cartões, faturas, limites e parcelamentos.
-- [ ] Sprint 7: orçamento, recorrências, calendário e metas.
-- [ ] Sprint 8: empréstimos, financiamentos e dívidas.
-- [ ] Sprint 9: investimentos, bens e patrimônio líquido.
-- [ ] Sprint 10: relatórios, previsões e saúde financeira explicável.
-- [ ] Sprint 11: PostgreSQL, EasyPanel, backup e observabilidade.
-- [ ] Sprint 12: performance, acessibilidade, segurança e testes finais.
-- [ ] Sprint 13: distribuição Windows, Android e iOS.
-- [ ] Sprint 14: piloto opcional do adaptador Pierre/provedor.
+- [~] **R1 — Verdade e estabilização:** documentação concluída nesta task; CI,
+  dinheiro exato e deploy fail-fast pendentes.
+- [ ] **R2 — Fundação Web Casa de Valores 2.0:** tokens, tema, assets e shell.
+- [ ] **R3 — Paridade visual incremental:** uma tela por task.
+- [ ] **R4 — Consistência entre dispositivos:** contrato de maturidade, cache de
+  leitura e provas reais.
+- [ ] **R5 — Release pessoal estável:** EasyPanel, R2 e instaláveis privados.
+
+PostgreSQL, Open Finance, empréstimos, investimentos e lojas públicas passaram
+para backlog opcional e não bloqueiam a V1 pessoal.
 
 ## 18. Quick wins
 
@@ -459,14 +493,14 @@ restauração real off-host em R2 e implementação testada do backup diário R2
 retenção `14/8/12`. Em 2026-08-13, a automação também foi ativada no EasyPanel e
 teve objeto, restart, idempotência e restauração descartável comprovados.
 
-Pendentes:
+Pendentes imediatos:
 
-- Materializar rollback de imagem imutável, configurar rate limit persistente de
-  login e alertar falha/ausência do backup automático.
-- Adicionar hash idempotente e `ImportBatch` antes do primeiro importador.
-- Separar “cartão” de “conta” antes de calcular saldos.
-- Exibir “não informado” em vez de `R$ 0,00` para dados ausentes.
-- Corrigir documentação divergente e padronizar UTF-8.
+- deixar CI verde;
+- migrar dinheiro de cartões/contas fixas Flutter para representação exata;
+- tornar migrations fail-fast e expor versão no health;
+- materializar rollback de imagem imutável;
+- aplicar Casa de Valores 2.0 incrementalmente;
+- exibir “não informado” em vez de `R$ 0,00` para dado realmente ausente.
 
 ## 19. Riscos por eixo
 
@@ -503,14 +537,20 @@ Pendentes:
 - Política de retenção dos arquivos originais.
 - SLA doméstico, mecanismo de rollback por digest e rate limit persistente no
   EasyPanel/Cloudflare.
-- Versão/imagem do PostgreSQL.
-- Estratégia de resolução de conflitos no cliente e retenção de tombstones.
+- Classificação/aprovação visual das diferenças dos 10 goldens atuais.
+- Política de cache de leitura de cartões e contas fixas.
 - Método/custo de distribuição privada no iPhone.
 - Cobertura, preço e regra familiar de Pierre no momento do piloto.
 - Necessidade real de PDF/OCR após medir OFX/CSV.
 
 ## 22. Evidências de auditoria
 
+- O estado do produto no `main` `4810af4`, a CI, a produção pública e a
+  paridade Web/Flutter foram revalidados em 20/08/2026. Evidência:
+  `docs/audits/2026-08-20-product-state-and-design-parity.md`.
+- Nesse SHA, 526 testes Django e 336 Flutter não-golden passaram; Ruff, formato e
+  10 goldens mantêm a CI vermelha. Android/iOS passaram e Windows foi bloqueado
+  antes do build.
 - A Sprint 1 foi mesclada em `origin/main` no commit `20a9c42bc6140fa8576f79b0687420fde283d029`.
 - Branches remotas `final-sprints`, `finapy-pwa` e `fix/easytunnel-deploy` foram auditadas por diff em 2026-08-12. Nenhuma deve ser mesclada ou receber cherry-pick no estado atual; evidências e ideias preserváveis estão em `docs/audits/2026-08-12-remote-branches.md`.
 - O SQLite real do EasyPanel foi enviado a bucket R2 privado e restaurado em cópia descartável em 2026-08-12; hash, migrations, auditoria e integridade passaram. Evidência: `docs/audits/2026-08-12-production-backup-restore.md`.

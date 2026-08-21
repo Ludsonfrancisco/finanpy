@@ -6,7 +6,12 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
 ## Fonte de verdade
 
 - [PRD](../PRD.md): estado atual, produto alvo, riscos e decisões.
-- [Roadmap](ROADMAP.md): sprints, tarefas, critérios de aceite e riscos.
+- [Contexto de produto](../PRODUCT.md): propósito, posicionamento, plataformas e
+  compromissos usados pelas ferramentas de design.
+- [Roadmap](ROADMAP.md): ciclos de fechamento R1–R5, tarefas, critérios de
+  aceite e riscos; sprints antigas permanecem como histórico.
+- [Auditoria do estado e paridade em 20/08/2026](audits/2026-08-20-product-state-and-design-parity.md):
+  inventário real, gates, riscos e comparação Web/Flutter no `main`.
 - [Sprint 1 — Household Ledger](sprints/sprint-1-household-ledger.md): entrega
   concluída e suas evidências.
 - [Sprint 2 — API privada e sincronização](sprints/sprint-2-api-sync.md):
@@ -29,7 +34,8 @@ usam o nome técnico legado **Finanpy** durante a migração incremental.
 - [Importação e sincronização](imports-and-sync.md): arquivos, deduplicação,
   conciliação, offline e provedor futuro.
 - [UX mobile/desktop](mobile-ux.md): jornadas, telas, estados e acessibilidade.
-- [Direção visual](design-system.md): Casa de Valores aprovada e validações de tokens pendentes.
+- [Direção visual](design-system.md): Casa de Valores 2.0, tokens atuais e
+  contrato híbrido de paridade Web/Flutter.
 - [Segurança e operação](security-and-operations.md): ameaças, backup,
   EasyPanel, observabilidade e privacidade.
 - [Runbook EasyPanel](deploy-easypanel.md): implantação, backup e rollback.
@@ -64,4 +70,6 @@ importação manual, do custo, de dois CPFs e da cobertura das instituições.
 - Versões só são exatas quando pinadas ou comprovadas.
 - Mudança de arquitetura exige ADR.
 - Mudanças na direção Casa de Valores dependem de nova aprovação explícita.
+- Web e Flutter compartilham identidade e hierarquia, mas adaptam geometria e
+  interação à plataforma; paridade não significa cópia pixel a pixel.
 - Segredos, CPF, email privado, valores e payload bancário não entram nos docs.

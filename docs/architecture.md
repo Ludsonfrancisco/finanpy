@@ -1,84 +1,77 @@
 # Arquitetura do Lar Finance
 
-## Objetivo
+> Estado revalidado em 20/08/2026 no `main` `4810af4`. O alvo imediato é uma
+> versão pessoal confiável; não há rewrite ou migração obrigatória para
+> PostgreSQL.
 
-Evoluir incrementalmente o monólito Django para uma plataforma financeira
-privada e multiplataforma. O backend está em execução no Linux/EasyPanel com
-SQLite, Supervisor, Gunicorn e scheduler R2 validados em 2026-08-13. Flutter
-permanece como interface futura para iOS, Android e Windows.
+## Visão geral
 
-## Estado atual comprovado
+Lar Finance é um monólito modular Django com duas interfaces:
+
+- Web server-rendered com sessão Django;
+- Flutter para Windows, Android e iOS com API privada e sessão por dispositivo.
+
+SQLite no EasyPanel é a fonte canônica. A topologia suportada é uma réplica e um
+worker Gunicorn. Supervisor inicia web, backup R2 e purge de prévias OFX. O
+cliente Flutter usa Drift para o ledger principal e Secure Storage para tokens.
+
+```mermaid
+flowchart TB
+    WebClient["Navegador"] --> Web["Django CBVs, Forms e Templates"]
+    Flutter["Flutter Windows / Android / iOS"] --> API["DRF /api/v1"]
+    Web --> Domain["Models e serviços de domínio"]
+    API --> Domain
+    Domain --> SQLite[("SQLite persistente")]
+    Flutter --> Drift[("Drift local")]
+    API --> Sync["Delta e idempotência"]
+    Sync --> SQLite
+    Import["Pipeline OFX"] --> Domain
+    Supervisor --> Web
+    Supervisor --> Backup["Scheduler R2"]
+    Supervisor --> Purge["Purge de prévias"]
+    Backup --> R2[("Cloudflare R2 privado")]
+```
+
+## Stack atual
 
 | Camada | Tecnologia |
 |---|---|
-| Linguagem | Python 3.12 |
-| Framework | Django 5.2.13 |
-| Servidor | Gunicorn 23.0.0, um worker no container |
-| Interface | Django Templates e TailwindCSS via CDN |
-| Banco | SQLite em caminho absoluto definido por `SQLITE_PATH` |
-| Autenticação | sessão Django no web; tokens opacos por dispositivo na API v1 |
-| Qualidade | Django TestCase, Coverage 7.13.5 e Ruff 0.15.11 |
-| Infra | Docker/Compose; EasyPanel `v2.33.1`, uma réplica e um worker validados |
+| Backend | Python 3.12, Django 5.2.13 e DRF 3.17.1 |
+| Servidor | Gunicorn 23.0.0, um worker |
+| Banco canônico | SQLite por `SQLITE_PATH` |
+| Web | Django Templates, Tailwind CDN, Alpine CDN e Chart.js CDN |
+| Flutter | Flutter 3.47.0 / Dart 3.13.0 |
+| Estado cliente | Riverpod 3.4.2 |
+| Banco cliente | Drift 2.34.3 / SQLite |
+| Transporte | Dio 5.11.0 e tokens opacos rotativos |
+| Operação | Docker, Supervisor 4.3.0, EasyPanel e R2 |
 
-```mermaid
-flowchart LR
-    Browser["Navegador"] --> Web["Django CBVs e Forms"]
-    ApiClient["Cliente HTTP"] --> API["Django REST /api/v1"]
-    Web --> Session["Sessão Django"]
-    API --> DeviceAuth["Sessão de dispositivo"]
-    Web --> ORM["Django ORM"]
-    API --> ORM
-    ORM --> SQLite[("SQLite")]
-    Gunicorn["Gunicorn"] --> Web
-    Gunicorn --> API
-```
-
-A API v1 e o protocolo de sincronização existem no backend. Não há cliente
-Flutter entregue, fila/worker, cache compartilhado, importador bancário nem
-deploy EasyPanel validado nesta sprint.
-
-## API v1 entregue
-
-O contrato publicado em `docs/openapi-v1.yaml` é a fonte única OpenAPI 3.1 das
-16 rotas atuais:
-
-- saúde: `GET /health/`;
-- autenticação: `POST /auth/login/`, `/auth/refresh/` e `/auth/logout/`;
-- dispositivos: `GET /devices/`, `PATCH /devices/current/` e
-  `POST /devices/{device_uuid}/revoke/`;
-- leitura do Lar: `GET /household/`, `/owners/`, `/accounts/`, `/categories/`,
-  `/transactions/`, `/summary/` e `/bootstrap/`;
-- sincronização: `POST /sync/push/` e `GET /sync/changes/`.
-
-As rotas privadas autenticam uma `DeviceSession` e restringem recursos ao Lar
-da sessão. O push aceita até 100 operações, mantém idempotência por dispositivo
-e `operation_id` e devolve validações/conflitos na posição correspondente do
-lote. O pull devolve até 100 mudanças ordenadas depois de um cursor assinado;
-exclusões são representadas por tombstones. As listas simples de recursos ainda
-não oferecem filtros ou paginação.
-
-## Domínios atuais
+## Módulos Django
 
 | App | Responsabilidade |
 |---|---|
-| `users` e `profiles` | identidade e perfil |
-| `households` | Lar, associações, responsáveis, autorização e auditoria |
-| `accounts` | contas financeiras |
-| `categories` | categorias do Lar |
-| `transactions` | movimentações |
-| `core` | dashboard, configuração, backup e rotas principais |
-| `ai` | instalado, sem comportamento produtivo confirmado `[INVESTIGAR]` |
+| `core` | settings, dashboard, backup e comandos globais |
+| `users`, `profiles` | autenticação por email e perfil |
+| `households` | Lar, membership, owners, autorização e auditoria |
+| `accounts` | contas e saldo inicial |
+| `categories` | categorias e orçamento |
+| `transactions` | receitas, despesas, lançamento rápido e OFX Web |
+| `imports` | lote, prévia, vínculo, deduplicação e confirmação OFX |
+| `cards` | cartões, despesas, faturas, importação e pagamento |
+| `bills` | contas fixas, ocorrências, vencimento e pagamento |
+| `api` | autenticação por dispositivo e 32 rotas privadas/públicas |
+| `sync` | delta/idempotência do ledger principal |
+| `ai` | instalado sem fluxo produtivo comprovado `[INVESTIGAR]` |
 
-## Fronteira de segurança entregue na Sprint 1
+## Fronteira de segurança
 
-`Household` é a unidade de autorização e consolidação. O acesso exige uma
-`HouseholdMembership` ativa. Os responsáveis `self`, `spouse` e `shared`
-classificam a responsabilidade financeira; eles não concedem acesso.
+`Household` é a unidade de autorização e consolidação. Acesso exige
+`HouseholdMembership` ativa. `FinancialOwner` classifica `self`, `spouse` e
+`shared`; não concede acesso.
 
-As views financeiras usam `HouseholdContextMixin` e filtram pelo Lar. Models e
-forms validam coerência entre Lar, usuário legado, conta, categoria e responsável.
-As FKs legadas de usuário usam `PROTECT` para impedir a exclusão acidental do
-livro financeiro.
+Views financeiras devem usar `HouseholdContextMixin`, filtrar pelo Lar e validar
+que conta, categoria, cartão, conta fixa e owner pertencem ao mesmo Lar. FKs
+legadas de usuário usam `PROTECT` quando necessário para rastreabilidade.
 
 ```mermaid
 erDiagram
@@ -89,108 +82,105 @@ erDiagram
     HOUSEHOLD ||--o{ ACCOUNT : contem
     HOUSEHOLD ||--o{ CATEGORY : contem
     HOUSEHOLD ||--o{ TRANSACTION : contem
-    FINANCIAL_OWNER ||--o{ ACCOUNT : responsabiliza
-    FINANCIAL_OWNER ||--o{ TRANSACTION : responsabiliza
-    ACCOUNT ||--o{ TRANSACTION : recebe
-    CATEGORY ||--o{ TRANSACTION : classifica
+    HOUSEHOLD ||--o{ CREDIT_CARD : contem
+    HOUSEHOLD ||--o{ RECURRING_BILL : contem
+    CREDIT_CARD ||--o{ CREDIT_CARD_INVOICE : gera
+    CREDIT_CARD_INVOICE ||--o{ CREDIT_CARD_EXPENSE : agrupa
+    RECURRING_BILL ||--o{ BILL_INSTANCE : gera
 ```
 
-O dashboard consolida os três responsáveis. Um usuário não pode manter mais de
-uma associação ativa, mas o modelo aceita mais de um usuário dentro do mesmo
-Lar. Nesta fase, o casal usará um login compartilhado com sessões independentes
-por dispositivo. A separação do modelo permite adotar dois logins no futuro sem
-migrar os registros financeiros.
+## API e sincronização
 
-## Operação atual
+O OpenAPI em `docs/openapi-v1.yaml` possui 32 paths. A API cobre health,
+autenticação, dispositivos, Lar/owners, ledger, bootstrap, push/pull, OFX,
+cartões/faturas e contas fixas.
 
-- SQLite fica em `/app/data/db.sqlite3` no container.
-- O diretório `/app/data` deve ser volume persistente.
-- Enquanto houver SQLite, operar com uma réplica e um worker.
-- `backup_sqlite` cria uma cópia consistente e verifica sua integridade.
-- `audit_household_integrity` consulta apenas contagens e falha diante de
-  inconsistências.
-- O runbook real do EasyPanel ainda precisa ser validado sem tocar a base real.
+### Ledger sincronizável
 
-## O que será preservado
+`sync/registry.py` registra somente:
 
-- autenticação por email e validadores de senha;
-- Lar, membros e responsáveis financeiros;
-- entidades de conta, categoria e movimentação como base de migração;
-- regras de integridade, suíte Django, Docker e operação documentada;
-- interface web como fallback administrativo durante a transição.
+- Account;
+- Category;
+- Transaction.
 
-## O que não é arquitetura alvo
+Essas entidades usam UUID, versão, mudanças incrementais, tombstones e aplicação
+atômica no Drift. O cliente mantém metadata de sessão para impedir cache de uma
+sessão anterior.
 
-- templates web reutilizados como interface Flutter;
-- sessão/cookie como autenticação mobile;
-- SQLite como banco definitivo para concorrência e sincronização;
-- cartão de crédito representado somente como tipo de conta;
-- scraping bancário ou armazenamento de credenciais dos bancos.
+### Recursos online
 
-## Arquitetura alvo incremental
+Cartões, faturas e contas fixas usam endpoints REST diretos e IDs inteiros. Não
+possuem tabelas Drift nem participação no delta central. O servidor é a
+autoridade; escrita requer internet. O ciclo R4 pode adicionar cache de última
+leitura, sem criar uma segunda outbox.
+
+Essa distinção deve aparecer na UI e na documentação. Não alegar offline-first
+para um recurso apenas porque existe no Flutter.
+
+## Importação
+
+O fluxo OFX limita upload, descarta o arquivo bruto após normalização, cria
+prévia temporária, vincula conta/owner, deduplica e confirma atomicamente. Há
+fluxos Web e Flutter e importação específica de extrato de cartão. Campos não
+presentes no arquivo não são inferidos.
+
+CSV, PDF/OCR, outros bancos e Open Finance permanecem opcionais.
+
+## Operação e observabilidade
+
+- SQLite: `/app/data/db.sqlite3` em volume persistente;
+- uma réplica e um worker enquanto SQLite for canônico;
+- backup consistente e verificado enviado ao R2;
+- retenção R2 `14/8/12` e restauração ensaiada;
+- logs JSON e `X-Request-ID` na API;
+- `/api/v1/health/` sem SHA no estado atual;
+- sem métricas/tracing/alertas externos completos.
+
+### Dívida de inicialização
+
+`core/wsgi.py` executa `migrate` durante o startup Gunicorn e captura a exceção.
+Esse comportamento é fail-open e deve ser substituído no ciclo R1 por:
+
+1. backup/preflight;
+2. auditoria;
+3. migration única e fail-fast;
+4. inicialização do Supervisor somente após sucesso.
+
+## Arquitetura alvo de fechamento
 
 ```mermaid
-flowchart TB
-    subgraph Clients["Clientes Flutter"]
-        IOS["iOS"]
-        Android["Android"]
-        Windows["Windows"]
-        LocalDB[("SQLite local")]
-        Outbox["Fila local e sync"]
-        IOS --> LocalDB
-        Android --> LocalDB
-        Windows --> LocalDB
-        LocalDB <--> Outbox
-    end
-
-    Outbox <--> API["API Django /api/v1"]
-    Web["Web administrativo"] --> Django["Django"]
-    API --> Django
-    Django --> Domain["Serviços de domínio"]
-    Domain --> Postgres[("PostgreSQL")]
-    Domain --> Imports["Importação e conciliação"]
-    Imports --> Files["OFX e CSV"]
-    Provider["Provedor opcional futuro"] --> Imports
+flowchart LR
+    Clients["Web e Flutter"] --> APIWeb["Django Web/API"]
+    APIWeb --> Domain["Domínio modular"]
+    Domain --> Canonical[("SQLite canônico")]
+    FlutterLedger[("Drift ledger")] <--> Sync["Delta principal"]
+    Sync <--> APIWeb
+    OnlineCache["Cache read-only Cards/Bills"] --> FlutterLedger
+    APIWeb --> R2[("Backup R2")]
 ```
 
-### Limites atuais e direção
+Princípios:
 
-- A API controla autenticação de dispositivos, escopo por Lar e serialização.
-- Serviços de domínio concentram regras reutilizáveis por web, API e imports.
-- Importadores convertem fontes para um contrato interno estável.
-- O ledger armazena fatos confirmados; previsões ficam separadas.
-- Um futuro cliente Flutter deverá ler primeiro do banco local e sincronizar pela API.
-- O provedor futuro usa o mesmo pipeline de normalização e deduplicação.
+- evolução incremental, sem rewrite;
+- SQLite permanece enquanto atender uma família/um worker;
+- dinheiro usa Decimal no backend e minor units/exatidão no cliente;
+- conflitos financeiros não são sobrescritos silenciosamente;
+- Web e Flutter seguem Casa de Valores 2.0;
+- tecnologia opcional só entra por dor comprovada.
 
-## Contrato de sincronização do backend
+## Não bloqueia a V1
 
-1. Um cliente envia uma operação com UUID, `operation_id` e versão conhecida.
-2. Uma futura outbox local poderá repetir a mesma operação com segurança.
-3. A API valida membro ativo, Lar, versão e idempotência.
-4. O servidor confirma o resultado e a versão, ou devolve conflito estruturado;
-   a resposta do push não contém cursor.
-5. O cliente preserva o cursor anterior e busca os deltas desde ele.
-6. Só depois de aplicar a página inteira atomicamente o cliente pode persistir o
-   cursor devolvido pelo pull como próximo cursor local.
-7. A resolução de conflito no cliente ainda não foi implementada.
+- PostgreSQL, fila e múltiplas réplicas;
+- escrita offline para cartões/contas fixas;
+- empréstimos, investimentos e patrimônio avançado;
+- Open Finance/Pierre;
+- lojas públicas e telemetria complexa.
 
-Exclusões são emitidas como tombstones no delta. A política de retenção desses
-eventos ainda não foi definida. `updated_at` do dispositivo não decide sozinho
-qual versão vence.
+## Decisões pendentes
 
-## Evolução segura dos dados
-
-- Novas migrations são aditivas e testadas em banco novo e legado.
-- Backfills têm preflight, contagens e rollback documentado.
-- A migração futura de SQLite para PostgreSQL exige backup restaurado em ensaio.
-- Nenhuma migration destrutiva é aplicada automaticamente na base real.
-
-## Limites e pontos para investigar
-
-- escolha e versão dos pacotes Flutter, API e banco local;
-- rate limit persistente, rollback por imagem imutável e SLA do EasyPanel real;
-- experiência de resolução de conflito no cliente;
-- amostras anonimizadas de OFX/CSV das instituições do casal;
-- necessidade de fila/worker após medir importações;
-- função real do app `ai`;
-- método de distribuição privada em iOS, Android e Windows.
+- rollback por imagem/tag imutável;
+- cache de leitura de cartões/contas fixas;
+- retenção de tombstones;
+- rate limit persistente e alertas externos;
+- método de instalação privada no iPhone;
+- função real do app `ai`.

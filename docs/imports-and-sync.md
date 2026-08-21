@@ -4,7 +4,16 @@
 
 O Lar Finance começa com exportação/importação manual porque é a alternativa de menor custo e menor dependência. Quando a experiência estiver confiável, um provedor automático poderá ser conectado sem substituir o ledger, os importadores ou a conciliação.
 
-## Implementação atual: piloto OFX Nubank
+## Implementação atual
+
+Existem dois fluxos OFX relacionados, com destinos diferentes:
+
+1. importação do ledger de conta/cartão para Transaction, com prévia e sync;
+2. importação Web de extrato de cartão para CreditCardExpense/fatura.
+
+Não tratar os dois como o mesmo mecanismo de sincronização.
+
+### Piloto OFX do ledger
 
 O backend aceita OFX BRL estruturalmente compatível com o perfil Nubank testado
 para extrato de conta e cartão (`bank_account` e `credit_card`). O limite é 10 MiB. O servidor calcula
@@ -60,9 +69,17 @@ descarta os bytes assim que o upload termina. Ele não interpreta OFX, não
 deduplica e não cria lançamento local; após a confirmação, o pull existente
 atualiza o cache e a Home.
 
-Fora deste piloto: CSV, outros bancos, Open Finance, limite, fatura futura,
-parcelas, empréstimos, categorização inteligente e conciliação de
-transferências. Campos ausentes não são inferidos.
+Fora deste piloto específico: CSV, outros bancos, Open Finance, limite, fatura
+futura inferida, empréstimos, categorização inteligente e conciliação de
+transferências. Cartões/faturas agora possuem domínio próprio, mas campos
+ausentes no arquivo continuam sem ser inferidos.
+
+### Extrato OFX de cartão
+
+A Web também importa eventos de cartão no módulo `cards`, alocando despesas ao
+ciclo de fatura e evitando pagamentos recebidos/duplicatas conforme as regras do
+serviço. Esse caminho não cria entidade do registro central de sync e deve ser
+reconsultado pelas APIs de cartão nos demais clientes.
 
 ## O que cada fonte pode trazer
 
@@ -153,9 +170,8 @@ Pré-requisitos: limite de tamanho, MIME real, antivírus/validação, nome alea
 
 O mesmo login familiar pode manter sessões independentes no Windows, iPhone e Android. Cada dispositivo é revogável e guarda seu próprio responsável padrão. Uma importação poderá ser iniciada em qualquer plataforma; depois da revisão e confirmação no servidor, o resultado será sincronizado automaticamente para as demais.
 
-O diagrama abaixo representa o fluxo futuro, depois da implementação do cliente
-Flutter e da importação. O servidor atual usa SQLite, uma réplica e um worker. O
-banco central poderá migrar para PostgreSQL no futuro `[INVESTIGAR]`.
+O cliente Flutter e a importação já existem. O servidor usa SQLite, uma réplica e
+um worker; PostgreSQL não bloqueia a V1 pessoal.
 
 ```mermaid
 sequenceDiagram
@@ -179,6 +195,18 @@ cursor anterior, executa o pull e só persiste o cursor devolvido por esse pull
 depois da aplicação atômica de toda a página.
 
 Gatilhos: login, abertura do app, pull-to-refresh, retorno da rede, depois de alteração e background quando o sistema operacional permitir. A interface sempre mostra “Atualizado há...” e oferece sincronização manual.
+
+### Maturidade por recurso
+
+| Recurso | Transporte | Offline atual |
+|---|---|---|
+| Account, Category, Transaction | bootstrap, push/pull, delta e tombstone | cache Drift e sync |
+| Importação confirmada do ledger | API OFX e pull posterior | arquivo exige rede; resultado entra no ledger |
+| CreditCard, Invoice, CardExpense | API REST direta | escrita online; sem cache Drift |
+| RecurringBill, BillInstance | API REST direta | escrita online; sem cache Drift |
+
+O ciclo R4 pode adicionar cache de última leitura a cartões/contas fixas, sem
+prometer mutação offline ou criar outra outbox.
 
 ## Conflitos
 

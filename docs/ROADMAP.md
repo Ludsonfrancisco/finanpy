@@ -1,362 +1,243 @@
-# Roadmap do Lar Finance
+# Roadmap de fechamento do Lar Finance
+
+> Reorganizado em 20/08/2026 a partir do código no `main`, da auditoria técnica
+> e da decisão visual Casa de Valores 2.0. O objetivo é concluir uma versão
+> pessoal confiável, sem expandir escopo por antecipação.
 
 ## Regras de execução
 
-- Sprints não têm prazo fixo; qualidade e integridade financeira valem mais que velocidade.
-- Cada tarefa de código começa por teste que falha.
-- Uma sprint só termina com critérios de aceite, documentação e rollback/backup quando aplicável.
-- `[INVESTIGAR]` precisa virar decisão registrada antes da implementação dependente.
-- Não misturar grandes migrations de dados, troca de banco e nova UI na mesma entrega.
-- Não remover fallback web até Flutter ter paridade validada.
-- Ao compor uma sprint, registrar plano por tarefa, routing e auditoria conforme
-  `docs/ai-model-routing.md`; revalidar modelos e intensidades no ambiente ativo.
+- cada task começa somente após autorização do proprietário;
+- cada task de código começa com teste falhando quando aplicável;
+- ao terminar uma task: verificar, revisar, fazer commit e push e informar o
+  próximo passo de forma objetiva;
+- ao terminar uma sprint: executar a matriz completa, atualizar documentação,
+  fazer commit/push de fechamento e parar para aprovação;
+- integridade financeira vale mais que velocidade;
+- não misturar migration de dados, mudança de deploy e redesenho amplo;
+- não retirar a Web: Web e Flutter continuarão partes do mesmo produto;
+- `[INVESTIGAR]` não vira comportamento por suposição;
+- roteamento de modelo segue `docs/ai-model-routing.md` e deve ser revalidado no
+  ambiente ativo.
 
 ## Definition of Done global
 
-- [ ] testes novos e existentes passam;
-- [ ] lint/check/migrations limpos;
-- [ ] isolamento por lar/proprietário testado;
-- [ ] estados loading/vazio/erro/offline cobertos quando houver UI;
-- [ ] logs sem PII/valores/tokens;
-- [ ] documentação e OpenAPI atualizados;
-- [ ] acessibilidade verificada;
-- [ ] performance medida quando afetada;
-- [ ] backup/rollback validado para mudança de dados/infra;
-- [ ] revisão de segurança concluída.
-- [ ] auditoria de modelos concluída, sem inventar tokens ou disponibilidade.
-
-## Sprint 0 — Contenção, baseline e decisões
-
-Objetivo: tornar o projeto seguro e reproduzível antes de adicionar dados reais.
-
-- [x] rotacionar credenciais expostas e substituir scripts de QA por fixtures;
-- [x] adicionar secret scanning no CI;
-- [x] corrigir o caminho/volume SQLite no Compose e cobrir configuração;
-- [x] desativar signup público e redirecionar `/` para login/dashboard;
-- [x] executar e registrar coverage, Ruff, `check --deploy` e migrations;
-- [x] documentar operação EasyPanel sem segredos;
-- [x] criar backup SQLite consistente e verificar integridade;
-- [x] provar restauração isolada com banco sintético e schema atual;
-- [x] provar restauração off-host do backup real do EasyPanel;
-- [x] codificar e testar backup consistente para o R2 com retenção `14/8/12`;
-- [x] ativar a automação no EasyPanel e provar execução, idempotência, restart e
-  restauração real do objeto gerado;
-- [x] auditar diffs das três branches remotas sem merge automático;
-- [ ] ADR-001 API/autenticação;
-- [ ] ADR-002 PostgreSQL;
-- [ ] ADR-003 Flutter local DB/state;
-- [ ] ADR-004 sync/conflitos;
-- [ ] fixar versões Flutter/backend target em lockfiles;
-- [ ] aprovar política de arquivos importados.
-
-Aceite: nenhum segredo conhecido no HEAD, signup fechado, persistência comprovada, restauração testada e ADRs essenciais aprovados.
-
-Riscos: rotação quebrar acesso atual; correção de volume apontar para base errada; branch remota conter mudança útil. Mitigação: backup, inventário de paths e revisão por diff.
-
-## Sprint 1 — Lar, proprietários e integridade do ledger
-
-Objetivo: representar corretamente “Eu”, “Esposa” e “Lar”.
-
-- [x] testes de `Household`, membership e `FinancialOwner`;
-- [x] migrations e backfill para owner padrão;
-- [x] criar responsáveis “Eu”, “Esposa” e “Conjunto” de forma idempotente;
-- [x] ligar account/category/transaction ao household/owner;
-- [x] adicionar UUID, versão e timestamps de sync;
-- [x] constraints e validações entre household/owner/entidades;
-- [ ] introduzir `Institution` e aliases iniciais;
-- [ ] modelar transferências com duas pontas;
-- [ ] corrigir cálculos que contam transferência como receita/despesa;
-- [x] criar auditoria de integridade do Lar, somente leitura e sem PII;
-- [x] consolidar `Eu`, `Esposa` e `Conjunto` no dashboard web;
-
-Entregue nesta sprint: fronteira por Lar, acesso revogável, responsáveis, backfill reversível, integridade do ledger legado, backup, CI e runbook. UUID/versão das entidades legadas, instituições, transferências, auditoria de eventos e switcher visual permanecem para planos específicos; não são considerados concluídos por associação ao nome da sprint.
-
-Aceite: dados atuais pertencem ao owner padrão, novos dados exigem owner e consolidado não duplica transferências.
-
-Riscos: backfill associar dados à pessoa errada; mudança de saldo. Mitigação: relatório antes/depois e migration reversível.
-
-## Sprint 2 — API v1 e contrato de sincronização
-
-Objetivo: expor o domínio com segurança para Flutter.
-
-Decisão aprovada: um login familiar compartilhado, sessões independentes e revogáveis por dispositivo, responsável padrão `Eu`/`Esposa` por instalação e sincronização automática com outbox offline. Especificação: [login único e sincronização por dispositivo](superpowers/specs/2026-08-10-single-login-device-sync-design.md).
-
-- [x] OpenAPI para login, refresh, logout, dispositivos, recursos e sincronização;
-- [x] testes de autorização por household nos endpoints privados entregues;
-- [x] endpoints de leitura de owners, contas, categorias e transações;
-- [ ] endpoint de instituições depois da introdução do model `Institution`;
-- [ ] paginação por cursor e filtros nas listagens de recursos;
-- [x] idempotency key nas mutações de sincronização;
-- [x] versionamento otimista e resposta de conflito por operação;
-- [x] endpoint delta/tombstones;
-- [x] revogação de dispositivo e refresh token;
-- [x] rate limiting de login/refresh e logs JSON com request ID;
-- [x] teste de contrato e compatibilidade v1 para as 16 rotas atuais;
-- [x] documentação de erros no contrato OpenAPI.
-
-Entregue no backend: API privada `/api/v1`, sessões revogáveis por dispositivo,
-tokens opacos rotativos, bootstrap, leitura dos recursos do Lar, push idempotente,
-pull por cursor, envelope de erro estável, request IDs e contrato
-`docs/openapi-v1.yaml`. Instituições, filtros/paginação das listas de recursos e o
-cliente Flutter permanecem pendentes; nenhum deploy EasyPanel foi comprovado por
-esta entrega.
-
-Aceite: cliente de teste cria/edita/sincroniza dados sem acessar outro household e sem duplicar requisição repetida.
-
-Riscos: auth escolhida inadequada para desktop; conflito complexo. Mitigação: spike/ADR e versão explícita.
-
-## Sprint 3 — Piloto OFX Nubank e deduplicação
-
-Objetivo: reduzir trabalho manual com importação OFX Nubank idempotente, sem
-prometer suporte genérico de CSV ou conciliação completa.
-
-- [ ] coletar fixtures anonimizadas das instituições `[INVESTIGAR]`;
-- [x] models `ImportBatch`, `ImportRecord`, `ImportAccountLink` e `SourceReference`;
-- [x] upload seguro, SHA-256 por Lar, limite de 10 MiB e descarte do OFX bruto;
-- [x] parser OFX BRL estruturalmente compatível com o perfil Nubank de
-  conta/cartão, com testes de encoding/valor/data e limites persistíveis;
-- [ ] framework de perfis CSV versionados;
-- [x] preview acionável por até 23h sem alterar ledger, descarte imediato no
-  cancelamento e purge idempotente de expirados por scheduler independente;
-- [x] mapeamento de owner/account e categoria `Não categorizado` por Lar/tipo;
-- [x] fingerprint/deduplicação por SHA, FITID e avisos, com teste de reimportação;
-- [ ] conciliação de transferências e estornos;
-- [x] confirmação atômica, recibo e eventos de sincronização;
-- [x] cinco endpoints privados de prévia, consulta, vínculo, confirmação e cancelamento;
-- [x] logs/payloads sem OFX bruto, linhas ou dados financeiros;
-- [x] matriz de cobertura do piloto Nubank com fixtures sintéticas.
-
-Entregue: [Sprint 3 — Importação OFX Nubank](sprints/sprint-3-ofx-import.md).
-
-Aceite atendido no piloto: importar duas vezes o mesmo arquivo não duplica; OFX
-inválido não altera o ledger; cancelamento não altera o ledger; confirmação é
-explícita e atômica. CSV, outros bancos e conciliação permanecem pendentes.
-
-Riscos: formatos divergentes e encoding; falso positivo de duplicata. Mitigação: profiles/fixtures e sugestão humana em baixa confiança.
-
-## Sprint 4 — Fundação Flutter e Home Casa de Valores
-
-Objetivo: instalar o primeiro cliente Flutter, provar login/sincronização/cache e entregar uma Home real somente leitura.
-
-Especificação aprovada: [Fundação Flutter e Casa de Valores](superpowers/specs/2026-08-13-lar-finance-flutter-foundation-design.md).
-Plano técnico: [implementação da fundação Flutter](superpowers/plans/2026-08-13-lar-finance-flutter-foundation-implementation.md).
-
-- [x] verificar/instalar Flutter, Android SDK e ferramentas Windows;
-- [x] criar workspace com targets Windows/Android/iOS e fixar versões;
-- [x] implementar arquitetura simples por features e repositories;
-- [x] SQLite local com migrations e atualizações atômicas;
-- [x] API client, timeout, refresh coordenado e retry controlado;
-- [x] secure storage nativo para tokens;
-- [x] login/logout e sessão por dispositivo;
-- [x] sync inicial/incremental e estados offline/stale;
-- [x] shell adaptativo e temas claro/escuro Casa de Valores;
-- [x] Home real somente leitura com `Lar`/`Eu`/`Esposa`;
-- [x] ocultar valores e proteção no app switcher quando suportado;
-- [x] testes unitários, widget, golden e integração;
-- [x] benchmark de abertura <2s com cache;
-- [x] primeiro instalável Windows e build de validação Android;
-- [x] build iOS release sem assinatura comprovado no runner macOS da CI.
-
-Aceite: usuário entra, sincroniza, consulta a Home pelo cache offline e retoma
-com delta; nenhuma escrita offline entra nesta sprint. A CI multiplataforma aprovou
-Linux, Windows/MSIX, Android/APK e macOS/iOS sem assinatura.
-
-Riscos: ferramentas ausentes, pacote sem suporte Windows ou cache local inconsistente. Mitigação: prova do ambiente na primeira task, versões fixadas e testes de migração/atomicidade.
-
-## Sprint 5 — Movimentações, contas e importação no Flutter
+- [ ] escopo da task permaneceu fechado;
+- [ ] testes novos e existentes relevantes passam;
+- [ ] lint, formato, checks e migrations estão limpos;
+- [ ] dinheiro não usa ponto flutuante no domínio;
+- [ ] isolamento por Lar/proprietário está coberto;
+- [ ] loading, vazio, erro, offline e stale estão cobertos quando houver UI;
+- [ ] logs não expõem PII, valores, arquivo bancário ou tokens;
+- [ ] acessibilidade e responsividade foram verificadas;
+- [ ] documentação e OpenAPI refletem o código;
+- [ ] backup/rollback foram avaliados quando há dados ou infraestrutura;
+- [ ] revisão técnica/visual não deixou Critical ou Important aberto;
+- [ ] commit e push concluídos antes de avançar.
+
+## Baseline real em 20/08/2026
+
+- `main` e `origin/main`: `4810af4e67d23d36268b74e9654ead1978e8f707`;
+- origem EasyPanel confirmada como GitHub `main`; health público 200;
+- 20 models Django, 32 migrations e 32 rotas da API;
+- 526 testes Django e 336 testes Flutter não-golden passando;
+- CI vermelha por 7 achados Ruff, 17 arquivos Dart fora do formato e 10 goldens;
+- Android e iOS sem assinatura compilam na CI; Windows foi bloqueado antes do
+  build pelo gate de goldens;
+- auditoria completa:
+  `docs/audits/2026-08-20-product-state-and-design-parity.md`.
+
+## Histórico entregue
+
+| Marco | Estado comprovado |
+|---|---|
+| Sprint 0 — operação e backup | acesso privado, volume SQLite, secret scan, R2 diário e restauração |
+| Sprint 1 — Lar e ledger | Household, memberships, owners e integridade |
+| Sprint 2 — API e sync | autenticação por dispositivo, bootstrap, push/pull, cursors e tombstones |
+| Sprint 3 — OFX backend | prévia, deduplicação, confirmação e purge |
+| Sprint 4 — Flutter | Windows/Android/iOS, Drift, sessão, Home e sync |
+| Sprint 5 — OFX Flutter | seleção, prévia, vínculo e confirmação no cliente |
+| Incrementos posteriores | contas/transações Flutter, cartões/faturas, contas fixas, orçamento, relatórios e redesign Web |
+
+Os documentos específicos dessas entregas permanecem como evidência histórica em
+`docs/sprints/`. Checkboxes antigos não governam mais o trabalho atual.
+
+## R1 — Verdade e estabilização
+
+Objetivo: congelar expansão e recuperar uma base liberável antes do redesenho.
+
+### R1.1 — Fonte única de verdade
+
+- [x] auditar código, produção, CI e interfaces;
+- [x] corrigir inventário de funcionalidades e riscos no PRD;
+- [x] substituir o roadmap antigo por ciclos de fechamento;
+- [x] oficializar Casa de Valores 2.0;
+- [x] alinhar README e instruções de agentes.
+
+### R1.2 — Gates de qualidade
+
+- [ ] corrigir os 7 achados Ruff sem mudança funcional não relacionada;
+- [ ] formatar os 17 arquivos Dart;
+- [ ] classificar as diferenças dos 10 goldens como regressão ou mudança
+  intencional;
+- [ ] atualizar goldens somente após aprovação visual;
+- [ ] provar CI completa verde.
+
+### R1.3 — Dinheiro exato em cartões e contas fixas
+
+- [ ] escrever testes de parsing, serialização e arredondamento;
+- [ ] substituir `double` por minor units/tipo decimal exato no domínio Flutter;
+- [ ] preservar `double` somente em percentuais e animações;
+- [ ] validar contratos backend `Decimal` ↔ Flutter;
+- [ ] regenerar e revisar goldens afetados.
+
+### R1.4 — Deploy fail-fast e versão observável
+
+- [ ] reproduzir falha de migration no fluxo atual;
+- [ ] retirar `migrate` de `core/wsgi.py`;
+- [ ] executar preflight/audit/backup/migration antes de iniciar Supervisor;
+- [ ] abortar deploy quando migration falhar;
+- [ ] expor versão/SHA sem segredo no health;
+- [ ] validar EasyPanel com uma réplica e um worker.
+
+Aceite R1: CI verde, dinheiro recente exato, deploy não inicia com schema inválido
+e documentação corresponde ao código.
 
-Objetivo: tornar o Flutter útil para acompanhamento diário.
-
-- [ ] lista e detalhe de contas com origem/freshness;
-- [ ] lista paginada, busca e filtros;
-- [ ] detalhe/edição/categorização;
-- [x] fluxo de importação OFX no app, com prévia paginada e confirmação
-  explícita; conciliação de transferências e estornos segue pendente;
-- [ ] escritas offline com outbox e conflito demonstrável;
-- [x] visualização adaptativa Windows da importação;
-- [x] loading/vazio/erro/offline na importação; conflito segue pendente;
-- [x] acessibilidade e teclado da importação;
-- [ ] teste com volume realista.
+Riscos: golden esconder regressão real; alteração monetária mudar payload;
+EasyPanel não suportar o hook imaginado. Mitigação: RED/GREEN, fixtures de
+centavos, ensaio em cópia e rollback para imagem anterior.
 
-Entregue: [Sprint 5 — Importação OFX no Flutter](sprints/sprint-5-ofx-flutter-import.md).
-A importação manual pelo app está pronta e testada com dados sintéticos; a
-rotina diária completa ainda depende de listas, edição e escrita offline.
+## R2 — Fundação Web Casa de Valores 2.0
 
-Aceite: rotina diária completa pode ser feita no app sem recorrer ao web, exceto administração avançada documentada.
+Objetivo: criar a mesma linguagem visual do Flutter preservando os elementos Web
+aprovados.
 
-Riscos: dashboard ficar denso ou enganoso. Mitigação: hierarquia validada com dados reais e sem zeros presumidos.
+### R2.1 — Tokens e contrato visual
 
-## Sprint 6 — Cartões, faturas, limites e parcelas
-
-Objetivo: representar crédito sem corromper caixa.
-
-- [ ] models e testes de `CreditCard`, `CardStatement`, `CardTransaction` e payment;
-- [ ] migrar contas `credit` com relatório de exceções;
-- [ ] fechamento/vencimento e competência;
-- [ ] total calculado versus informado;
-- [ ] limite total/usado/disponível com estado “não informado”;
-- [ ] parcelas atuais e futuras sem dupla contagem;
-- [ ] pagamento da fatura conciliado com conta;
-- [ ] estornos, tarifas, juros e pagamento parcial;
-- [ ] importador CSV inicial de cartão com fixture real `[INVESTIGAR instituição]`;
-- [ ] API, Flutter e fallback web mínimo.
+- [ ] criar variáveis CSS para os tokens oficiais claro/escuro;
+- [ ] adicionar teste de paridade token Flutter ↔ Web;
+- [ ] usar stack tipográfica nativa e números tabulares;
+- [ ] centralizar spacing, radius, bordas, elevação e motion;
+- [ ] remover cores estruturais hardcoded do shell.
+
+### R2.2 — Tema e assets
+
+- [ ] seguir `prefers-color-scheme` automaticamente, sem botão;
+- [ ] impedir flash de tema incorreto;
+- [ ] fixar versões e servir Tailwind/Alpine/Chart.js localmente;
+- [ ] remover dependência de Google Fonts;
+- [ ] manter CSP e funcionamento sem CDN externo.
 
-Aceite: compra afeta fatura/limite, pagamento afeta caixa, consolidado não conta ambos como duas despesas.
+### R2.3 — Shell adaptativo
 
-Riscos: formatos de fatura e parcelamento variam; migration ambígua. Mitigação: exceções manuais e dados originais preservados.
+- [ ] sidebar/rail a partir de 900 px;
+- [ ] navegação inferior abaixo de 900 px;
+- [ ] padronizar owner selector, status de atualização e privacidade;
+- [ ] cobrir teclado, foco, 320/375/768/1280 px e escala 200%;
+- [ ] preservar skip link e semântica HTML.
 
-## Sprint 7 — Planejamento, recorrências e metas
-
-Objetivo: sair do histórico e apoiar decisões futuras.
-
-- [ ] recorrências e detecção sugerida;
-- [ ] calendário de entradas, despesas, faturas e parcelas;
-- [ ] orçamento por categoria/owner/lar;
-- [ ] realizado versus previsto;
-- [ ] metas e reserva de emergência;
-- [ ] alertas de vencimento e excesso opt-in;
-- [ ] projeção com níveis confirmado/recorrente/estimado;
-- [ ] regras de categorização explicáveis;
-- [ ] relatórios e testes de virada de mês/timezone.
-
-Aceite: usuário entende compromissos futuros e diferença entre confirmado e estimado.
+Aceite R2: login/shell em claro e escuro pertencem ao mesmo sistema do Flutter,
+sem remover conteúdo financeiro.
 
-Riscos: previsão parecer certeza; recorrência errada. Mitigação: confiança explícita e edição simples.
+Riscos: substituir CDN alterar estilos existentes; tema automático causar flash;
+sidebar/navegação mudar rotas. Mitigação: tokens primeiro, screenshots e rollout
+por shell compartilhado.
 
-## Sprint 8 — Empréstimos, financiamentos e dívidas
+## R3 — Paridade visual incremental
 
-Objetivo: consolidar passivos e custo de crédito.
-
-- [ ] loan/installment models e migrations;
-- [ ] cadastro manual completo com origem/data;
-- [ ] principal, saldo, taxa, CET, prazo e amortização opcionais;
-- [ ] cronograma e pagamentos conciliados;
-- [ ] custo total quando calculável;
-- [ ] cenários de antecipação apenas informativos `[INVESTIGAR fórmula/escopo]`;
-- [ ] importador específico se arquivos reais permitirem;
-- [ ] UI e alertas de próxima parcela;
-- [ ] testes de arredondamento e pagamento parcial.
+Objetivo: convergir tela a tela, sem grande redesign único.
 
-Aceite: dívida manual/importada entra no patrimônio e cronograma sem inventar taxa/CET.
+Cada item é uma task independente:
 
-Riscos: cálculo financeiro incorreto. Mitigação: biblioteca/fórmula validada, golden tests e rótulo de estimativa.
+- [ ] R3.1 Login;
+- [ ] R3.2 Dashboard/Home;
+- [ ] R3.3 Contas e movimentações;
+- [ ] R3.4 Categorias e orçamento;
+- [ ] R3.5 Cartões e faturas;
+- [ ] R3.6 Contas fixas;
+- [ ] R3.7 Importação OFX;
+- [ ] R3.8 Relatórios e perfil.
 
-## Sprint 9 — Investimentos, bens e patrimônio
+Critérios comuns:
 
-Objetivo: visão completa de ativos e passivos.
+- mesma nomenclatura, hierarquia e estado nas plataformas;
+- conteúdo Web mais rico permanece abaixo da hierarquia principal;
+- cerca de 25% menos ornamentação, sem apagar cards/gráficos aprovados;
+- dinheiro pt-BR, exato e tabular;
+- loading, vazio, erro, offline e stale;
+- goldens/screenshots aprovados antes de substituir baseline.
 
-- [ ] classes de investimento e posições;
-- [ ] bens, direitos e outros passivos;
-- [ ] valor, custo, moeda, data e fonte;
-- [ ] snapshots históricos;
-- [ ] patrimônio individual/conjunto;
-- [ ] importação por arquivo quando disponível;
-- [ ] cotações automáticas fora do escopo ou ADR `[INVESTIGAR]`;
-- [ ] UI de composição e evolução;
-- [ ] testes de moeda e data de referência.
-
-Aceite: patrimônio líquido é reproduzível e cada valor mostra data/origem.
-
-Riscos: valores defasados e dupla contagem com contas investimento. Mitigação: freshness e vínculos explícitos.
-
-## Sprint 10 — Relatórios e saúde financeira explicável
+Aceite R3: usuário reconhece imediatamente Web, Windows, Android e iOS como o
+mesmo produto, com composição apropriada a cada plataforma.
 
-Objetivo: transformar dados em orientação transparente.
+Riscos: paridade virar cópia pixel a pixel; reduzir densidade útil da Web;
+alterar tudo de uma vez. Mitigação: uma tela por task e aprovação visual.
 
-- [ ] fluxo de caixa e comparação mensal;
-- [ ] gastos por categoria/favorecido/owner;
-- [ ] comprometimento de renda e cobertura de reserva;
-- [ ] evolução de dívida e patrimônio;
-- [ ] indicadores com fórmula e fontes visíveis;
-- [ ] insights baseados em regras, não diagnóstico opaco;
-- [ ] exportação CSV/PDF `[INVESTIGAR PDF]`;
-- [ ] tabelas alternativas a gráficos;
-- [ ] testes de agregação e privacidade.
+## R4 — Consistência entre dispositivos
 
-Aceite: cada insight pode ser explicado e auditado; nenhum gráfico existe só como decoração.
+Objetivo: tornar explícito o que sincroniza e o que exige internet.
 
-Riscos: interpretação como consultoria. Mitigação: linguagem factual, fórmula e limites explícitos.
+### R4.1 — Contrato de maturidade por recurso
 
-## Sprint 11 — PostgreSQL, EasyPanel, backup e observabilidade
+- [ ] documentar Account/Category/Transaction como ledger offline/delta;
+- [ ] documentar Card/Bill como servidor autoritativo e escrita online;
+- [ ] exibir freshness e indisponibilidade sem fingir sincronização;
+- [ ] atualizar OpenAPI e UX com essa distinção.
 
-Objetivo: produção resiliente no servidor doméstico.
+### R4.2 — Cache de leitura para cartões e contas fixas
 
-- [ ] criar PostgreSQL e usuário/rede dedicados;
-- [ ] ensaiar migração SQLite → PostgreSQL com contagem/checksum;
-- [ ] janela, backup e rollback;
-- [ ] settings por ambiente e secrets;
-- [ ] health/readiness e migrations controladas;
-- [ ] logs JSON e IDs de correlação;
-- [ ] métricas/alertas mínimos;
-- [ ] backup 3-2-1 criptografado;
-- [ ] alertar falha ou ausência do backup R2 automático;
-- [ ] restauração automatizada/ensaiada;
-- [ ] runbooks e inventário EasyPanel;
-- [ ] teste de queda/restart/indisponibilidade.
+- [ ] adicionar snapshot local da última leitura válida;
+- [ ] nunca permitir mutação offline silenciosa nesses módulos;
+- [ ] invalidar/refazer cache após escrita online;
+- [ ] cobrir migração, logout, troca de sessão e dado stale.
 
-Aceite: deploy/restart preservam dados, backup restaura e falhas críticas alertam.
+### R4.3 — Prova entre dispositivos
 
-Riscos: downtime/perda de dados. Mitigação: ensaio com clone, freeze de escrita e rollback.
+- [ ] importar/editar no Windows e ler no Android/iPhone;
+- [ ] editar online no mobile e ler na Web/Windows;
+- [ ] provar offline e reconexão;
+- [ ] validar que nenhum evento duplica.
 
-## Sprint 12 — Qualidade, performance e acessibilidade
+Aceite R4: todo recurso informa claramente origem e atualização; os caminhos
+reais entre dispositivos são reproduzíveis.
 
-Objetivo: preparar uso contínuo sem dívida invisível.
+Riscos: criar segundo mecanismo de sync; cache expor sessão anterior. Mitigação:
+cache somente leitura, vinculado à identidade da sessão, com servidor canônico.
 
-- [ ] coverage gates incrementais por domínio;
-- [ ] E2E de jornadas críticas;
-- [ ] testes de carga/sync/import grande;
-- [ ] profiling de consultas e N+1;
-- [ ] auditoria OWASP/dependências/secrets;
-- [ ] acessibilidade iOS/Android/Windows;
-- [ ] teste de fonte grande, contraste e reduced motion;
-- [ ] caos básico: rede intermitente, token expirado, disco cheio;
-- [ ] revisão de privacidade e retenção;
-- [ ] corrigir defeitos P0/P1.
+## R5 — Release pessoal estável
 
-Aceite: SLOs definidos e alcançados, zero P0/P1 aberto e jornadas críticas automatizadas.
+Objetivo: instalar e usar continuamente sem depender do ambiente de
+desenvolvimento.
 
-Riscos: achar problemas estruturais tarde. Mitigação: gates já existem nos sprints anteriores; esta sprint consolida.
+- [ ] CI completa verde no SHA candidato;
+- [ ] deploy EasyPanel fail-fast e smoke autenticado sanitizado;
+- [ ] backup R2 e restauração do schema candidato;
+- [ ] Windows/MSIX privado testado;
+- [ ] APK Android privado testado;
+- [ ] instalação iPhone por método aprovado `[INVESTIGAR conta Apple]`;
+- [ ] teste das jornadas críticas nos dispositivos reais;
+- [ ] manual curto de instalação/atualização/rollback;
+- [ ] PRD, OpenAPI, README e runbooks finais;
+- [ ] tag de versão pessoal estável.
 
-## Sprint 13 — Distribuição Windows, Android e iOS
+Aceite R5: o proprietário consegue instalar, atualizar, usar e restaurar o Lar
+Finance sem intervenção de desenvolvimento na rotina normal.
 
-Objetivo: instalar de forma repetível nos dispositivos reais.
+Riscos: assinatura iOS/Windows, diferença entre CI e dispositivo, rollback de
+produção. Mitigação: distribuição privada, smoke real e tag/imagem imutável.
 
-- [ ] ícone, nome e bundle IDs próprios;
-- [ ] assinatura Windows `[INVESTIGAR]`;
-- [ ] Android privado e estratégia Play Store `[INVESTIGAR]`;
-- [ ] Apple Developer/TestFlight e custo `[INVESTIGAR]`;
-- [ ] textos de permissão e política de privacidade;
-- [ ] screenshots/metadata depois do design aprovado;
-- [ ] CI de builds e artefatos assinados;
-- [ ] canal de atualização/rollback;
-- [ ] smoke test nos dispositivos do casal;
-- [ ] manual de instalação não técnico.
+## Backlog opcional após uso real
 
-Aceite: versão assinada e atualizável instalada em Windows, iPhone e Android reais.
+Não bloqueiam a V1 pessoal:
 
-Riscos: exigências de loja e certificado. Mitigação: resolver contas/custos antes do início da sprint.
+- PostgreSQL ou múltiplas réplicas;
+- cadastro público, múltiplos lares e cobrança;
+- Open Finance/Pierre;
+- empréstimos e financiamentos completos;
+- investimentos, bens e patrimônio avançado;
+- PDF/OCR e novos formatos além do OFX necessário;
+- escrita offline para cartões e contas fixas;
+- notificações push e telemetria complexa;
+- publicação em lojas públicas.
 
-## Sprint 14 — Automação opcional com provedor
-
-Objetivo: eliminar importação frequente sem quebrar independência.
-
-- [ ] confirmar orçamento total, dois CPFs e sete conexões;
-- [ ] confirmar campos por instituição/produto;
-- [ ] aprovar contrato, privacidade e retenção;
-- [ ] implementar provider port;
-- [ ] OAuth/consent e token vault;
-- [ ] webhook/poll idempotente;
-- [ ] mapear para o mesmo pipeline de importação;
-- [ ] reconciliar provider versus arquivos existentes;
-- [ ] botão revogar/apagar conexão;
-- [ ] piloto com uma instituição antes das sete;
-- [ ] medir confiabilidade por 30 dias `[INVESTIGAR]`;
-- [ ] manter importação manual como fallback.
-
-Aceite: automação não duplica histórico, pode ser revogada e falha sem bloquear o controle manual.
-
-Riscos: fornecedor caro/incompleto, conta individual, dados inconsistentes. Mitigação: piloto pequeno, contrato adapter e saída fácil.
-
-## Ordem de valor
-
-O primeiro marco realmente utilizável termina no Sprint 6: dados corretos, importação, cartões e app sincronizado. Sprints 7 a 10 transformam controle em planejamento abrangente. Infra é tratada desde o Sprint 0 e consolidada no Sprint 11, não adiada integralmente.
+Esses itens só voltam ao roadmap quando houver dor comprovada, fonte de dados
+real, custo aceito e uma especificação aprovada.

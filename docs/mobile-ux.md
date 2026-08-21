@@ -5,12 +5,17 @@
 - Flutter para iOS, Android e Windows.
 - Linguagem cross-platform consistente, respeitando safe areas, navegação, teclado, voltar, sheets e acessibilidade de cada plataforma.
 - Conteúdo financeiro e confiança antes de efeitos visuais.
-- Offline-first, com origem e atualização do dado sempre visíveis.
+- Offline conforme capacidade, com origem e atualização sempre visíveis:
+  ledger principal local; cartões/contas fixas com escrita online.
 - Uma família no mesmo Lar, com um login compartilhado e responsáveis `Eu`, `Esposa` e `Conjunto`.
 - Cada dispositivo possui sessão revogável e escolhe `Eu` ou `Esposa` como padrão; `Conjunto` permanece disponível em cada lançamento.
 - Sem landing e sem cadastro público.
 
-A direção **Casa de Valores** foi aprovada. A Sprint 4 implementará e validará os tokens finais conforme [design-system.md](design-system.md) e a [especificação Flutter](superpowers/specs/2026-08-13-lar-finance-flutter-foundation-design.md).
+A direção **Casa de Valores 2.0** foi aprovada. Web e Flutter compartilham
+identidade, tokens, hierarquia e estados, com composição adaptada. Cards,
+indicadores e gráficos úteis da Web são preservados; tema, precisão, shell e
+comportamento adaptativo do Flutter completam o sistema. Contrato:
+[design-system.md](design-system.md).
 
 ## Arquitetura da informação
 
@@ -20,10 +25,13 @@ A direção **Casa de Valores** foi aprovada. A Sprint 4 implementará e validar
 |---|---|
 | Início | visão do lar, compromissos e atalhos |
 | Movimentações | extrato, busca, filtros, importação e conciliação |
-| Contas | contas; cartões, dívidas, investimentos e bens entram progressivamente |
-| Mais | importação, planejamento, fontes, relatórios, segurança, dispositivos e backup |
+| Contas | contas financeiras e seus saldos |
+| Cartões | cartões, compras, limites e faturas |
+| Mais | contas fixas, importação, relatórios, fontes, segurança e sessão |
 
-No Windows, a barra inferior vira sidebar e detalhes podem usar master-detail. Destinos sem tela entregue não aparecem como controles mortos; a navegação cresce progressivamente.
+No Windows e Web a navegação vira sidebar/rail a partir de 900 px; abaixo disso
+usa navegação inferior. Destinos sem tela entregue não aparecem como controles
+mortos.
 
 ## Fluxos críticos
 
@@ -60,17 +68,19 @@ O primeiro login não exige que o cliente conheça previamente os responsáveis 
 
 ### Início
 
-Ordem recomendada:
+Ordem compartilhada:
 
 1. contexto “Lar / Eu / Esposa”;
-2. patrimônio líquido e data de referência;
-3. caixa disponível e compromissos até próximo recebimento;
-4. faturas e vencimentos próximos;
-5. pendências de importação/conciliação;
-6. tendência curta e explicável;
-7. atalhos contextuais.
+2. freshness/status de atualização;
+3. saldo consolidado/disponível;
+4. compromissos e gasto do período;
+5. movimentações recentes;
+6. faturas, contas fixas e orçamento;
+7. tendências/gráficos explicáveis e atalhos.
 
-Evitar grade de cartões genéricos. Um número sem origem ou data é considerado incompleto.
+Cards Web são preservados quando permitem comparação ou ação; evitar
+box-in-box e cards puramente decorativos. Um número sem origem/data é
+considerado incompleto.
 
 ### Movimentações
 
@@ -95,33 +105,42 @@ bloqueado para prévia vazia, arquivo repetido ou página ainda pendente.
 
 ### Cartões e faturas
 
-Cada cartão mostra proprietário, instituição, final opcional, limite e data de referência. Fatura mostra status, total calculado/informado, fechamento, vencimento, parcelas futuras e pagamento conciliado. “Não informado” substitui zeros artificiais.
+Cada cartão mostra owner, nome, bandeira/final opcional, limite, uso e fatura.
+Fatura mostra status, total calculado, fechamento, vencimento, parcelas e
+pagamento vinculado quando disponível. O módulo está implementado e exige
+internet para escrita; “não informado” substitui zeros artificiais.
 
-### Planejamento
+### Contas fixas e orçamento
 
-Orçamento por mês e categoria, compromissos fixos, calendário de entradas/saídas, metas e reserva. Projeção diferencia confirmado, recorrente e estimado.
+Contas fixas mostram regra, owner, valor, vencimento, status e pagamento.
+Orçamento por categoria compara teto e gasto do período. Escrita de contas
+fixas exige internet no estado atual.
 
-### Empréstimos e dívidas
+### Empréstimos e dívidas — backlog opcional
 
 Saldo devedor, instituição, titular, parcelas pagas/restantes, próxima parcela, taxa/CET quando conhecida e custo total. Não calcular CET ausente a partir de dados insuficientes.
 
-### Investimentos e patrimônio
+### Investimentos e patrimônio — backlog opcional
 
 Ativos e passivos por proprietário/classe, valor e data de referência, origem manual/importada e evolução. Cotação automática está fora do primeiro escopo `[INVESTIGAR]`.
 
 ### Relatórios
 
-Fluxo de caixa, categorias, favorecidos, evolução patrimonial, dívidas e comparação mensal. Gráficos têm tabela/texto alternativo e exportação.
+Fluxo mensal, receitas/despesas, categorias e owners sobre o ledger disponível.
+Gráficos têm legenda/texto alternativo; patrimônio/dívidas são backlog.
 
 ### Configurações
 
-Proprietários, instituições, contas/cartões, categorias/regras, dispositivos, biometria, notificações, tema, servidor, exportação, backup e sessão.
+Proprietários, instituições, contas/cartões, categorias/regras, dispositivos,
+biometria, notificações, servidor, exportação, backup e sessão. Tema acompanha
+o sistema sem seletor manual.
 
 ## Estados globais obrigatórios
 
 - skeleton/loading sem bloquear navegação;
 - vazio com explicação e ação útil;
-- offline com dados locais e fila pendente;
+- offline com dados locais quando o recurso tem cache; online-only informa a
+  indisponibilidade sem fingir sucesso;
 - sincronizando com progresso discreto;
 - desatualizado com timestamp;
 - erro parcial preservando conteúdo conhecido;
@@ -158,7 +177,8 @@ Sem caso de uso aprovado; não solicitar.
 - listas paginadas/virtualizadas;
 - agregações pré-computadas no backend quando necessário;
 - importação não bloqueia a UI;
-- metas técnicas exatas de hardware/rede serão medidas na Sprint 4 `[INVESTIGAR]`.
+- benchmark Windows comprovou abertura com cache abaixo de 2s; novas telas
+  mantêm o mesmo gate.
 
 ## Acessibilidade
 
@@ -188,3 +208,5 @@ Sem caso de uso aprovado; não solicitar.
 - todos os estados têm protótipo;
 - nenhum tom roxo em UI, ilustração, gráfico ou marca;
 - identidade própria, sem copiar logo, tipografia proprietária ou componentes do C6.
+- Web, Windows, Android e iOS são reconhecíveis como o mesmo produto sem copiar
+  a geometria entre plataformas.
