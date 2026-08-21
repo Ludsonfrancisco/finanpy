@@ -11,6 +11,18 @@ from core.settings import BASE_DIR
 class SQLiteDeploymentConfigurationTest(SimpleTestCase):
     def test_supervisor_runs_one_web_worker_and_independent_schedulers(self):
         supervisor = self._supervisor_config()
+        self.assertEqual(
+            {
+                section
+                for section in supervisor.sections()
+                if section.startswith('program:')
+            },
+            {
+                'program:web',
+                'program:backup-scheduler',
+                'program:import-preview-purge',
+            },
+        )
         web_command = shlex.split(supervisor['program:web']['command'])
         scheduler_command = shlex.split(
             supervisor['program:backup-scheduler']['command']
@@ -81,7 +93,11 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
         script_path = Path(BASE_DIR, 'deploy', 'start.sh')
 
         self.assertTrue(script_path.is_file())
-        source = script_path.read_text(encoding='utf-8')
+        script_bytes = script_path.read_bytes()
+        self.assertTrue(script_bytes.startswith(b'#!/bin/sh\n'))
+        self.assertNotIn(b'\r', script_bytes)
+        self.assertTrue(script_bytes.endswith(b'\n'))
+        source = script_bytes.decode('utf-8')
         self.assertEqual(
             [line for line in source.splitlines() if line and not line.startswith('#')],
             [
@@ -104,11 +120,18 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
         dockerfile_lines = Path(BASE_DIR, 'Dockerfile').read_text(
             encoding='utf-8'
         ).splitlines()
-        instructions = [
-            line.strip()
-            for line in dockerfile_lines
-            if line.strip() and not line.lstrip().startswith('#')
-        ]
+        stages = self._docker_stages(dockerfile_lines)
+        self.assertEqual(len(stages), 2)
+        build_instructions, runtime_instructions = stages
+        protected_prefixes = ('ARG APP_VERSION', 'ENV APP_VERSION', 'LABEL ', 'CMD ')
+        self.assertFalse(
+            any(
+                instruction.startswith(protected_prefixes)
+                or instruction == 'RUN chmod 0755 /app/deploy/start.sh'
+                for instruction in build_instructions
+            )
+        )
+        instructions = runtime_instructions
         command_lines = [
             line for line in instructions if line.upper().startswith('CMD ')
         ]
@@ -128,6 +151,19 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
             'RUN chmod 0755 /app/deploy/start.sh',
             instructions,
         )
+        expected_runtime_sequence = [
+            'COPY . .',
+            'ARG APP_VERSION=development',
+            'ENV APP_VERSION=${APP_VERSION}',
+            'LABEL org.opencontainers.image.revision=${APP_VERSION}',
+            'RUN chmod 0755 /app/deploy/start.sh',
+            'CMD ["/app/deploy/start.sh"]',
+        ]
+        for instruction in expected_runtime_sequence[1:]:
+            with self.subTest(instruction=instruction):
+                self.assertEqual(instructions.count(instruction), 1)
+        positions = [instructions.index(item) for item in expected_runtime_sequence]
+        self.assertEqual(positions, sorted(positions))
 
     def test_compose_web_service_inherits_the_image_command(self):
         compose_lines = Path(BASE_DIR, 'docker-compose.yml').read_text(
@@ -143,7 +179,7 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
             indentation=4,
         )
 
-        self.assertNotIn('command', web_service_keys)
+        self.assertTrue({'command', 'entrypoint'}.isdisjoint(web_service_keys))
 
     def test_ci_builds_the_production_image_after_django_checks(self):
         workflow_lines = Path(BASE_DIR, '.github', 'workflows', 'ci.yml').read_text(
@@ -175,8 +211,13 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
         build_step = next(step for step in steps if step['name'] == build_name)
         self.assertEqual(
             build_step['run'],
-            'docker build --tag lar-finance-ci:${{ github.sha }} .',
+            '>-',
         )
+        source = Path(BASE_DIR, '.github', 'workflows', 'ci.yml').read_text(
+            encoding='utf-8'
+        )
+        self.assertIn('--build-arg APP_VERSION=${{ github.sha }}', source)
+        self.assertIn('--tag lar-finance-ci:${{ github.sha }} .', source)
 
     def test_ci_smokes_the_pinned_supervisor_version_after_build(self):
         workflow_lines = Path(BASE_DIR, '.github', 'workflows', 'ci.yml').read_text(
@@ -209,6 +250,76 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
             'test "$(docker run --rm lar-finance-ci:${{ github.sha }} '
             'supervisord --version)" = "4.3.0"',
         )
+
+    def test_ci_smokes_immutable_health_and_all_supervisor_processes(self):
+        source = Path(BASE_DIR, '.github', 'workflows', 'ci.yml').read_text(
+            encoding='utf-8'
+        )
+        required_fragments = (
+            'name: Smoke immutable startup and process topology',
+            'docker volume create lar-finance-ci-data',
+            'trap cleanup EXIT',
+            '--volume lar-finance-ci-data:/app/data',
+            '--env R2_BACKUP_ENDPOINT_URL=https://example.invalid',
+            "'version': os.environ['GITHUB_SHA']",
+            "grep -F 'gunicorn core.wsgi:application' processes.txt",
+            "grep -F 'python manage.py run_backup_scheduler' processes.txt",
+            "grep -F 'python manage.py run_import_preview_purge_scheduler' "
+            'processes.txt',
+        )
+        for fragment in required_fragments:
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, source)
+        self.assertLess(
+            source.index('trap cleanup EXIT'),
+            source.index('docker volume create lar-finance-ci-data'),
+        )
+        self.assertNotIn('r2.cloudflarestorage.com', source)
+
+    def test_publish_job_requires_all_six_quality_jobs_and_release_tag(self):
+        publish = self._workflow_job('publish_image')
+        self.assertEqual(
+            set(publish['needs']),
+            {
+                'django',
+                'secrets',
+                'flutter_checks',
+                'flutter_windows',
+                'flutter_android',
+                'flutter_ios',
+            },
+        )
+        self.assertEqual(
+            publish['if'],
+            "startsWith(github.ref, 'refs/tags/v')",
+        )
+        self.assertEqual(publish['permissions']['packages'], 'write')
+        self.assertEqual(publish['permissions']['contents'], 'read')
+
+        source = Path(BASE_DIR, '.github', 'workflows', 'ci.yml').read_text(
+            encoding='utf-8'
+        )
+        self.assertIn('--build-arg APP_VERSION="${GITHUB_SHA}"', source)
+        self.assertIn(':sha-${GITHUB_SHA}', source)
+        self.assertIn(':${GITHUB_REF_NAME}', source)
+        self.assertIn('password: ${{ secrets.GITHUB_TOKEN }}', source)
+        self.assertNotRegex(source, r'ghp_[A-Za-z0-9]{20,}')
+        self.assertNotRegex(source, r'github_pat_[A-Za-z0-9_]{20,}')
+
+    def test_workflow_job_parser_rejects_job_text_inside_block_scalar(self):
+        workflow_lines = [
+            'jobs:',
+            '  django:',
+            '    steps:',
+            '      - name: Explain',
+            '        run: |',
+            '          publish_image:',
+            '            permissions:',
+            '              packages: write',
+        ]
+
+        with self.assertRaises(ValueError):
+            self._workflow_job('publish_image', lines=workflow_lines)
 
     def test_yaml_step_parser_ignores_list_items_inside_block_scalars(self):
         workflow_lines = [
@@ -257,6 +368,54 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
         return supervisor
 
     @staticmethod
+    def _docker_stages(lines):
+        stages = []
+        current_stage = None
+        for line in lines:
+            instruction = line.strip()
+            if not instruction or instruction.startswith('#'):
+                continue
+            if instruction.upper().startswith('FROM '):
+                current_stage = []
+                stages.append(current_stage)
+            elif current_stage is not None:
+                current_stage.append(instruction)
+        return stages
+
+    @classmethod
+    def _workflow_job(cls, job_name, *, lines=None):
+        if lines is None:
+            lines = Path(BASE_DIR, '.github', 'workflows', 'ci.yml').read_text(
+                encoding='utf-8'
+            ).splitlines()
+        jobs_lines = cls._yaml_mapping_body(lines, key='jobs', indentation=0)
+        try:
+            job_lines = cls._yaml_mapping_body(
+                jobs_lines,
+                key=job_name,
+                indentation=2,
+            )
+        except StopIteration as error:
+            raise ValueError(f'Workflow job not found: {job_name}') from error
+
+        job = cls._yaml_scalar_mapping(job_lines, indentation=4)
+        job['needs'] = cls._yaml_sequence_values(
+            job_lines,
+            key='needs',
+            indentation=4,
+        )
+        permissions_lines = cls._yaml_mapping_body(
+            job_lines,
+            key='permissions',
+            indentation=4,
+        )
+        job['permissions'] = cls._yaml_scalar_mapping(
+            permissions_lines,
+            indentation=6,
+        )
+        return job
+
+    @staticmethod
     def _yaml_mapping_body(lines, *, key, indentation):
         key_line = f'{" " * indentation}{key}:'
         start_index = next(
@@ -285,6 +444,34 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
                 and not line.lstrip().startswith(('#', '- '))
             )
         }
+
+    @classmethod
+    def _yaml_scalar_mapping(cls, lines, *, indentation):
+        result = {}
+        for line in lines:
+            stripped = line.strip()
+            if (
+                len(line) - len(line.lstrip()) == indentation
+                and ':' in stripped
+                and not stripped.startswith(('#', '- '))
+            ):
+                key, value = cls._yaml_key_value(stripped)
+                if value and value not in ('|', '|-', '>', '>-'):
+                    result[key] = cls._yaml_scalar(value)
+        return result
+
+    @classmethod
+    def _yaml_sequence_values(cls, lines, *, key, indentation):
+        body = cls._yaml_mapping_body(lines, key=key, indentation=indentation)
+        item_indentation = indentation + 2
+        return [
+            cls._yaml_scalar(line.strip().removeprefix('- '))
+            for line in body
+            if (
+                len(line) - len(line.lstrip()) == item_indentation
+                and line.strip().startswith('- ')
+            )
+        ]
 
     @classmethod
     def _yaml_sequence_mappings(cls, lines, *, key, indentation):
@@ -330,3 +517,11 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
             key = key[1:-1].replace("''", "'")
 
         return key, value.strip()
+
+    @staticmethod
+    def _yaml_scalar(value):
+        if value.startswith('"') and value.endswith('"'):
+            return json.loads(value)
+        if value.startswith("'") and value.endswith("'"):
+            return value[1:-1].replace("''", "'")
+        return value
