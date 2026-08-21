@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Sequence
 
 
@@ -15,6 +15,45 @@ def build_object_key(prefix: str, backup_date: date) -> str:
         f'{prefix}/backups/{backup_date:%Y/%m}/'
         f'lar-finance-{backup_date:%Y-%m-%d}.sqlite3'
     )
+
+
+def build_deploy_object_key(prefix: str, version: str, now: datetime) -> str:
+    instant = now.astimezone(UTC)
+    stamp = instant.strftime('%Y%m%dT%H%M%S%fZ')
+    return (
+        f'{prefix}/deploy/{version}/{stamp}/'
+        f'{instant:%Y/%m/%d}.sqlite3'
+    )
+
+
+def parse_deploy_object_key(
+    prefix: str,
+    key: str,
+) -> tuple[str, datetime, date] | None:
+    pattern = re.compile(
+        rf'^{re.escape(prefix)}/deploy/'
+        r'(?P<version>[0-9a-f]{40})/'
+        r'(?P<stamp>\d{8}T\d{12}Z)/'
+        r'(?P<year>\d{4})/(?P<month>\d{2})/(?P<day>\d{2})\.sqlite3$'
+    )
+    match = pattern.fullmatch(key)
+    if match is None:
+        return None
+    try:
+        instant = datetime.strptime(
+            match['stamp'],
+            '%Y%m%dT%H%M%S%fZ',
+        ).replace(tzinfo=UTC)
+        backup_date = date(
+            int(match['year']),
+            int(match['month']),
+            int(match['day']),
+        )
+    except ValueError:
+        return None
+    if instant.date() != backup_date:
+        return None
+    return match['version'], instant, backup_date
 
 
 def parse_managed_key(prefix: str, key: str) -> date | None:

@@ -6,13 +6,18 @@ import sys
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import UTC
 from pathlib import Path
 
 from botocore.exceptions import BotoCoreError, ClientError
 from filelock import FileLock, Timeout
 
 from core.backup import backup_sqlite
-from core.backup_catalog import build_object_key, select_retained_keys
+from core.backup_catalog import (
+    build_deploy_object_key,
+    build_object_key,
+    select_retained_keys,
+)
 from core.r2_storage import R2StorageError, RemoteObject
 
 LOCAL_BACKUP_ERRORS = (OSError, ValueError, sqlite3.Error)
@@ -321,3 +326,44 @@ def execute_remote_backup(config, storage, database_path, now) -> BackupOutcome:
 
             deleted = enforce_retention(config, storage)
             return BackupOutcome.created(remote, deleted)
+
+
+def execute_deploy_backup(
+    config,
+    storage,
+    database_path,
+    now,
+    version,
+) -> BackupOutcome:
+    source = Path(database_path).resolve()
+    key = build_deploy_object_key(config.prefix, version, now)
+    backup_date = now.astimezone(UTC).date()
+    lock = FileLock(str(source.parent / '.lar-finance-r2-backup.lock'), timeout=0)
+
+    with _backup_lock(lock):
+        backup_directory = source.parent / 'backups'
+        staging_directory = backup_directory / STAGING_DIRECTORY_NAME
+        cleanup_stale_temporary_backups(backup_directory)
+        cleanup_stale_temporary_backups(staging_directory)
+        with temporary_backup_path(staging_directory) as temporary_path:
+            try:
+                backup_sqlite(source, temporary_path)
+                _, sha256 = file_identity(temporary_path)
+            except LOCAL_BACKUP_ERRORS:
+                raise BackupVerificationError(
+                    'Local SQLite backup could not be verified.',
+                    error_code='copy_failed',
+                    stage='copy',
+                ) from None
+            try:
+                remote = storage.upload_deploy_and_verify(
+                    temporary_path,
+                    key,
+                    backup_date,
+                    sha256,
+                )
+            except REMOTE_OPERATION_ERRORS:
+                raise BackupVerificationError(
+                    'Deploy backup upload could not be verified.'
+                ) from None
+            return BackupOutcome.created(remote, ())

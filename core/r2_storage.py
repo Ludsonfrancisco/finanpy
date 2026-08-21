@@ -7,7 +7,12 @@ from typing import Any, Self
 import boto3
 from botocore.exceptions import ClientError
 
-from core.backup_catalog import CatalogObject, parse_managed_key, retention_labels
+from core.backup_catalog import (
+    CatalogObject,
+    parse_deploy_object_key,
+    parse_managed_key,
+    retention_labels,
+)
 from core.backup_config import R2BackupConfig
 
 SQLITE_CONTENT_TYPE = 'application/vnd.sqlite3'
@@ -36,6 +41,14 @@ class RemoteObject(CatalogObject):
     size: int
     sha256: str
     retention: frozenset[str]
+
+
+@dataclass(frozen=True)
+class DeployRemoteObject:
+    key: str
+    backup_date: date
+    size: int
+    sha256: str
 
 
 class R2Storage:
@@ -135,6 +148,61 @@ class R2Storage:
         if remote != expected:
             raise RemoteVerificationError('Remote backup verification failed.')
         return remote
+
+    def upload_deploy_and_verify(
+        self,
+        path: str | Path,
+        key: str,
+        backup_date: date,
+        sha256: str,
+    ) -> DeployRemoteObject:
+        parsed = parse_deploy_object_key(self.prefix, key)
+        if (
+            parsed is None
+            or parsed[2] != backup_date
+            or SHA256_PATTERN.fullmatch(sha256) is None
+        ):
+            raise RemoteVerificationError('Deploy backup key is invalid.')
+        backup_path = Path(path)
+        size = backup_path.stat().st_size
+        metadata = {
+            'sha256': sha256,
+            'size': str(size),
+            'backup-date': backup_date.isoformat(),
+            'kind': 'deploy',
+        }
+        try:
+            with backup_path.open('rb') as body:
+                self.client.put_object(
+                    Bucket=self.bucket,
+                    Key=key,
+                    Body=body,
+                    ContentType=SQLITE_CONTENT_TYPE,
+                    Metadata=metadata,
+                    IfNoneMatch='*',
+                )
+        except ClientError as error:
+            status = error.response.get('ResponseMetadata', {}).get(
+                'HTTPStatusCode'
+            )
+            code = error.response.get('Error', {}).get('Code')
+            if status == 412 or code == 'PreconditionFailed':
+                raise RemoteObjectConflict(
+                    'A deploy backup already exists for this key.'
+                ) from None
+            raise
+        response = self.client.head_object(Bucket=self.bucket, Key=key)
+        remote_metadata = response.get('Metadata', {})
+        if response.get('ContentLength') != size or remote_metadata != metadata:
+            raise RemoteVerificationError(
+                'Deploy backup verification failed.'
+            )
+        return DeployRemoteObject(
+            key=key,
+            backup_date=backup_date,
+            size=size,
+            sha256=sha256,
+        )
 
     def list_managed(self) -> list[RemoteObject]:
         objects = []
