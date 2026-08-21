@@ -262,6 +262,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'lar_finance.deploy': {
+            'handlers': ['api_stdout'],
+            'level': 'INFO',
+            'propagate': False,
+        },
         'django': {
             'handlers': ['safe_django_stdout'],
             'level': 'WARNING',
