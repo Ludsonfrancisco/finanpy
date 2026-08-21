@@ -6,7 +6,7 @@ from django.test import TestCase
 from accounts.models import Account
 from api.models import DeviceSession
 from api.tokens import issue_session
-from bills.models import RecurringBill
+from bills.models import BillInstance, RecurringBill
 from categories.models import Category
 from households.models import FinancialOwner
 from households.services import ensure_household_for_user, get_financial_owner
@@ -53,7 +53,7 @@ class BillsApiTest(TestCase):
             '/api/v1/bills/',
             {
                 'name': 'Internet Claro',
-                'amount': '120.00',
+                'amount': '120.01',
                 'due_day': 10,
                 'type': 'expense',
                 'category_id': self.category.pk,
@@ -69,7 +69,7 @@ class BillsApiTest(TestCase):
         bill_data = create_res.json()
         bill_id = bill_data['id']
         self.assertEqual(bill_data['name'], 'Internet Claro')
-        self.assertEqual(bill_data['amount'], '120.00')
+        self.assertEqual(bill_data['amount'], '120.01')
 
         # 2. Get list & instances
         list_res = self.client.get('/api/v1/bills/', **self.auth)
@@ -81,12 +81,15 @@ class BillsApiTest(TestCase):
         inst = list_data['instances'][0]
         self.assertEqual(inst['status'], 'pending')
 
-        # 3. Pay instance
+        # Distinguish the explicit payment from the endpoint's nominal default.
+        BillInstance.objects.filter(pk=inst['id']).update(amount=Decimal('120.02'))
+
+        # 3. Pay instance with the explicit 120.01 amount.
         pay_res = self.client.post(
             f'/api/v1/bills/instances/{inst["id"]}/pay/',
             {
                 'account_id': self.account.pk,
-                'paid_amount': '120.00',
+                'paid_amount': '120.01',
                 'paid_date': datetime.date.today().isoformat(),
             },
             content_type='application/json',
@@ -95,12 +98,13 @@ class BillsApiTest(TestCase):
         self.assertEqual(pay_res.status_code, 200)
         paid_inst = pay_res.json()
         self.assertEqual(paid_inst['status'], 'paid')
+        self.assertEqual(paid_inst['amount'], '120.01')
 
         # 4. Get Metrics
         metrics_res = self.client.get('/api/v1/bills/metrics/', **self.auth)
         self.assertEqual(metrics_res.status_code, 200)
         metrics = metrics_res.json()
-        self.assertEqual(metrics['paid_expenses_total'], '120.00')
+        self.assertEqual(metrics['paid_expenses_total'], '120.01')
         self.assertEqual(metrics['pending_expenses_total'], '0.00')
 
         # 5. Reopen instance
@@ -115,12 +119,12 @@ class BillsApiTest(TestCase):
         # 6. Update bill
         patch_res = self.client.patch(
             f'/api/v1/bills/{bill_id}/',
-            {'amount': '130.00'},
+            {'amount': '130.01'},
             content_type='application/json',
             **self.auth,
         )
         self.assertEqual(patch_res.status_code, 200)
-        self.assertEqual(patch_res.json()['amount'], '130.00')
+        self.assertEqual(patch_res.json()['amount'], '130.01')
 
         # 7. Delete bill
         del_res = self.client.delete(f'/api/v1/bills/{bill_id}/', **self.auth)

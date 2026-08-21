@@ -53,7 +53,7 @@ class CardsApiTest(TestCase):
             '/api/v1/cards/',
             {
                 'name': 'XP Visa Infinite',
-                'limit': '10000.00',
+                'limit': '10000.01',
                 'closing_day': 10,
                 'due_day': 17,
                 'color': '#111111',
@@ -65,7 +65,9 @@ class CardsApiTest(TestCase):
             **self.auth,
         )
         self.assertEqual(create_res.status_code, 201)
-        card_id = create_res.json()['id']
+        created_card = create_res.json()
+        card_id = created_card['id']
+        self.assertEqual(created_card['limit'], '10000.01')
 
         # 2. List cards
         list_res = self.client.get('/api/v1/cards/', **self.auth)
@@ -80,7 +82,7 @@ class CardsApiTest(TestCase):
             {
                 'card_id': card_id,
                 'description': 'Headset Gamer',
-                'amount': '300.00',
+                'amount': '0.03',
                 'date': '2026-08-05',
                 'category_id': self.category.pk,
                 'installments_count': 3,
@@ -89,7 +91,12 @@ class CardsApiTest(TestCase):
             **self.auth,
         )
         self.assertEqual(expense_res.status_code, 201)
-        self.assertEqual(expense_res.json()['created_count'], 3)
+        expense_data = expense_res.json()
+        self.assertEqual(expense_data['created_count'], 3)
+        self.assertEqual(
+            [expense['amount'] for expense in expense_data['expenses']],
+            ['0.01', '0.01', '0.01'],
+        )
 
         # 4. Get Card Details and Invoices
         detail_res = self.client.get(
@@ -97,15 +104,37 @@ class CardsApiTest(TestCase):
         )
         self.assertEqual(detail_res.status_code, 200)
         data = detail_res.json()
-        self.assertEqual(data['selected_invoice']['total_amount'], '100.00')
+        self.assertEqual(data['selected_invoice']['total_amount'], '0.01')
         invoice_id = data['selected_invoice']['id']
 
-        # 5. Pay Invoice
+        # Add one cent so the explicit payment differs from the endpoint default.
+        adjustment_res = self.client.post(
+            '/api/v1/cards/expenses/',
+            {
+                'card_id': card_id,
+                'description': 'Ajuste de centavo',
+                'amount': '0.01',
+                'date': '2026-08-06',
+                'category_id': self.category.pk,
+                'installments_count': 1,
+            },
+            content_type='application/json',
+            **self.auth,
+        )
+        self.assertEqual(adjustment_res.status_code, 201)
+        adjusted_detail = self.client.get(
+            f'/api/v1/cards/{card_id}/?month=8&year=2026', **self.auth
+        )
+        self.assertEqual(
+            adjusted_detail.json()['selected_invoice']['total_amount'], '0.02'
+        )
+
+        # 5. Pay Invoice with an explicit amount instead of the 0.02 default.
         pay_res = self.client.post(
             f'/api/v1/cards/invoices/{invoice_id}/pay/',
             {
                 'account_id': self.account.pk,
-                'paid_amount': '100.00',
+                'paid_amount': '0.01',
                 'payment_date': '2026-08-17',
             },
             content_type='application/json',
@@ -113,6 +142,7 @@ class CardsApiTest(TestCase):
         )
         self.assertEqual(pay_res.status_code, 200)
         self.assertEqual(pay_res.json()['status'], 'paid')
+        self.assertEqual(pay_res.json()['paid_amount'], '0.01')
 
         # 6. Reopen Invoice
         reopen_res = self.client.post(
@@ -126,12 +156,12 @@ class CardsApiTest(TestCase):
         # 7. Update Card
         patch_res = self.client.patch(
             f'/api/v1/cards/{card_id}/',
-            {'limit': '15000.00'},
+            {'limit': '15000.01'},
             content_type='application/json',
             **self.auth,
         )
         self.assertEqual(patch_res.status_code, 200)
-        self.assertEqual(patch_res.json()['limit'], '15000.00')
+        self.assertEqual(patch_res.json()['limit'], '15000.01')
 
         # 8. Archive Card
         del_res = self.client.delete(f'/api/v1/cards/{card_id}/', **self.auth)

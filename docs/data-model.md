@@ -106,6 +106,8 @@ Contas fixas também usam IDs inteiros e API direta, sem delta central/Drift.
 - owner pertence ao mesmo Lar da entidade;
 - conta, categoria, cartão e conta fixa não atravessam Lar;
 - dinheiro persistido no backend é Decimal com duas casas;
+- dinheiro de Cards/Bills no Flutter usa minor units inteiros e contratos HTTP
+  com strings decimais exatas de duas casas;
 - limite, despesa de cartão e conta fixa exigem valor positivo;
 - uma fatura é única por cartão/mês/ano;
 - uma instância é única por regra/mês/ano;
@@ -116,8 +118,6 @@ Contas fixas também usam IDs inteiros e API direta, sem delta central/Drift.
 
 ## Dívidas atuais
 
-- Flutter Cards/Bills representa quantias com `double`; migrar para minor units
-  ou decimal exato no ciclo R1;
 - cartões e contas fixas não possuem UUID, versão, tombstone ou cache Drift;
 - não existe `Institution` normalizada;
 - transferência não possui duas pontas explícitas;
@@ -126,7 +126,8 @@ Contas fixas também usam IDs inteiros e API direta, sem delta central/Drift.
 
 ## Evolução aprovada para a V1
 
-1. corrigir precisão monetária no Flutter sem migration destrutiva do backend;
+1. manter a precisão monetária já corrigida no Flutter sem migration destrutiva
+   do backend;
 2. manter servidor como autoridade de Cards/Bills;
 3. adicionar cache somente leitura desses módulos se necessário;
 4. preservar o ledger atual e suas migrations;

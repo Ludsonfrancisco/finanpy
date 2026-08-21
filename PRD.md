@@ -324,8 +324,6 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 | Severidade | Evidência | Impacto | Tratamento |
 |---|---|---|---|
-| Alto | cartões e contas fixas Flutter usam `double` para dinheiro | arredondamento e divergência de centavos | migrar para minor units/decimal exato antes da release |
-| Alto | CI do `main` falha em Ruff, formato e goldens | release não reproduzível; Windows não é empacotado | ciclo R1 deixa todos os gates verdes |
 | Alto | `core/wsgi.py` executa migration e captura qualquer exceção | web pode iniciar com schema incompatível | migration explícita e fail-fast antes do Supervisor |
 | Alto | sync central cobre só Account/Category/Transaction | cartões/contas fixas não têm a mesma garantia offline | servidor canônico, escrita online e cache de leitura vinculado à sessão |
 | Alto `[INVESTIGAR]` | EasyPanel acompanha `main` sem SHA exposto no health ou digest de rollback registrado | produção/rollback não são verificáveis pela aplicação | health com versão e imagem/tag imutável |
@@ -473,8 +471,8 @@ Sprints 0–5 e seus incrementos posteriores entregaram operação, Lar, API/syn
 OFX, fundação Flutter, contas/transações, cartões/faturas, contas fixas,
 orçamento e relatórios. O fechamento foi reorganizado em:
 
-- [~] **R1 — Verdade e estabilização:** documentação concluída nesta task; CI,
-  dinheiro exato e deploy fail-fast pendentes.
+- [~] **R1 — Verdade e estabilização:** documentação, CI e dinheiro exato estão
+  concluídos; deploy fail-fast e versão observável permanecem pendentes.
 - [ ] **R2 — Fundação Web Casa de Valores 2.0:** tokens, tema, assets e shell.
 - [ ] **R3 — Paridade visual incremental:** uma tela por task.
 - [ ] **R4 — Consistência entre dispositivos:** contrato de maturidade, cache de
@@ -489,14 +487,13 @@ para backlog opcional e não bloqueiam a V1 pessoal.
 Concluídos: remoção de PII do HEAD, secret scanning, correção do volume
 SQLite, remoção de signup/landing, criação do Lar e responsáveis, backup
 consistente, auditoria de integridade, rotação externa da credencial histórica,
-restauração real off-host em R2 e implementação testada do backup diário R2 com
-retenção `14/8/12`. Em 2026-08-13, a automação também foi ativada no EasyPanel e
-teve objeto, restart, idempotência e restauração descartável comprovados.
+restauração real off-host em R2, implementação testada do backup diário R2 com
+retenção `14/8/12`, CI completa verde e dinheiro exato no Flutter para cartões e
+contas fixas. Em 2026-08-13, a automação também foi ativada no EasyPanel e teve
+objeto, restart, idempotência e restauração descartável comprovados.
 
 Pendentes imediatos:
 
-- deixar CI verde;
-- migrar dinheiro de cartões/contas fixas Flutter para representação exata;
 - tornar migrations fail-fast e expor versão no health;
 - materializar rollback de imagem imutável;
 - aplicar Casa de Valores 2.0 incrementalmente;

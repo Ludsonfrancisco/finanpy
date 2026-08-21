@@ -75,20 +75,20 @@ Objetivo: congelar expansão e recuperar uma base liberável antes do redesenho.
 
 ### R1.2 — Gates de qualidade
 
-- [ ] corrigir os 7 achados Ruff sem mudança funcional não relacionada;
-- [ ] formatar os 17 arquivos Dart;
-- [ ] classificar as diferenças dos 10 goldens como regressão ou mudança
+- [x] corrigir os 7 achados Ruff sem mudança funcional não relacionada;
+- [x] formatar os 17 arquivos Dart;
+- [x] classificar as diferenças dos 10 goldens como regressão ou mudança
   intencional;
-- [ ] atualizar goldens somente após aprovação visual;
-- [ ] provar CI completa verde.
+- [x] manter ou atualizar goldens somente após aprovação visual;
+- [x] provar CI completa verde.
 
 ### R1.3 — Dinheiro exato em cartões e contas fixas
 
-- [ ] escrever testes de parsing, serialização e arredondamento;
-- [ ] substituir `double` por minor units/tipo decimal exato no domínio Flutter;
-- [ ] preservar `double` somente em percentuais e animações;
-- [ ] validar contratos backend `Decimal` ↔ Flutter;
-- [ ] regenerar e revisar goldens afetados.
+- [x] escrever testes de parsing, serialização e arredondamento;
+- [x] substituir `double` por minor units/tipo decimal exato no domínio Flutter;
+- [x] preservar `double` somente em percentuais, animações e geometria;
+- [x] validar contratos backend `Decimal` ↔ Flutter;
+- [x] provar que os 12 goldens permanecem inalterados.
 
 ### R1.4 — Deploy fail-fast e versão observável
 
