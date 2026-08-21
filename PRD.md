@@ -326,9 +326,9 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 | Severidade | Evidência | Impacto | Tratamento |
 |---|---|---|---|
-| Mitigado no código; validação operacional aberta | o entrypoint executa `prepare_deploy` antes do Supervisor | falha de configuração, backup, migration, auditoria ou static não inicia processos | publicar a imagem imutável e validar no EasyPanel na Task 7 |
+| Mitigado no código; validação operacional aberta | o entrypoint executa `prepare_deploy` antes do Supervisor | falha de configuração, backup, migration, auditoria ou static não inicia processos | publicar a tag versionada, registrar o digest OCI e validar no EasyPanel na Task 7 |
 | Alto | sync central cobre só Account/Category/Transaction | cartões/contas fixas não têm a mesma garantia offline | servidor canônico, escrita online e cache de leitura vinculado à sessão |
-| Alto | o health e a tag GHCR têm contrato por SHA, mas a tag não foi publicada nem selecionada no EasyPanel | produção/rollback ainda não foram validados para o candidato | publicar `sha-<40-char-sha>` e ensaiar rollback manual na Task 7 |
+| Alto | o health e a tag GHCR têm contrato por SHA, mas a tag não foi publicada nem seu digest resolvido/selecionado no EasyPanel | produção/rollback ainda não foram validados para o candidato | publicar `sha-<40-char-sha>`, registrar o digest OCI e ensaiar rollback manual na Task 7 |
 | Médio | PRD, roadmap, README e instruções descreviam estado anterior | decisões e novas tasks podem duplicar trabalho pronto | auditoria datada e atualização documental |
 | Médio | Web hardcoded dark e 821 cores hex espalhadas | paridade/tema/manutenção frágeis | tokens Casa de Valores 2.0 e migração incremental |
 | Médio | Tailwind, Alpine, Chart.js e fonte vêm de CDN | supply chain, CSP e indisponibilidade | fixar e servir assets locais, sem trocar framework |
@@ -363,7 +363,7 @@ gateway R2, retenção, scheduler, concorrência e logs sanitizados.
 
 Sem cobertura comprovada:
 
-- tag GHCR publicada e rollback por SHA imutável no EasyPanel real;
+- tag GHCR publicada, associação tag→digest registrada e rollback por digest no EasyPanel real;
 - concorrência além da topologia suportada de uma réplica/um worker;
 - CSV/outros bancos e escrita offline de cartões/contas fixas;
 - instalação em iPhone físico, assinatura e distribuição iOS;
@@ -461,8 +461,9 @@ Offline por capacidade:
 ## 16. CI/CD e publicação
 
 - GitHub Actions para lint, testes Django, migrations, segurança de dependências, testes Flutter e builds por plataforma.
-- Imagens do backend usam o contrato imutável
-  `ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`. O entrypoint
+- Imagens do backend usam a tag versionada/controlada
+  `ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`; a identidade
+  imutável é o digest OCI que a Task 7 deve resolver e registrar. O entrypoint
   faz preflight, backup opcional, migration, auditoria e `collectstatic` antes
   de iniciar o Supervisor; a publicação e o deploy reais aguardam a Task 7.
 - Windows: MSIX piloto gerado com certificado de teste; distribuição ainda exige
@@ -502,7 +503,8 @@ objeto, restart, idempotência e restauração descartável comprovados.
 
 Pendentes imediatos:
 
-- publicar e selecionar a tag GHCR imutável do SHA candidato;
+- publicar a tag GHCR versionada do SHA candidato, resolver o digest OCI e
+  selecionar por digest quando suportado;
 - materializar e ensaiar o rollback manual para a imagem anterior;
 - validar preflight, topologia e health no EasyPanel sem sobrescrever o
   entrypoint;

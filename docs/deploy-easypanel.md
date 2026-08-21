@@ -32,8 +32,8 @@ Estado dos gates operacionais, sem registrar segredos:
   `2584fa7db5e9ee9fa158cdfce54d3b2b24ef4a9d`, construiu a imagem e confirmou
   health com o SHA e os três processos esperados.
 - [ ] A publicação GHCR foi pulada no push de branch. A Task 7 deve publicar a
-  tag `sha-<40-char-sha>`, selecionar o candidato no EasyPanel e provar o health
-  externo com o mesmo SHA.
+  tag versionada/controlada `sha-<40-char-sha>`, resolver seu digest OCI,
+  selecionar o candidato no EasyPanel e provar o health externo com o mesmo SHA.
 - [ ] A Task 7 deve ensaiar rollback para a imagem anterior e confirmar rate
   limit persistente para `POST /login/`.
 
@@ -60,7 +60,7 @@ Na versão instalada `v2.33.1`, os mounts e jobs ficam em `Storage`, os scripts 
 `Scripts`, o console no botão `Console` do serviço e os provedores externos em
 `Settings > Storage Providers`. Uma réplica sem sobreposição foi comprovada. Ainda
 é necessário registrar o espaço livre antes da mudança, a ordem de migrations e o
-rollback por digest/tag imutável.
+rollback por digest OCI. Tags do registry não são tratadas como imutáveis.
 
 Não habilite autoscaling, rolling deploy com duas réplicas simultâneas ou mais de um
 worker enquanto o banco for SQLite. Se esse requisito deixar de ser aceitável, a
@@ -99,20 +99,21 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS=<True somente se todos os subdomínios usarem HTT
 SECURE_HSTS_PRELOAD=<True somente após decisão explícita de preload>
 ```
 
-Para o backup automático, cadastre também as sete variáveis abaixo. Preencha os
-dois valores secretos somente no secret store; nunca os copie para terminal, Git,
-logs, tickets ou relatórios.
+Para o backup automático, cadastre também estas sete variáveis, sem copiar seus
+valores para terminal, Git, logs, tickets ou relatórios:
 
 ```text
-R2_BACKUP_ENDPOINT_URL=https://<account-id>.r2.cloudflarestorage.com
-R2_BACKUP_BUCKET=lar-finance-backups
-R2_BACKUP_PREFIX=production
-R2_BACKUP_TIME=03:00
-R2_BACKUP_TIME_ZONE=America/Sao_Paulo
+R2_BACKUP_ENDPOINT_URL
+R2_BACKUP_ACCESS_KEY_ID
+R2_BACKUP_SECRET_ACCESS_KEY
+R2_BACKUP_BUCKET
+R2_BACKUP_PREFIX
+R2_BACKUP_TIME
+R2_BACKUP_TIME_ZONE
 ```
 
 Cadastre `R2_BACKUP_ACCESS_KEY_ID` e `R2_BACKUP_SECRET_ACCESS_KEY` como campos
-secretos separados, sem expor os valores na visualização ou nos logs do deploy.
+secretos, sem expor os valores na visualização ou nos logs do deploy.
 
 Use token Cloudflare R2 com permissão **Object Read & Write** limitada apenas ao
 bucket privado `lar-finance-backups`. Ela é necessária para listar, ler, criar e
@@ -160,8 +161,23 @@ proteção equivalente e persistente.
 
 Execute em uma janela de manutenção, antes de alterar o banco:
 
-1. Registre a versão atual e a nova versão imutável da imagem no formato
-   `ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`.
+1. Registre a versão atual e a tag versionada/controlada da nova imagem no
+   formato `ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`.
+   A Task 7 deve resolver o digest OCI publicado. Se o EasyPanel aceitar
+   referência por digest, use
+   `ghcr.io/ludsonfrancisco/finanpy@sha256:<digest de 64 hex>`; se não aceitar,
+   registre a associação tag→digest e aborte se ela mudar na verificação feita
+   imediatamente antes ou depois do deploy.
+
+   Consulte o digest publicado sem fazer pull ou alterar o registry:
+
+   ```sh
+   docker buildx imagetools inspect \
+     'ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>'
+   ```
+
+   Registre o campo `Digest: sha256:<64 hex>` em local operacional seguro. A tag
+   sozinha não é prova de identidade imutável.
 2. Confirme uma réplica, um worker, o mount `/app/data` e o caminho absoluto do
    banco. Não imprima variáveis secretas.
 3. Confirme espaço livre suficiente para o banco ativo, o backup e a reconstrução
@@ -258,6 +274,9 @@ backup recém-gerado:
    logs ou documentação.
 
 Um ensaio antigo ou feito com outro backup/hash não autoriza o deploy atual.
+Na Task 7, inicie também a imagem anterior somente contra essa restauração
+descartável e registre o digest OCI, health e auditoria. O fallback local de
+21/08/2026 com `backup_sqlite` e `runserver` não substitui esse ensaio.
 
 ## Sequência de deploy
 
@@ -266,7 +285,10 @@ Um ensaio antigo ou feito com outro backup/hash não autoriza o deploy atual.
    disponíveis sem imprimir valores.
 3. Confirme um backup externo verificável e conclua o ensaio na restauração
    descartável. Preserve o objeto R2 selecionado.
-4. Selecione a imagem candidata pela tag GHCR imutável `sha-<40-char-sha>`.
+4. Selecione a imagem candidata pelo digest OCI registrado. Se a versão do
+   EasyPanel não aceitar referência por digest, use a tag versionada/controlada
+   `sha-<40-char-sha>` somente após confirmar a associação tag→digest e repita a
+   confirmação depois do startup; aborte se os digests diferirem.
 5. Configure exatamente uma réplica e não sobrescreva `ENTRYPOINT`, `CMD` ou
    command no EasyPanel. O entrypoint da imagem executa automaticamente:
 
@@ -302,7 +324,7 @@ Registre apenas status e identificadores técnicos, nunca conteúdo financeiro:
   `integrity_status=ok`;
 - `GET /api/v1/health/` responde HTTP 200 com exatamente `status`, `api_version`
   e `version`; `status=ok`, `api_version=v1` e `version` coincide com o SHA da
-  tag selecionada;
+  tag versionada associada ao digest selecionado;
 - a regra de rate limit devolve `429` após o limite em teste controlado;
 - logs não contêm senha, corpo de login, cookies ou segredos;
 - após um restart controlado, o mesmo arquivo em `/app/data/db.sqlite3` continua
@@ -321,28 +343,236 @@ chave única do dia e restart idempotente. Para imports, confirme o evento
 
 O caminho prioritário é **parar escritas, voltar para a imagem anterior compatível
 e restaurar o backup verificado**. Não sobrescreva o banco enquanto algum processo
-Django ou Gunicorn estiver aberto.
+Django, Gunicorn ou scheduler estiver aberto. Os comandos abaixo são um roteiro
+para a Task 7; não foram executados nesta Task 6.
 
-1. Ative ou mantenha manutenção e pare a réplica candidata.
-2. Preserve o banco que falhou com nome separado para diagnóstico, sem substituir
-   o backup pré-deploy.
-3. Confirme tamanho e SHA remoto do objeto escolhido; baixe e verifique uma cópia
-   em diretório descartável, incluindo `PRAGMA integrity_check`, sem excluir nem
-   sobrescrever o objeto R2.
-4. Com todos os processos ainda parados, restaure a cópia verificada no path de
-   produção com as permissões do usuário do container.
-5. Selecione a imagem anterior pela tag `sha-<40-char-sha>` e inicie uma única
-   réplica com um worker, preservando seu entrypoint.
-6. Execute checks e auditoria compatíveis com o schema restaurado, depois repita os
-   smoke checks antes de liberar tráfego.
-7. Registre motivo, horários, imagens, hash do backup e resultados, sem dados
-   pessoais ou segredos.
+1. Ative ou mantenha manutenção no EasyPanel, pare a única réplica candidata e
+   registre o horário e o estado `Stopped`. Não prossiga até não existir container
+   gravador em execução.
+2. Pelo caminho R2 documentado, execute `HeadObject`, registre `ContentLength` e a
+   metadata SHA em local operacional seguro e baixe sem alterar o objeto. Grave o
+   download diretamente como `/app/data/rollback-staging/restore.sqlite3`: ele
+   fica fora do path ativo, mas no mesmo filesystem para permitir promoção
+   atômica. Não use `/app/data/db.sqlite3` como destino do download. Na sessão
+   one-off, use as sete variáveis R2 do secret store, defina apenas a chave lógica
+   selecionada e execute:
+
+   ```sh
+   set -eu
+   export R2_RESTORE_KEY='<chave lógica do objeto R2 selecionado>'
+   export STAGE_DIR='/app/data/rollback-staging'
+   export STAGED_DB='/app/data/rollback-staging/restore.sqlite3'
+
+   python - <<'PY'
+   import hashlib
+   import os
+   import re
+   import sqlite3
+   import stat
+   from pathlib import Path
+
+   import boto3
+
+   def require(condition, message):
+       if not condition:
+           raise SystemExit(message)
+
+   data_dir = Path('/app/data')
+   stage_dir = Path(os.environ['STAGE_DIR'])
+   staged = Path(os.environ['STAGED_DB'])
+   key = os.environ['R2_RESTORE_KEY']
+   require(data_dir.is_dir() and not data_dir.is_symlink(), 'unsafe data path')
+   require(data_dir.resolve(strict=True) == data_dir, 'data path changed')
+   require(stage_dir == data_dir / 'rollback-staging', 'unexpected stage path')
+   require(staged == stage_dir / 'restore.sqlite3', 'unexpected staged DB path')
+   require(key and '\n' not in key and '\r' not in key, 'invalid R2 key')
+   if not stage_dir.exists():
+       stage_dir.mkdir(mode=0o700)
+   require(stage_dir.is_dir() and not stage_dir.is_symlink(), 'unsafe stage dir')
+   require(stage_dir.resolve(strict=True) == stage_dir, 'stage path changed')
+   require(os.stat(stage_dir).st_uid == os.geteuid(), 'stage dir owner mismatch')
+   require(stat.S_IMODE(os.stat(stage_dir).st_mode) == 0o700, 'unsafe stage mode')
+   require(not staged.exists() and not staged.is_symlink(), 'staged DB exists')
+
+   client = boto3.client(
+       's3',
+       endpoint_url=os.environ['R2_BACKUP_ENDPOINT_URL'],
+       aws_access_key_id=os.environ['R2_BACKUP_ACCESS_KEY_ID'],
+       aws_secret_access_key=os.environ['R2_BACKUP_SECRET_ACCESS_KEY'],
+       region_name='auto',
+   )
+   bucket = os.environ['R2_BACKUP_BUCKET']
+   head = client.head_object(Bucket=bucket, Key=key)
+   size = head.get('ContentLength')
+   metadata = head.get('Metadata', {})
+   expected_sha = metadata.get('sha256', '')
+   require(isinstance(size, int) and not isinstance(size, bool), 'invalid size')
+   require(metadata.get('size') == str(size), 'metadata size mismatch')
+   require(re.fullmatch(r'[0-9a-f]{64}', expected_sha), 'invalid metadata SHA')
+
+   with staged.open('xb') as target:
+       client.download_fileobj(bucket, key, target)
+   require(staged.stat().st_size == size, 'downloaded size mismatch')
+   with staged.open('rb') as source:
+       actual_sha = hashlib.file_digest(source, 'sha256').hexdigest()
+   require(actual_sha == expected_sha, 'downloaded SHA-256 mismatch')
+   connection = sqlite3.connect(f'file:{staged}?mode=ro', uri=True)
+   integrity = connection.execute('PRAGMA integrity_check').fetchone()[0]
+   connection.close()
+   require(integrity == 'ok', 'SQLite integrity check failed')
+   print(f'r2_restore_verified size={size} sha256={actual_sha}')
+   PY
+   ```
+
+   O modo `xb` recusa sobrescrever uma cópia staged existente. Registre o tamanho
+   e o SHA exibidos; não registre chaves de acesso nem conteúdo financeiro.
+3. Em um console one-off de manutenção que monte o mesmo volume, substitua os
+   valores entre `<...>` pelos dados já registrados. Então execute exatamente as
+   guardas e validações abaixo; qualquer exit diferente de zero mantém a
+   manutenção e interrompe o rollback:
+
+   ```sh
+   set -eu
+   export ACTIVE_DB='/app/data/db.sqlite3'
+   export STAGE_DIR='/app/data/rollback-staging'
+   export STAGED_DB='/app/data/rollback-staging/restore.sqlite3'
+   export INCIDENT_ID='<timestamp UTC aprovado, somente dígitos e T/Z>'
+   export FAILED_DB="/app/data/rollback-staging/failed-${INCIDENT_ID}.sqlite3"
+   export EXPECTED_SIZE='<ContentLength decimal retornado pelo HeadObject>'
+   export EXPECTED_SHA256='<SHA-256 de 64 hex minúsculos da metadata R2>'
+
+   test "$SQLITE_PATH" = "$ACTIVE_DB"
+   test ! -e /tmp/supervisord.pid
+
+   python - <<'PY'
+   import hashlib
+   import os
+   import re
+   import sqlite3
+   import stat
+   from pathlib import Path
+
+   def require(condition, message):
+       if not condition:
+           raise SystemExit(message)
+
+   active = Path(os.environ['ACTIVE_DB'])
+   stage_dir = Path(os.environ['STAGE_DIR'])
+   staged = Path(os.environ['STAGED_DB'])
+   failed = Path(os.environ['FAILED_DB'])
+   incident_id = os.environ['INCIDENT_ID']
+   expected_size_text = os.environ['EXPECTED_SIZE']
+   expected_sha = os.environ['EXPECTED_SHA256']
+
+   require(active == Path('/app/data/db.sqlite3'), 'unexpected active DB path')
+   require(stage_dir == Path('/app/data/rollback-staging'), 'unexpected stage path')
+   require(staged == stage_dir / 'restore.sqlite3', 'unexpected staged DB path')
+   require(
+       failed.parent == stage_dir
+       and failed.name == f'failed-{incident_id}.sqlite3',
+       'unexpected failed DB path',
+   )
+   require(
+       re.fullmatch(r'[0-9]{8}T[0-9]{6}Z', incident_id),
+       'invalid incident ID',
+   )
+   require(re.fullmatch(r'[0-9]+', expected_size_text), 'invalid expected size')
+   require(re.fullmatch(r'[0-9a-f]{64}', expected_sha), 'invalid expected SHA')
+   require(not Path('/app/data').is_symlink(), 'data path is a symlink')
+   require(stage_dir.is_dir() and not stage_dir.is_symlink(), 'unsafe stage dir')
+   require(active.exists() and not active.is_symlink(), 'unsafe active DB')
+   require(staged.exists() and not staged.is_symlink(), 'unsafe staged DB')
+   require(not failed.exists() and not failed.is_symlink(), 'failed DB exists')
+   require(stage_dir.resolve(strict=True) == stage_dir, 'stage path changed')
+   require(active.resolve(strict=True) == active, 'active path changed')
+   require(staged.resolve(strict=True) == staged, 'staged path changed')
+   require(failed.parent.resolve(strict=True) == stage_dir, 'failed path changed')
+   require(stat.S_ISREG(os.lstat(active).st_mode), 'active DB is not regular')
+   require(stat.S_ISREG(os.lstat(staged).st_mode), 'staged DB is not regular')
+   require(not Path('/app/data/db.sqlite3-wal').exists(), 'WAL file exists')
+   require(not Path('/app/data/db.sqlite3-shm').exists(), 'SHM file exists')
+   require(os.stat(active).st_dev == os.stat(staged).st_dev, 'different filesystems')
+   require(os.stat(staged).st_size == int(expected_size_text), 'size mismatch')
+
+   with staged.open('rb') as source:
+       actual_sha = hashlib.file_digest(source, 'sha256').hexdigest()
+   require(actual_sha == expected_sha, 'SHA-256 mismatch')
+
+   connection = sqlite3.connect(f'file:{staged}?mode=ro', uri=True)
+   integrity = connection.execute('PRAGMA integrity_check').fetchone()[0]
+   connection.close()
+   require(integrity == 'ok', 'SQLite integrity check failed')
+   print(f'staged_restore_verified size={staged.stat().st_size} sha256={actual_sha}')
+   PY
+   ```
+
+4. Preserve o banco falho e promova a cópia validada com renames no mesmo
+   filesystem. Estes comandos não usam glob, loop ou exclusão; não os execute se
+   qualquer guarda anterior falhar:
+
+   ```sh
+   sync "$ACTIVE_DB" "$STAGED_DB"
+   mv -- "$ACTIVE_DB" "$FAILED_DB"
+   mv -- "$STAGED_DB" "$ACTIVE_DB"
+   sync "$ACTIVE_DB" "$FAILED_DB"
+
+   python - <<'PY'
+   import hashlib
+   import os
+   import sqlite3
+   from pathlib import Path
+
+   def require(condition, message):
+       if not condition:
+           raise SystemExit(message)
+
+   active = Path(os.environ['ACTIVE_DB'])
+   expected_sha = os.environ['EXPECTED_SHA256']
+   require(active == Path('/app/data/db.sqlite3'), 'unexpected active DB path')
+   require(active.exists() and not active.is_symlink(), 'unsafe active DB')
+   require(active.resolve(strict=True) == active, 'active path changed')
+   with active.open('rb') as source:
+       actual_sha = hashlib.file_digest(source, 'sha256').hexdigest()
+   require(actual_sha == expected_sha, 'SHA-256 mismatch after promotion')
+   connection = sqlite3.connect(f'file:{active}?mode=ro', uri=True)
+   integrity = connection.execute('PRAGMA integrity_check').fetchone()[0]
+   connection.close()
+   require(integrity == 'ok', 'SQLite integrity check failed after promotion')
+   print(f'active_restore_verified size={active.stat().st_size} sha256={actual_sha}')
+   PY
+   ```
+
+   A promoção de `STAGED_DB` para `ACTIVE_DB` é atômica por ocorrer no mesmo
+   filesystem. Se o segundo `mv` falhar, não reinicie processos: confirme que
+   `ACTIVE_DB` está ausente e que `FAILED_DB` é o arquivo regular preservado antes
+   de executar uma única reversão:
+
+   ```sh
+   test "$ACTIVE_DB" = '/app/data/db.sqlite3'
+   test ! -e "$ACTIVE_DB"
+   test ! -L "$FAILED_DB"
+   test -f "$FAILED_DB"
+   mv -- "$FAILED_DB" "$ACTIVE_DB"
+   sync "$ACTIVE_DB"
+   ```
+5. Selecione a imagem anterior por
+   `ghcr.io/ludsonfrancisco/finanpy@sha256:<digest anterior de 64 hex>` quando o
+   EasyPanel aceitar digest. Caso contrário, selecione a tag versionada anterior,
+   registre sua associação tag→digest imediatamente antes do restart e valide a
+   mesma associação logo depois; divergência mantém a manutenção.
+6. Inicie exatamente uma réplica, preservando o entrypoint, e confirme um worker
+   Gunicorn e os dois schedulers. Execute checks e auditoria compatíveis com o
+   schema restaurado, depois repita health e smoke checks antes de liberar tráfego.
+7. Registre motivo, horários, tag e digest das imagens, tamanho/hash do backup,
+   resultado do `HeadObject`, download, integridade, promoção e restart, sem dados
+   pessoais ou segredos. Preserve o banco falho até uma decisão posterior de
+   retenção; não exclua nem substitua objetos R2 durante o rollback.
 
 Se o rollback for motivado apenas pela automação de backup e o schema continuar
-compatível, volte para a imagem anterior imutável que inicia somente o Gunicorn.
-Não apague nenhum objeto R2 durante o rollback. As variáveis podem permanecer no
-secret store sem consumidor ou ser removidas depois de preservar evidência; nunca
-revogue uma credencial antes de confirmar que não há outro consumidor autorizado.
+compatível, ainda assim selecione a imagem anterior pelo digest observado. As
+variáveis podem permanecer no secret store sem consumidor ou ser removidas depois
+de preservar evidência; nunca revogue uma credencial antes de confirmar que não há
+outro consumidor autorizado.
 
 Downgrade com `python manage.py migrate <app> <migration>` só é aceitável se o grafo
 exato, a imagem anterior e o mesmo estado de dados tiverem passado por ida e volta
@@ -351,7 +581,7 @@ não improvise um downgrade em produção e nunca altere manualmente a tabela
 `django_migrations`.
 
 A versão instalada permitiu uma réplica sem sobreposição, start/stop e restore
-isolado em 2026-08-13, mas a imagem anterior por tag imutável ainda não foi
+isolado em 2026-08-13, mas a imagem anterior por digest OCI ainda não foi
 ensaiada. Essa é uma ação explícita da Task 7 antes de aceitar R1.4.
 
 ## Registro da validação real
@@ -359,7 +589,8 @@ ensaiada. Essa é uma ação explícita da Task 7 antes de aceitar R1.4.
 Ao concluir uma execução real, registre em local operacional seguro:
 
 - data, operador e ambiente;
-- identificadores imutáveis das imagens anterior e nova;
+- tags versionadas, digests OCI e associações tag→digest das imagens anterior e
+  nova;
 - confirmação da rotação/revogação da credencial histórica, sem valores;
 - mount paths, número de réplicas e workers;
 - hash e localização lógica do backup externo, sem credenciais de acesso;
@@ -371,7 +602,7 @@ Ao concluir uma execução real, registre em local operacional seguro:
 O registro real de 2026-08-13 está em
 [automatic-r2-backup-production.md](audits/automatic-r2-backup-production.md). Ele
 comprova deploy, restart, topologia, proxy, smoke público, objeto idempotente e
-restauração isolada. Não comprova ainda rollback por digest imutável, rate limit de
+restauração isolada. Não comprova ainda rollback por digest OCI, rate limit de
 login ou alertas externos. A prova local/CI de 21/08/2026 comprova o código e a
 imagem candidata na CI, mas não comprova publicação GHCR nem alteração no
 EasyPanel; essas ações aguardam a Task 7.

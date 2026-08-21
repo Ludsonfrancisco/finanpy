@@ -153,8 +153,9 @@ supervisionado. A ordem é:
 Qualquer falha termina o entrypoint com exit diferente de zero. O Supervisor
 então inicia exatamente o web, `backup-scheduler` e `import-preview-purge`; o
 Gunicorn mantém um worker. A CI comprovou essa topologia e o health com SHA no
-candidato. Publicação GHCR e comportamento no EasyPanel continuam separados e
-abertos para a Task 7.
+candidato. O ensaio local do `start.sh` no host não prova a imagem empacotada.
+Publicação GHCR, resolução do digest OCI, ensaios literais com SQLite antigo/R2
+e comportamento no EasyPanel continuam separados e abertos para a Task 7.
 
 ## Arquitetura alvo de fechamento
 
@@ -188,7 +189,7 @@ Princípios:
 
 ## Decisões pendentes
 
-- seleção e ensaio no EasyPanel da imagem/tag imutável anterior;
+- resolução do digest OCI e seleção/ensaio da imagem anterior no EasyPanel;
 - cache de leitura de cartões/contas fixas;
 - retenção de tombstones;
 - rate limit persistente e alertas externos;

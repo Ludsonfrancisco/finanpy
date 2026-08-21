@@ -32,9 +32,9 @@ auditoria e integridade aprovados. O repositório agora inclui um scheduler
 supervisionado que cria o backup pela API do SQLite e o confirma no R2, sem depender
 do job nativo incompatível com o volume Docker legado. No EasyPanel `v2.33.1`, a
 automação criou uma chave idempotente, sobreviveu a restart e o objeto foi
-restaurado no servidor e off-host em 2026-08-13. Rate limit, rollback imutável e
-alertas externos permanecem abertos. PostgreSQL continua a direção futura, não uma
-mudança autorizada nesta sprint.
+restaurado no servidor e off-host em 2026-08-13. Rate limit, rollback por digest
+OCI e alertas externos permanecem abertos. PostgreSQL continua a direção futura,
+não uma mudança autorizada nesta sprint.
 
 ## Controles de autenticação
 
@@ -199,8 +199,9 @@ Ferramenta self-hosted ou gratuita será escolhida no Sprint 11 `[INVESTIGAR]`.
 
 ## EasyPanel
 
-O contrato de release é
-`ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`. Sem sobrescrever
+O contrato de release começa pela tag versionada/controlada
+`ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`; a identidade
+imutável é o digest OCI que deve ser registrado na publicação. Sem sobrescrever
 o command da imagem, o entrypoint executa preflight, backup opcional, `migrate`,
 auditoria e `collectstatic`; somente então inicia o Supervisor. Falha em qualquer
 etapa impede o web e os dois schedulers de iniciar.
@@ -212,14 +213,15 @@ Topologia suportada: uma réplica, um worker Gunicorn, um `backup-scheduler` e u
 Checklist operacional sem segredos:
 
 - domínio e certificado;
-- container image/tag;
+- tag versionada, digest OCI e associação tag→digest observada;
 - variáveis e secret store;
 - volumes e owners;
 - volume SQLite atual; PostgreSQL e rede privada somente após a migração futura;
 - healthcheck, SHA e restart;
 - entrypoint da imagem preservado, sem migration manual paralela;
 - rollback manual da imagem: parar processos, preservar o banco que falhou,
-  verificar/restaurar uma cópia isolada e selecionar o SHA anterior;
+  verificar/restaurar uma cópia staged no mesmo filesystem e selecionar o digest
+  anterior quando suportado;
 - retenção de logs;
 - backup e restauração;
 - acesso administrativo.

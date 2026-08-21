@@ -100,8 +100,10 @@ Objetivo: congelar expansão e recuperar uma base liberável antes do redesenho.
 - [x] expor versão/SHA sem segredo no health, com os campos exatos `status`,
   `api_version` e `version`;
 - [x] comprovar na CI `32529705321` a imagem, o health com SHA e os três processos;
-- [ ] Task 7: publicar a tag GHCR `sha-<40-char-sha>`, ensaiar a imagem anterior
-  e validar no EasyPanel uma réplica, um worker e os dois schedulers.
+- [ ] Task 7: publicar a tag GHCR versionada `sha-<40-char-sha>`, resolver o
+  digest OCI, executar os ensaios literais da imagem candidata e da restauração
+  R2/imagem anterior e validar no EasyPanel uma réplica, um worker e os dois
+  schedulers.
 
 R1.4 permanece **em andamento**. A prova local e a CI não autorizam declarar
 publicação GHCR ou deploy EasyPanel concluídos. Evidência:
@@ -231,7 +233,8 @@ Aceite R5: o proprietário consegue instalar, atualizar, usar e restaurar o Lar
 Finance sem intervenção de desenvolvimento na rotina normal.
 
 Riscos: assinatura iOS/Windows, diferença entre CI e dispositivo, rollback de
-produção. Mitigação: distribuição privada, smoke real e tag/imagem imutável.
+produção. Mitigação: distribuição privada, smoke real, tag versionada e imagem
+fixada por digest OCI quando suportado.
 
 ## Backlog opcional após uso real
 

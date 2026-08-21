@@ -167,8 +167,9 @@ coverage report --fail-under=90
 
 ## Situação de produção
 
-O contrato de release usa a imagem GHCR
-`ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`. O health
+O contrato de release usa a tag GHCR versionada/controlada
+`ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>` e registra o
+digest OCI observado; tags de registry não são tratadas como imutáveis. O health
 `GET /api/v1/health/` retorna exatamente `status`, `api_version` e `version`; em
 imagem de release, `version` deve ser o mesmo SHA da tag.
 
@@ -184,6 +185,7 @@ As evidências têm fronteiras distintas:
 
 A produção anteriormente validada mantém backup R2 diário, uma réplica, um
 worker Gunicorn e dois schedulers supervisionados: backup R2 e purge de prévias
-OFX. R1.4 continua em andamento; a Task 7 precisa publicar/selecionar o SHA
-imutável, ensaiar rollback e validar o EasyPanel antes do aceite. Consulte a
+OFX. R1.4 continua em andamento; a Task 7 precisa publicar a tag, resolver o
+digest OCI, ensaiar a imagem candidata e o rollback com R2 no ambiente correto e
+validar o EasyPanel antes do aceite. Consulte a
 [auditoria do ensaio](docs/audits/2026-08-21-fail-fast-deploy-rehearsal.md).
