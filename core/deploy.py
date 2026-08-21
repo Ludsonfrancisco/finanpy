@@ -47,9 +47,13 @@ class DeployOutcome:
 PRODUCTION_DATA_ROOT = Path('/app/data')
 
 
+def _readonly_sqlite_uri(path: Path) -> str:
+    return f'{path.absolute().as_uri()}?mode=ro'
+
+
 def sqlite_integrity_check(path: Path) -> None:
     try:
-        with closing(sqlite3.connect(f'file:{path}?mode=ro', uri=True)) as database:
+        with closing(sqlite3.connect(_readonly_sqlite_uri(path), uri=True)) as database:
             rows = database.execute('PRAGMA integrity_check').fetchall()
     except sqlite3.Error:
         raise DeployPreparationError(
@@ -116,7 +120,7 @@ def classify_database(path: Path) -> DatabaseState:
 
     sqlite_integrity_check(path)
     try:
-        with closing(sqlite3.connect(f'file:{path}?mode=ro', uri=True)) as database:
+        with closing(sqlite3.connect(_readonly_sqlite_uri(path), uri=True)) as database:
             tables = {
                 row[0]
                 for row in database.execute(

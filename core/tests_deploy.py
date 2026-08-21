@@ -109,6 +109,24 @@ class DatabasePreflightTest(SimpleTestCase):
         self.assertEqual(str(raised.exception), 'Deploy preparation failed [sqlite_integrity_failed].')
         self.assertNotIn('private-name', str(raised.exception))
 
+    def test_integrity_check_opens_literal_percent_encoded_filename(self):
+        with tempfile.TemporaryDirectory() as directory:
+            literal = Path(directory, 'database%25.sqlite3')
+            decoy = Path(directory, 'database%.sqlite3')
+            create_sqlite(literal)
+            decoy.write_bytes(b'not sqlite')
+
+            sqlite_integrity_check(literal)
+
+    def test_classification_opens_literal_percent_encoded_filename(self):
+        with tempfile.TemporaryDirectory() as directory:
+            literal = Path(directory, 'database%25.sqlite3')
+            decoy = Path(directory, 'database%.sqlite3')
+            create_sqlite(literal, ('CREATE TABLE django_migrations (id INTEGER)',))
+            create_sqlite(decoy, ('CREATE TABLE unrelated (id INTEGER)',))
+
+            self.assertEqual(classify_database(literal), DatabaseState.READY)
+
     def test_directory_and_symlink_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -265,6 +283,8 @@ class DeployOrchestrationTest(SimpleTestCase):
             ],
         )
         mocks.backup.assert_not_called()
+        mocks.config.assert_not_called()
+        mocks.storage.assert_not_called()
         self.assertTrue(result.migrations_applied)
         self.assertIsNone(result.backup_key)
 
@@ -279,6 +299,8 @@ class DeployOrchestrationTest(SimpleTestCase):
             [call('audit_household_integrity'), call('collectstatic', interactive=False)],
         )
         mocks.backup.assert_not_called()
+        mocks.config.assert_not_called()
+        mocks.storage.assert_not_called()
         self.assertFalse(result.migrations_applied)
 
     @override_settings(DEBUG=True)
