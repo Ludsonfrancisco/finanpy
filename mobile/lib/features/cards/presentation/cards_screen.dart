@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/money/minor_units.dart';
 import '../../../../design_system/lar_colors.dart';
 import '../../../../design_system/lar_spacing.dart';
 import '../../accounts/data/accounts_repository.dart';
@@ -379,7 +380,6 @@ final class _CardsScreenState extends State<CardsScreen>
     final invoice = state.selectedInvoice;
     if (card == null || invoice == null) return const SizedBox.shrink();
 
-    final currencyFmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final dateFmt = DateFormat('dd/MM/yyyy');
 
     return Container(
@@ -410,7 +410,7 @@ final class _CardsScreenState extends State<CardsScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      currencyFmt.format(invoice.totalAmount),
+                      formatBrlMinorUnits(invoice.totalAmountMinor),
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -486,7 +486,7 @@ final class _CardsScreenState extends State<CardsScreen>
               ),
               child: const Text('Estornar Pagamento da Fatura'),
             )
-          else if (invoice.totalAmount > 0)
+          else if (invoice.totalAmountMinor > 0)
             SizedBox(
               width: double.infinity,
               height: 44,
@@ -556,7 +556,6 @@ final class _CardsScreenState extends State<CardsScreen>
       );
     }
 
-    final currencyFmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final dateFmt = DateFormat('dd/MM/yyyy');
 
     return ListView.separated(
@@ -634,7 +633,7 @@ final class _CardsScreenState extends State<CardsScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    currencyFmt.format(exp.amount),
+                    formatBrlMinorUnits(exp.amountMinor),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -671,7 +670,6 @@ final class _CardsScreenState extends State<CardsScreen>
       );
     }
 
-    final currencyFmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final dateFmt = DateFormat('dd/MM/yyyy');
 
     return ListView.separated(
@@ -716,7 +714,7 @@ final class _CardsScreenState extends State<CardsScreen>
                   ],
                 ),
                 Text(
-                  currencyFmt.format(fInv.totalAmount),
+                  formatBrlMinorUnits(fInv.totalAmountMinor),
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,

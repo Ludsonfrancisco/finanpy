@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/money/minor_units.dart';
 import '../../../../design_system/lar_colors.dart';
 import '../../../../design_system/lar_spacing.dart';
 import '../../../accounts/domain/accounts_models.dart';
@@ -79,7 +80,7 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
   void initState() {
     super.initState();
     _amountCtrl = TextEditingController(
-      text: widget.invoice.totalAmount.toStringAsFixed(2).replaceAll('.', ','),
+      text: minorUnitsToPtBrInput(widget.invoice.totalAmountMinor),
     );
     _selectedAccount = widget.accounts.firstOrNull;
   }
@@ -90,13 +91,12 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
     super.dispose();
   }
 
-  double get _parsedAmount {
-    final text = _amountCtrl.text
-        .replaceAll('R\$', '')
-        .replaceAll('.', '')
-        .replaceAll(',', '.')
-        .trim();
-    return double.tryParse(text) ?? 0.0;
+  int? get _parsedAmountMinor {
+    try {
+      return parsePtBrMinorUnits(_amountCtrl.text);
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<void> _submit() async {
@@ -108,7 +108,7 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
       await widget.controller.payInvoice(
         invoiceId: widget.invoice.id,
         accountId: accountId,
-        paidAmount: _parsedAmount,
+        paidAmountMinor: _parsedAmountMinor!,
         paymentDate: _paymentDate,
       );
       if (mounted) {
@@ -136,7 +136,6 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final dateFmt = DateFormat('dd/MM/yyyy');
 
     return SingleChildScrollView(
@@ -182,7 +181,7 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    currencyFmt.format(widget.invoice.totalAmount),
+                    formatBrlMinorUnits(widget.invoice.totalAmountMinor),
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -216,10 +215,12 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
                   ),
                 ),
                 items: widget.accounts.map((acc) {
-                  final balance = acc.currentBalanceMinor / 100.0;
                   return DropdownMenuItem(
                     value: acc,
-                    child: Text('${acc.name} (${currencyFmt.format(balance)})'),
+                    child: Text(
+                      '${acc.name} '
+                      '(${formatBrlMinorUnits(acc.currentBalanceMinor)})',
+                    ),
                   );
                 }).toList(),
                 onChanged: (val) => setState(() => _selectedAccount = val),
@@ -247,7 +248,7 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
                         ),
-                        validator: (v) => _parsedAmount <= 0
+                        validator: (v) => (_parsedAmountMinor ?? 0) <= 0
                             ? 'Informe um valor válido'
                             : null,
                       ),

@@ -1,14 +1,16 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/money/minor_units.dart';
+
 @immutable
 final class CreditCardModel {
   const CreditCardModel({
     required this.id,
     required this.name,
-    required this.limit,
-    required this.availableLimit,
-    required this.unpaidExpensesTotal,
-    required this.currentInvoiceTotal,
+    required this.limitMinor,
+    required this.availableLimitMinor,
+    required this.unpaidExpensesTotalMinor,
+    required this.currentInvoiceTotalMinor,
     required this.limitUsagePercent,
     required this.closingDay,
     required this.dueDay,
@@ -24,10 +26,10 @@ final class CreditCardModel {
 
   final int id;
   final String name;
-  final double limit;
-  final double availableLimit;
-  final double unpaidExpensesTotal;
-  final double currentInvoiceTotal;
+  final int limitMinor;
+  final int availableLimitMinor;
+  final int unpaidExpensesTotalMinor;
+  final int currentInvoiceTotalMinor;
   final double limitUsagePercent;
   final int closingDay;
   final int dueDay;
@@ -44,15 +46,14 @@ final class CreditCardModel {
     return CreditCardModel(
       id: json['id'] as int? ?? 0,
       name: json['name'] as String? ?? '',
-      limit: double.tryParse(json['limit']?.toString() ?? '0') ?? 0.0,
-      availableLimit:
-          double.tryParse(json['available_limit']?.toString() ?? '0') ?? 0.0,
-      unpaidExpensesTotal:
-          double.tryParse(json['unpaid_expenses_total']?.toString() ?? '0') ??
-          0.0,
-      currentInvoiceTotal:
-          double.tryParse(json['current_invoice_total']?.toString() ?? '0') ??
-          0.0,
+      limitMinor: parseApiMinorUnits(json['limit']),
+      availableLimitMinor: parseApiMinorUnits(json['available_limit']),
+      unpaidExpensesTotalMinor: parseApiMinorUnits(
+        json['unpaid_expenses_total'],
+      ),
+      currentInvoiceTotalMinor: parseApiMinorUnits(
+        json['current_invoice_total'],
+      ),
       limitUsagePercent:
           (json['limit_usage_percent'] as num?)?.toDouble() ?? 0.0,
       closingDay: json['closing_day'] as int? ?? 10,
@@ -77,7 +78,7 @@ final class CardExpenseModel {
     required this.cardName,
     required this.invoiceId,
     required this.description,
-    required this.amount,
+    required this.amountMinor,
     required this.date,
     required this.categoryId,
     required this.categoryName,
@@ -94,7 +95,7 @@ final class CardExpenseModel {
   final String cardName;
   final int invoiceId;
   final String description;
-  final double amount;
+  final int amountMinor;
   final DateTime date;
   final int? categoryId;
   final String categoryName;
@@ -112,7 +113,7 @@ final class CardExpenseModel {
       cardName: json['card_name'] as String? ?? '',
       invoiceId: json['invoice_id'] as int? ?? 0,
       description: json['description'] as String? ?? '',
-      amount: double.tryParse(json['amount']?.toString() ?? '0') ?? 0.0,
+      amountMinor: parseApiMinorUnits(json['amount']),
       date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
       categoryId: json['category_id'] as int?,
       categoryName: json['category_name'] as String? ?? 'Geral',
@@ -138,8 +139,8 @@ final class CardInvoiceModel {
     required this.dueDate,
     required this.status,
     required this.statusDisplay,
-    required this.totalAmount,
-    required this.paidAmount,
+    required this.totalAmountMinor,
+    required this.paidAmountMinor,
     this.paidAt,
     this.paymentAccountId,
     this.paymentAccountName,
@@ -156,8 +157,8 @@ final class CardInvoiceModel {
   final DateTime dueDate;
   final String status;
   final String statusDisplay;
-  final double totalAmount;
-  final double paidAmount;
+  final int totalAmountMinor;
+  final int paidAmountMinor;
   final DateTime? paidAt;
   final int? paymentAccountId;
   final String? paymentAccountName;
@@ -185,10 +186,8 @@ final class CardInvoiceModel {
           DateTime.now(),
       status: json['status'] as String? ?? 'open',
       statusDisplay: json['status_display'] as String? ?? 'Aberta',
-      totalAmount:
-          double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0.0,
-      paidAmount:
-          double.tryParse(json['paid_amount']?.toString() ?? '0') ?? 0.0,
+      totalAmountMinor: parseApiMinorUnits(json['total_amount']),
+      paidAmountMinor: parseApiMinorUnits(json['paid_amount']),
       paidAt: json['paid_at'] != null
           ? DateTime.tryParse(json['paid_at'] as String)
           : null,
@@ -207,28 +206,28 @@ final class CardsSummaryModel {
   const CardsSummaryModel({
     required this.month,
     required this.year,
-    required this.totalLimit,
-    required this.totalUsed,
-    required this.totalAvailable,
-    required this.totalCurrentInvoices,
+    required this.totalLimitMinor,
+    required this.totalUsedMinor,
+    required this.totalAvailableMinor,
+    required this.totalCurrentInvoicesMinor,
     required this.limitUsagePercent,
   });
 
   final int month;
   final int year;
-  final double totalLimit;
-  final double totalUsed;
-  final double totalAvailable;
-  final double totalCurrentInvoices;
+  final int totalLimitMinor;
+  final int totalUsedMinor;
+  final int totalAvailableMinor;
+  final int totalCurrentInvoicesMinor;
   final double limitUsagePercent;
 
   static const empty = CardsSummaryModel(
     month: 1,
     year: 2026,
-    totalLimit: 0.0,
-    totalUsed: 0.0,
-    totalAvailable: 0.0,
-    totalCurrentInvoices: 0.0,
+    totalLimitMinor: 0,
+    totalUsedMinor: 0,
+    totalAvailableMinor: 0,
+    totalCurrentInvoicesMinor: 0,
     limitUsagePercent: 0.0,
   );
 
@@ -236,14 +235,12 @@ final class CardsSummaryModel {
     return CardsSummaryModel(
       month: json['month'] as int? ?? 1,
       year: json['year'] as int? ?? 2026,
-      totalLimit:
-          double.tryParse(json['total_limit']?.toString() ?? '0') ?? 0.0,
-      totalUsed: double.tryParse(json['total_used']?.toString() ?? '0') ?? 0.0,
-      totalAvailable:
-          double.tryParse(json['total_available']?.toString() ?? '0') ?? 0.0,
-      totalCurrentInvoices:
-          double.tryParse(json['total_current_invoices']?.toString() ?? '0') ??
-          0.0,
+      totalLimitMinor: parseApiMinorUnits(json['total_limit']),
+      totalUsedMinor: parseApiMinorUnits(json['total_used']),
+      totalAvailableMinor: parseApiMinorUnits(json['total_available']),
+      totalCurrentInvoicesMinor: parseApiMinorUnits(
+        json['total_current_invoices'],
+      ),
       limitUsagePercent:
           (json['limit_usage_percent'] as num?)?.toDouble() ?? 0.0,
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/money/minor_units.dart';
 import '../../../../design_system/lar_colors.dart';
 import '../../../../design_system/lar_spacing.dart';
 import '../../application/cards_controller.dart';
@@ -80,7 +81,7 @@ final class _CardFormSheetState extends State<CardFormSheet> {
     final c = widget.card;
     _nameCtrl = TextEditingController(text: c?.name ?? '');
     _limitCtrl = TextEditingController(
-      text: c != null ? c.limit.toStringAsFixed(2) : '',
+      text: c != null ? minorUnitsToPtBrInput(c.limitMinor) : '',
     );
     _lastDigitsCtrl = TextEditingController(text: c?.lastDigits ?? '');
     _closingDay = c?.closingDay ?? 10;
@@ -98,13 +99,12 @@ final class _CardFormSheetState extends State<CardFormSheet> {
     super.dispose();
   }
 
-  double get _parsedLimit {
-    final text = _limitCtrl.text
-        .replaceAll('R\$', '')
-        .replaceAll('.', '')
-        .replaceAll(',', '.')
-        .trim();
-    return double.tryParse(text) ?? 0.0;
+  int? get _parsedLimitMinor {
+    try {
+      return parsePtBrMinorUnits(_limitCtrl.text);
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<void> _submit() async {
@@ -116,7 +116,7 @@ final class _CardFormSheetState extends State<CardFormSheet> {
         await widget.controller.updateCard(
           widget.card!.id,
           name: _nameCtrl.text.trim(),
-          limit: _parsedLimit,
+          limitMinor: _parsedLimitMinor!,
           closingDay: _closingDay,
           dueDay: _dueDay,
           color: _color,
@@ -127,7 +127,7 @@ final class _CardFormSheetState extends State<CardFormSheet> {
       } else {
         await widget.controller.createCard(
           name: _nameCtrl.text.trim(),
-          limit: _parsedLimit,
+          limitMinor: _parsedLimitMinor!,
           closingDay: _closingDay,
           dueDay: _dueDay,
           color: _color,
@@ -243,7 +243,7 @@ final class _CardFormSheetState extends State<CardFormSheet> {
                           hintText: '5000,00',
                           border: OutlineInputBorder(),
                         ),
-                        validator: (v) => _parsedLimit <= 0
+                        validator: (v) => (_parsedLimitMinor ?? 0) <= 0
                             ? 'Informe um limite válido'
                             : null,
                       ),

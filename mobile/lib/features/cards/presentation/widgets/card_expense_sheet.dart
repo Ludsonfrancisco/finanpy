@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/money/minor_units.dart';
 import '../../../../design_system/lar_colors.dart';
 import '../../../../design_system/lar_spacing.dart';
 import '../../../categories/domain/categories_models.dart';
@@ -102,13 +103,12 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
     super.dispose();
   }
 
-  double get _parsedAmount {
-    final text = _amountCtrl.text
-        .replaceAll('R\$', '')
-        .replaceAll('.', '')
-        .replaceAll(',', '.')
-        .trim();
-    return double.tryParse(text) ?? 0.0;
+  int? get _parsedAmountMinor {
+    try {
+      return parsePtBrMinorUnits(_amountCtrl.text);
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<void> _submit() async {
@@ -119,7 +119,7 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
       await widget.controller.createExpense(
         cardId: _selectedCard!.id,
         description: _descriptionCtrl.text.trim(),
-        amount: _parsedAmount,
+        amountMinor: _parsedAmountMinor!,
         date: _purchaseDate,
         categoryId: 1,
         installmentsCount: _installments,
@@ -149,15 +149,13 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final dateFmt = DateFormat('dd/MM/yyyy');
     final expenseCategories = widget.categories
         .where((c) => c.type == TransactionType.expense)
         .toList();
 
-    final installmentValue = _installments > 0 && _parsedAmount > 0
-        ? _parsedAmount / _installments
-        : 0.0;
+    final amountMinor = _parsedAmountMinor ?? 0;
+    final installmentPlan = _installmentPlanLabel(amountMinor, _installments);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -252,7 +250,7 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
                           border: OutlineInputBorder(),
                         ),
                         onChanged: (_) => setState(() {}),
-                        validator: (v) => _parsedAmount <= 0
+                        validator: (v) => (_parsedAmountMinor ?? 0) <= 0
                             ? 'Informe um valor maior que 0'
                             : null,
                       ),
@@ -367,7 +365,7 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
               ],
             ),
 
-            if (_installments > 1 && _parsedAmount > 0) ...[
+            if (_installments > 1 && amountMinor > 0) ...[
               const SizedBox(height: LarSpacing.md),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -384,7 +382,7 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
                       style: TextStyle(fontSize: 12, color: Colors.white70),
                     ),
                     Text(
-                      '${_installments}x de ${currencyFmt.format(installmentValue)}',
+                      installmentPlan,
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -431,4 +429,22 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
       ),
     );
   }
+}
+
+String _installmentPlanLabel(int amountMinor, int installments) {
+  if (amountMinor <= 0 || installments <= 1) return '';
+  final wholeMinor = amountMinor ~/ installments;
+  final remainder = amountMinor % installments;
+  final doubledRemainder = remainder * 2;
+  final roundsUp =
+      doubledRemainder > installments ||
+      (doubledRemainder == installments && wholeMinor.isOdd);
+  final baseMinor = wholeMinor + (roundsUp ? 1 : 0);
+  final residualMinor = amountMinor - (baseMinor * installments);
+  if (residualMinor == 0) {
+    return '${installments}x de ${formatBrlMinorUnits(baseMinor)}';
+  }
+  final firstMinor = baseMinor + residualMinor;
+  return '1x de ${formatBrlMinorUnits(firstMinor)} + '
+      '${installments - 1}x de ${formatBrlMinorUnits(baseMinor)}';
 }

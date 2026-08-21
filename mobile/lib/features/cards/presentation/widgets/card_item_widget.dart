@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/money/minor_units.dart';
 import '../../../../design_system/lar_colors.dart';
 import '../../domain/cards_models.dart';
 
@@ -29,7 +29,6 @@ final class CardItemWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardColor = _parseColor(card.color);
-    final currencyFmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
 
     return GestureDetector(
       onTap: onTap,
@@ -140,7 +139,8 @@ final class CardItemWidget extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        'Disponível: ${currencyFmt.format(card.availableLimit)}',
+                        'Disponível: '
+                        '${formatBrlMinorUnits(card.availableLimitMinor)}',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,

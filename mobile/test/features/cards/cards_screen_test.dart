@@ -48,6 +48,8 @@ void main() {
       expect(find.text('Supermercado Extra'), findsOneWidget);
       expect(find.text('Passagens Aéreas'), findsOneWidget);
       expect(find.text('1/3x'), findsOneWidget);
+      expect(find.text(r'R$ 1.500,00'), findsWidgets);
+      expect(find.text(r'R$ 500,00'), findsOneWidget);
 
       controller.dispose();
     },
@@ -85,10 +87,10 @@ final class _FakeCardsRepository implements CardsRepository {
     const CreditCardModel(
       id: 1,
       name: 'Nubank Ultravioleta',
-      limit: 10000.0,
-      availableLimit: 7500.0,
-      unpaidExpensesTotal: 2500.0,
-      currentInvoiceTotal: 1500.0,
+      limitMinor: 1000000,
+      availableLimitMinor: 750000,
+      unpaidExpensesTotalMinor: 250000,
+      currentInvoiceTotalMinor: 150000,
       limitUsagePercent: 25.0,
       closingDay: 10,
       dueDay: 17,
@@ -104,10 +106,10 @@ final class _FakeCardsRepository implements CardsRepository {
     const CreditCardModel(
       id: 2,
       name: 'XP Infinite',
-      limit: 20000.0,
-      availableLimit: 18000.0,
-      unpaidExpensesTotal: 2000.0,
-      currentInvoiceTotal: 1000.0,
+      limitMinor: 2000000,
+      availableLimitMinor: 1800000,
+      unpaidExpensesTotalMinor: 200000,
+      currentInvoiceTotalMinor: 100000,
       limitUsagePercent: 10.0,
       closingDay: 5,
       dueDay: 15,
@@ -133,10 +135,10 @@ final class _FakeCardsRepository implements CardsRepository {
       summary: const CardsSummaryModel(
         month: 8,
         year: 2026,
-        totalLimit: 30000.0,
-        totalUsed: 4500.0,
-        totalAvailable: 25500.0,
-        totalCurrentInvoices: 2500.0,
+        totalLimitMinor: 3000000,
+        totalUsedMinor: 450000,
+        totalAvailableMinor: 2550000,
+        totalCurrentInvoicesMinor: 250000,
         limitUsagePercent: 15.0,
       ),
     );
@@ -164,8 +166,8 @@ final class _FakeCardsRepository implements CardsRepository {
         dueDate: DateTime(2026, 8, 17),
         status: 'open',
         statusDisplay: 'Aberta',
-        totalAmount: 1500.0,
-        paidAmount: 0.0,
+        totalAmountMinor: 150000,
+        paidAmountMinor: 0,
         expensesCount: 2,
         expenses: [
           CardExpenseModel(
@@ -174,7 +176,7 @@ final class _FakeCardsRepository implements CardsRepository {
             cardName: 'Nubank Ultravioleta',
             invoiceId: 10,
             description: 'Supermercado Extra',
-            amount: 500.0,
+            amountMinor: 50000,
             date: DateTime(2026, 8, 2),
             categoryId: 1,
             categoryName: 'Alimentação',
@@ -191,7 +193,7 @@ final class _FakeCardsRepository implements CardsRepository {
             cardName: 'Nubank Ultravioleta',
             invoiceId: 10,
             description: 'Passagens Aéreas',
-            amount: 1000.0,
+            amountMinor: 100000,
             date: DateTime(2026, 8, 3),
             categoryId: 2,
             categoryName: 'Viagem',
@@ -215,8 +217,8 @@ final class _FakeCardsRepository implements CardsRepository {
           dueDate: DateTime(2026, 9, 17),
           status: 'open',
           statusDisplay: 'Aberta',
-          totalAmount: 1000.0,
-          paidAmount: 0.0,
+          totalAmountMinor: 100000,
+          paidAmountMinor: 0,
           expensesCount: 1,
         ),
         CardInvoiceModel(
@@ -229,8 +231,8 @@ final class _FakeCardsRepository implements CardsRepository {
           dueDate: DateTime(2026, 10, 17),
           status: 'open',
           statusDisplay: 'Aberta',
-          totalAmount: 1000.0,
-          paidAmount: 0.0,
+          totalAmountMinor: 100000,
+          paidAmountMinor: 0,
           expensesCount: 1,
         ),
       ],
@@ -240,7 +242,7 @@ final class _FakeCardsRepository implements CardsRepository {
   @override
   Future<CreditCardModel> createCard({
     required String name,
-    required double limit,
+    required int limitMinor,
     required int closingDay,
     required int dueDay,
     String color = '#2F756A',
@@ -255,7 +257,7 @@ final class _FakeCardsRepository implements CardsRepository {
   Future<CreditCardModel> updateCard(
     int id, {
     String? name,
-    double? limit,
+    int? limitMinor,
     int? closingDay,
     int? dueDay,
     String? color,
@@ -273,7 +275,7 @@ final class _FakeCardsRepository implements CardsRepository {
   Future<List<CardExpenseModel>> createExpense({
     required int cardId,
     required String description,
-    required double amount,
+    required int amountMinor,
     required DateTime date,
     required int categoryId,
     int installmentsCount = 1,
@@ -289,7 +291,7 @@ final class _FakeCardsRepository implements CardsRepository {
   Future<CardInvoiceModel> payInvoice(
     int invoiceId, {
     required int accountId,
-    required double paidAmount,
+    required int paidAmountMinor,
     required DateTime paymentDate,
   }) async {
     return _cards.first as dynamic;

@@ -1,3 +1,4 @@
+import '../../../core/money/minor_units.dart';
 import '../../../core/network/session_transport.dart';
 import '../domain/cards_models.dart';
 
@@ -10,7 +11,7 @@ abstract interface class CardsRepository {
   });
   Future<CreditCardModel> createCard({
     required String name,
-    required double limit,
+    required int limitMinor,
     required int closingDay,
     required int dueDay,
     String color = '#2F756A',
@@ -21,7 +22,7 @@ abstract interface class CardsRepository {
   Future<CreditCardModel> updateCard(
     int id, {
     String? name,
-    double? limit,
+    int? limitMinor,
     int? closingDay,
     int? dueDay,
     String? color,
@@ -33,7 +34,7 @@ abstract interface class CardsRepository {
   Future<List<CardExpenseModel>> createExpense({
     required int cardId,
     required String description,
-    required double amount,
+    required int amountMinor,
     required DateTime date,
     required int categoryId,
     int installmentsCount = 1,
@@ -43,7 +44,7 @@ abstract interface class CardsRepository {
   Future<CardInvoiceModel> payInvoice(
     int invoiceId, {
     required int accountId,
-    required double paidAmount,
+    required int paidAmountMinor,
     required DateTime paymentDate,
   });
   Future<CardInvoiceModel> reopenInvoice(int invoiceId);
@@ -116,7 +117,7 @@ final class HttpCardsRepository implements CardsRepository {
   @override
   Future<CreditCardModel> createCard({
     required String name,
-    required double limit,
+    required int limitMinor,
     required int closingDay,
     required int dueDay,
     String color = '#2F756A',
@@ -128,7 +129,7 @@ final class HttpCardsRepository implements CardsRepository {
       '/api/v1/cards/',
       data: {
         'name': name,
-        'limit': limit,
+        'limit': minorUnitsToApiDecimal(limitMinor),
         'closing_day': closingDay,
         'due_day': dueDay,
         'color': color,
@@ -144,7 +145,7 @@ final class HttpCardsRepository implements CardsRepository {
   Future<CreditCardModel> updateCard(
     int id, {
     String? name,
-    double? limit,
+    int? limitMinor,
     int? closingDay,
     int? dueDay,
     String? color,
@@ -154,7 +155,9 @@ final class HttpCardsRepository implements CardsRepository {
   }) async {
     final payload = <String, dynamic>{};
     if (name != null) payload['name'] = name;
-    if (limit != null) payload['limit'] = limit;
+    if (limitMinor != null) {
+      payload['limit'] = minorUnitsToApiDecimal(limitMinor);
+    }
     if (closingDay != null) payload['closing_day'] = closingDay;
     if (dueDay != null) payload['due_day'] = dueDay;
     if (color != null) payload['color'] = color;
@@ -180,7 +183,7 @@ final class HttpCardsRepository implements CardsRepository {
   Future<List<CardExpenseModel>> createExpense({
     required int cardId,
     required String description,
-    required double amount,
+    required int amountMinor,
     required DateTime date,
     required int categoryId,
     int installmentsCount = 1,
@@ -191,7 +194,7 @@ final class HttpCardsRepository implements CardsRepository {
     final payload = <String, dynamic>{
       'card_id': cardId,
       'description': description,
-      'amount': amount,
+      'amount': minorUnitsToApiDecimal(amountMinor),
       'date': dateStr,
       'category_id': categoryId,
       'installments_count': installmentsCount,
@@ -222,7 +225,7 @@ final class HttpCardsRepository implements CardsRepository {
   Future<CardInvoiceModel> payInvoice(
     int invoiceId, {
     required int accountId,
-    required double paidAmount,
+    required int paidAmountMinor,
     required DateTime paymentDate,
   }) async {
     final dateStr =
@@ -231,7 +234,7 @@ final class HttpCardsRepository implements CardsRepository {
       '/api/v1/cards/invoices/$invoiceId/pay/',
       data: {
         'account_id': accountId,
-        'paid_amount': paidAmount,
+        'paid_amount': minorUnitsToApiDecimal(paidAmountMinor),
         'payment_date': dateStr,
       },
     );

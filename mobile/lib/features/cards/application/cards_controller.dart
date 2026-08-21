@@ -161,7 +161,7 @@ final class CardsController extends ChangeNotifier {
 
   Future<void> createCard({
     required String name,
-    required double limit,
+    required int limitMinor,
     required int closingDay,
     required int dueDay,
     String color = '#2F756A',
@@ -175,7 +175,7 @@ final class CardsController extends ChangeNotifier {
     try {
       final newCard = await _repository.createCard(
         name: name,
-        limit: limit,
+        limitMinor: limitMinor,
         closingDay: closingDay,
         dueDay: dueDay,
         color: color,
@@ -198,7 +198,7 @@ final class CardsController extends ChangeNotifier {
   Future<void> updateCard(
     int id, {
     String? name,
-    double? limit,
+    int? limitMinor,
     int? closingDay,
     int? dueDay,
     String? color,
@@ -210,7 +210,7 @@ final class CardsController extends ChangeNotifier {
       await _repository.updateCard(
         id,
         name: name,
-        limit: limit,
+        limitMinor: limitMinor,
         closingDay: closingDay,
         dueDay: dueDay,
         color: color,
@@ -241,7 +241,7 @@ final class CardsController extends ChangeNotifier {
   Future<void> createExpense({
     required int cardId,
     required String description,
-    required double amount,
+    required int amountMinor,
     required DateTime date,
     required int categoryId,
     int installmentsCount = 1,
@@ -251,7 +251,7 @@ final class CardsController extends ChangeNotifier {
       await _repository.createExpense(
         cardId: cardId,
         description: description,
-        amount: amount,
+        amountMinor: amountMinor,
         date: date,
         categoryId: categoryId,
         installmentsCount: installmentsCount,
@@ -282,14 +282,14 @@ final class CardsController extends ChangeNotifier {
   Future<void> payInvoice({
     required int invoiceId,
     required int accountId,
-    required double paidAmount,
+    required int paidAmountMinor,
     required DateTime paymentDate,
   }) async {
     try {
       await _repository.payInvoice(
         invoiceId,
         accountId: accountId,
-        paidAmount: paidAmount,
+        paidAmountMinor: paidAmountMinor,
         paymentDate: paymentDate,
       );
       await loadCards();
