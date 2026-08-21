@@ -1,3 +1,4 @@
+import '../../../core/money/minor_units.dart';
 import '../../../core/network/session_transport.dart';
 import '../domain/bills_models.dart';
 
@@ -10,7 +11,7 @@ abstract interface class BillsRepository {
 
   Future<RecurringBillModel> createRecurringBill({
     required String name,
-    required double amount,
+    required int amountMinor,
     required int dueDay,
     required String type,
     int? categoryId,
@@ -23,7 +24,7 @@ abstract interface class BillsRepository {
   Future<RecurringBillModel> updateRecurringBill(
     int id, {
     String? name,
-    double? amount,
+    int? amountMinor,
     int? dueDay,
     String? type,
     int? categoryId,
@@ -38,7 +39,7 @@ abstract interface class BillsRepository {
   Future<BillInstanceModel> payBillInstance(
     int instanceId, {
     required int accountId,
-    required double paidAmount,
+    required int paidAmountMinor,
     required DateTime paidDate,
   });
 
@@ -107,7 +108,7 @@ final class HttpBillsRepository implements BillsRepository {
   @override
   Future<RecurringBillModel> createRecurringBill({
     required String name,
-    required double amount,
+    required int amountMinor,
     required int dueDay,
     required String type,
     int? categoryId,
@@ -118,7 +119,7 @@ final class HttpBillsRepository implements BillsRepository {
   }) async {
     final payload = <String, Object?>{
       'name': name,
-      'amount': amount.toStringAsFixed(2),
+      'amount': minorUnitsToApiDecimal(amountMinor),
       'due_day': dueDay,
       'type': type,
       'is_active': isActive,
@@ -140,7 +141,7 @@ final class HttpBillsRepository implements BillsRepository {
   Future<RecurringBillModel> updateRecurringBill(
     int id, {
     String? name,
-    double? amount,
+    int? amountMinor,
     int? dueDay,
     String? type,
     int? categoryId,
@@ -151,7 +152,9 @@ final class HttpBillsRepository implements BillsRepository {
   }) async {
     final payload = <String, Object?>{};
     if (name != null) payload['name'] = name;
-    if (amount != null) payload['amount'] = amount.toStringAsFixed(2);
+    if (amountMinor != null) {
+      payload['amount'] = minorUnitsToApiDecimal(amountMinor);
+    }
     if (dueDay != null) payload['due_day'] = dueDay;
     if (type != null) payload['type'] = type;
     if (categoryId != null) payload['category_id'] = categoryId;
@@ -177,12 +180,12 @@ final class HttpBillsRepository implements BillsRepository {
   Future<BillInstanceModel> payBillInstance(
     int instanceId, {
     required int accountId,
-    required double paidAmount,
+    required int paidAmountMinor,
     required DateTime paidDate,
   }) async {
     final payload = <String, Object?>{
       'account_id': accountId,
-      'paid_amount': paidAmount.toStringAsFixed(2),
+      'paid_amount': minorUnitsToApiDecimal(paidAmountMinor),
       'paid_date': paidDate.toIso8601String().substring(0, 10),
     };
     final data = await _transport.postObject(

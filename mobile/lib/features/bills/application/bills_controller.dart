@@ -132,14 +132,14 @@ final class BillsController extends ChangeNotifier {
   Future<void> payBill({
     required int instanceId,
     required int accountId,
-    required double paidAmount,
+    required int paidAmountMinor,
     required DateTime paidDate,
   }) async {
     try {
       await _repository.payBillInstance(
         instanceId,
         accountId: accountId,
-        paidAmount: paidAmount,
+        paidAmountMinor: paidAmountMinor,
         paidDate: paidDate,
       );
       await loadData();
@@ -163,7 +163,7 @@ final class BillsController extends ChangeNotifier {
 
   Future<void> createRecurringBill({
     required String name,
-    required double amount,
+    required int amountMinor,
     required int dueDay,
     required String type,
     int? categoryId,
@@ -175,7 +175,7 @@ final class BillsController extends ChangeNotifier {
     try {
       await _repository.createRecurringBill(
         name: name,
-        amount: amount,
+        amountMinor: amountMinor,
         dueDay: dueDay,
         type: type,
         categoryId: categoryId,
@@ -195,7 +195,7 @@ final class BillsController extends ChangeNotifier {
   Future<void> updateRecurringBill(
     int id, {
     String? name,
-    double? amount,
+    int? amountMinor,
     int? dueDay,
     String? type,
     int? categoryId,
@@ -208,7 +208,7 @@ final class BillsController extends ChangeNotifier {
       await _repository.updateRecurringBill(
         id,
         name: name,
-        amount: amount,
+        amountMinor: amountMinor,
         dueDay: dueDay,
         type: type,
         categoryId: categoryId,

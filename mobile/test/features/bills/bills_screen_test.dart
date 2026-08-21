@@ -43,6 +43,8 @@ void main() {
     // Verify Instance listed
     expect(find.text('Aluguel'), findsOneWidget);
     expect(find.text('Internet Fibra'), findsOneWidget);
+    expect(find.text(r'R$ 10.000,01'), findsWidgets);
+    expect(find.text(r'R$ 0,01'), findsWidgets);
 
     controller.dispose();
   });
@@ -91,7 +93,7 @@ class _FakeBillsRepository implements BillsRepository {
           year: 2026,
           dueDate: DateTime(2026, 8, 10),
           dueDay: 10,
-          amount: 2500.0,
+          amountMinor: 1000001,
           status: 'pending',
           type: 'expense',
           categoryName: 'Moradia',
@@ -106,7 +108,7 @@ class _FakeBillsRepository implements BillsRepository {
           year: 2026,
           dueDate: DateTime(2026, 8, 15),
           dueDay: 15,
-          amount: 150.0,
+          amountMinor: 1,
           status: 'paid',
           type: 'expense',
           categoryName: 'Serviços',
@@ -118,7 +120,7 @@ class _FakeBillsRepository implements BillsRepository {
         const RecurringBillModel(
           id: 10,
           name: 'Aluguel Mensal',
-          amount: 2500.0,
+          amountMinor: 1000001,
           dueDay: 10,
           type: 'expense',
           categoryName: 'Moradia',
@@ -130,7 +132,7 @@ class _FakeBillsRepository implements BillsRepository {
         const RecurringBillModel(
           id: 11,
           name: 'Internet 500mb',
-          amount: 150.0,
+          amountMinor: 1,
           dueDay: 15,
           type: 'expense',
           categoryName: 'Serviços',
@@ -143,13 +145,13 @@ class _FakeBillsRepository implements BillsRepository {
       metrics: const BillsMetricsModel(
         month: 8,
         year: 2026,
-        pendingExpensesTotal: 2500.0,
-        paidExpensesTotal: 150.0,
-        totalCommitted: 2650.0,
+        pendingExpensesTotalMinor: 1000001,
+        paidExpensesTotalMinor: 1,
+        totalCommittedMinor: 1000002,
         overdueCount: 0,
         dueTodayCount: 0,
-        totalAccountBalance: 5000.0,
-        freeCashBalance: 2500.0,
+        totalAccountBalanceMinor: 2000001,
+        freeCashBalanceMinor: 1000000,
       ),
     );
   }
@@ -157,7 +159,7 @@ class _FakeBillsRepository implements BillsRepository {
   @override
   Future<RecurringBillModel> createRecurringBill({
     required String name,
-    required double amount,
+    required int amountMinor,
     required int dueDay,
     required String type,
     int? categoryId,
@@ -169,7 +171,7 @@ class _FakeBillsRepository implements BillsRepository {
     return RecurringBillModel(
       id: 99,
       name: name,
-      amount: amount,
+      amountMinor: amountMinor,
       dueDay: dueDay,
       type: type,
       categoryName: 'Geral',
@@ -184,7 +186,7 @@ class _FakeBillsRepository implements BillsRepository {
   Future<RecurringBillModel> updateRecurringBill(
     int id, {
     String? name,
-    double? amount,
+    int? amountMinor,
     int? dueDay,
     String? type,
     int? categoryId,
@@ -196,7 +198,7 @@ class _FakeBillsRepository implements BillsRepository {
     return RecurringBillModel(
       id: id,
       name: name ?? 'Atualizado',
-      amount: amount ?? 100.0,
+      amountMinor: amountMinor ?? 10000,
       dueDay: dueDay ?? 1,
       type: type ?? 'expense',
       categoryName: 'Geral',
@@ -214,7 +216,7 @@ class _FakeBillsRepository implements BillsRepository {
   Future<BillInstanceModel> payBillInstance(
     int instanceId, {
     required int accountId,
-    required double paidAmount,
+    required int paidAmountMinor,
     required DateTime paidDate,
   }) async {
     return BillInstanceModel(
@@ -225,7 +227,7 @@ class _FakeBillsRepository implements BillsRepository {
       year: 2026,
       dueDate: DateTime.now(),
       dueDay: 1,
-      amount: paidAmount,
+      amountMinor: paidAmountMinor,
       status: 'paid',
       type: 'expense',
       categoryName: 'Geral',
@@ -244,7 +246,7 @@ class _FakeBillsRepository implements BillsRepository {
       year: 2026,
       dueDate: DateTime.now(),
       dueDay: 1,
-      amount: 100.0,
+      amountMinor: 10000,
       status: 'pending',
       type: 'expense',
       categoryName: 'Geral',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/money/minor_units.dart';
 import '../../../../design_system/lar_colors.dart';
 import '../../../../design_system/lar_spacing.dart';
 import '../../domain/bills_models.dart';
@@ -10,7 +11,7 @@ final class BillFormSheet extends StatefulWidget {
   final RecurringBillModel? initialBill;
   final Future<void> Function({
     required String name,
-    required double amount,
+    required int amountMinor,
     required int dueDay,
     required String type,
     String? financialOwnerType,
@@ -24,7 +25,7 @@ final class BillFormSheet extends StatefulWidget {
     RecurringBillModel? initialBill,
     required Future<void> Function({
       required String name,
-      required double amount,
+      required int amountMinor,
       required int dueDay,
       required String type,
       String? financialOwnerType,
@@ -93,7 +94,7 @@ final class _BillFormSheetState extends State<BillFormSheet> {
     final bill = widget.initialBill;
     _nameController = TextEditingController(text: bill?.name ?? '');
     _amountController = TextEditingController(
-      text: bill != null ? bill.amount.toStringAsFixed(2) : '',
+      text: bill != null ? minorUnitsToPtBrInput(bill.amountMinor) : '',
     );
     _dueDayController = TextEditingController(
       text: bill != null ? bill.dueDay.toString() : '10',
@@ -117,15 +118,14 @@ final class _BillFormSheetState extends State<BillFormSheet> {
     if (!_formKey.currentState!.validate()) return;
 
     final name = _nameController.text.trim();
-    final amount =
-        double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0.0;
+    final amountMinor = _parsedAmountMinor()!;
     final dueDay = int.tryParse(_dueDayController.text) ?? 10;
 
     setState(() => _submitting = true);
     try {
       await widget.onSave(
         name: name,
-        amount: amount,
+        amountMinor: amountMinor,
         dueDay: dueDay,
         type: _type,
         financialOwnerType: _ownerType,
@@ -245,10 +245,9 @@ final class _BillFormSheetState extends State<BillFormSheet> {
                         if (v == null || v.trim().isEmpty) {
                           return 'Informe o valor';
                         }
-                        if (double.tryParse(v.replaceAll(',', '.')) == null) {
-                          return 'Inválido';
-                        }
-                        return null;
+                        return _parsedAmountMinor() == null
+                            ? 'Informe um valor válido'
+                            : null;
                       },
                     ),
                   ],
@@ -439,5 +438,14 @@ final class _BillFormSheetState extends State<BillFormSheet> {
         ],
       ),
     );
+  }
+
+  int? _parsedAmountMinor() {
+    try {
+      final value = parsePtBrMinorUnits(_amountController.text);
+      return value > 0 ? value : null;
+    } on FormatException {
+      return null;
+    }
   }
 }

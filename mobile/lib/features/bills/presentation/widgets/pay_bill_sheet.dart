@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/money/minor_units.dart';
 import '../../../../design_system/lar_colors.dart';
 import '../../../../design_system/lar_spacing.dart';
 import '../../../accounts/domain/accounts_models.dart';
@@ -18,7 +19,7 @@ final class PayBillSheet extends StatefulWidget {
   final List<AccountItem> accounts;
   final Future<void> Function({
     required int accountId,
-    required double paidAmount,
+    required int paidAmountMinor,
     required DateTime paidDate,
   })
   onPay;
@@ -29,7 +30,7 @@ final class PayBillSheet extends StatefulWidget {
     required List<AccountItem> accounts,
     required Future<void> Function({
       required int accountId,
-      required double paidAmount,
+      required int paidAmountMinor,
       required DateTime paidDate,
     })
     onPay,
@@ -95,7 +96,7 @@ final class _PayBillSheetState extends State<PayBillSheet> {
   void initState() {
     super.initState();
     _amountController = TextEditingController(
-      text: widget.instance.amount.toStringAsFixed(2),
+      text: minorUnitsToPtBrInput(widget.instance.amountMinor),
     );
     _selectedDate = DateTime.now();
 
@@ -119,16 +120,14 @@ final class _PayBillSheetState extends State<PayBillSheet> {
       return;
     }
 
-    final amount =
-        double.tryParse(_amountController.text.replaceAll(',', '.')) ??
-        widget.instance.amount;
+    final paidAmountMinor = _parsedAmountMinor()!;
 
     setState(() => _submitting = true);
     try {
       final accountId = 1;
       await widget.onPay(
         accountId: accountId,
-        paidAmount: amount,
+        paidAmountMinor: paidAmountMinor,
         paidDate: _selectedDate,
       );
       if (mounted) {
@@ -157,7 +156,6 @@ final class _PayBillSheetState extends State<PayBillSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final dateFmt = DateFormat('dd/MM/yyyy');
 
     return Form(
@@ -207,10 +205,11 @@ final class _PayBillSheetState extends State<PayBillSheet> {
                 ),
               ),
               items: widget.accounts.map((acc) {
-                final balance = acc.currentBalanceMinor / 100.0;
                 return DropdownMenuItem(
                   value: acc,
-                  child: Text('${acc.name} (${currencyFmt.format(balance)})'),
+                  child: Text(
+                    '${acc.name} (${formatBrlMinorUnits(acc.currentBalanceMinor)})',
+                  ),
                 );
               }).toList(),
               onChanged: (val) => setState(() => _selectedAccount = val),
@@ -236,10 +235,9 @@ final class _PayBillSheetState extends State<PayBillSheet> {
             ),
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Informe o valor';
-              if (double.tryParse(v.replaceAll(',', '.')) == null) {
-                return 'Valor inválido';
-              }
-              return null;
+              return _parsedAmountMinor() == null
+                  ? 'Informe um valor válido'
+                  : null;
             },
           ),
           const SizedBox(height: LarSpacing.md),
@@ -310,5 +308,14 @@ final class _PayBillSheetState extends State<PayBillSheet> {
         ],
       ),
     );
+  }
+
+  int? _parsedAmountMinor() {
+    try {
+      final value = parsePtBrMinorUnits(_amountController.text);
+      return value > 0 ? value : null;
+    } on FormatException {
+      return null;
+    }
   }
 }

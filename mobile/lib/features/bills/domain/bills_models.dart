@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/money/minor_units.dart';
+
 @immutable
 final class BillInstanceModel {
   const BillInstanceModel({
@@ -10,7 +12,7 @@ final class BillInstanceModel {
     required this.year,
     required this.dueDate,
     required this.dueDay,
-    required this.amount,
+    required this.amountMinor,
     required this.status,
     this.paidAt,
     required this.type,
@@ -32,7 +34,7 @@ final class BillInstanceModel {
       year: (json['year'] as num).toInt(),
       dueDate: DateTime.parse(json['due_date'] as String),
       dueDay: (json['due_day'] as num?)?.toInt() ?? 1,
-      amount: double.tryParse(json['amount'] as String? ?? '0.00') ?? 0.0,
+      amountMinor: parseApiMinorUnits(json['amount']),
       status: json['status'] as String? ?? 'pending',
       paidAt: json['paid_at'] != null
           ? DateTime.tryParse(json['paid_at'] as String)
@@ -55,7 +57,7 @@ final class BillInstanceModel {
   final int year;
   final DateTime dueDate;
   final int dueDay;
-  final double amount;
+  final int amountMinor;
   final String status;
   final DateTime? paidAt;
   final String type;
@@ -90,7 +92,7 @@ final class RecurringBillModel {
   const RecurringBillModel({
     required this.id,
     required this.name,
-    required this.amount,
+    required this.amountMinor,
     required this.dueDay,
     required this.type,
     this.categoryId,
@@ -107,7 +109,7 @@ final class RecurringBillModel {
     return RecurringBillModel(
       id: (json['id'] as num).toInt(),
       name: json['name'] as String? ?? '',
-      amount: double.tryParse(json['amount'] as String? ?? '0.00') ?? 0.0,
+      amountMinor: parseApiMinorUnits(json['amount']),
       dueDay: (json['due_day'] as num?)?.toInt() ?? 1,
       type: json['type'] as String? ?? 'expense',
       categoryId: (json['category_id'] as num?)?.toInt(),
@@ -123,7 +125,7 @@ final class RecurringBillModel {
 
   final int id;
   final String name;
-  final double amount;
+  final int amountMinor;
   final int dueDay;
   final String type;
   final int? categoryId;
@@ -141,59 +143,52 @@ final class BillsMetricsModel {
   const BillsMetricsModel({
     required this.month,
     required this.year,
-    required this.pendingExpensesTotal,
-    required this.paidExpensesTotal,
-    required this.totalCommitted,
+    required this.pendingExpensesTotalMinor,
+    required this.paidExpensesTotalMinor,
+    required this.totalCommittedMinor,
     required this.overdueCount,
     required this.dueTodayCount,
-    required this.totalAccountBalance,
-    required this.freeCashBalance,
+    required this.totalAccountBalanceMinor,
+    required this.freeCashBalanceMinor,
   });
 
   factory BillsMetricsModel.fromJson(Map<String, Object?> json) {
     return BillsMetricsModel(
       month: (json['month'] as num?)?.toInt() ?? DateTime.now().month,
       year: (json['year'] as num?)?.toInt() ?? DateTime.now().year,
-      pendingExpensesTotal:
-          double.tryParse(
-            json['pending_expenses_total'] as String? ?? '0.00',
-          ) ??
-          0.0,
-      paidExpensesTotal:
-          double.tryParse(json['paid_expenses_total'] as String? ?? '0.00') ??
-          0.0,
-      totalCommitted:
-          double.tryParse(json['total_committed'] as String? ?? '0.00') ?? 0.0,
+      pendingExpensesTotalMinor: parseApiMinorUnits(
+        json['pending_expenses_total'],
+      ),
+      paidExpensesTotalMinor: parseApiMinorUnits(json['paid_expenses_total']),
+      totalCommittedMinor: parseApiMinorUnits(json['total_committed']),
       overdueCount: (json['overdue_count'] as num?)?.toInt() ?? 0,
       dueTodayCount: (json['due_today_count'] as num?)?.toInt() ?? 0,
-      totalAccountBalance:
-          double.tryParse(json['total_account_balance'] as String? ?? '0.00') ??
-          0.0,
-      freeCashBalance:
-          double.tryParse(json['free_cash_balance'] as String? ?? '0.00') ??
-          0.0,
+      totalAccountBalanceMinor: parseApiMinorUnits(
+        json['total_account_balance'],
+      ),
+      freeCashBalanceMinor: parseApiMinorUnits(json['free_cash_balance']),
     );
   }
 
   static const empty = BillsMetricsModel(
     month: 1,
     year: 2026,
-    pendingExpensesTotal: 0.0,
-    paidExpensesTotal: 0.0,
-    totalCommitted: 0.0,
+    pendingExpensesTotalMinor: 0,
+    paidExpensesTotalMinor: 0,
+    totalCommittedMinor: 0,
     overdueCount: 0,
     dueTodayCount: 0,
-    totalAccountBalance: 0.0,
-    freeCashBalance: 0.0,
+    totalAccountBalanceMinor: 0,
+    freeCashBalanceMinor: 0,
   );
 
   final int month;
   final int year;
-  final double pendingExpensesTotal;
-  final double paidExpensesTotal;
-  final double totalCommitted;
+  final int pendingExpensesTotalMinor;
+  final int paidExpensesTotalMinor;
+  final int totalCommittedMinor;
   final int overdueCount;
   final int dueTodayCount;
-  final double totalAccountBalance;
-  final double freeCashBalance;
+  final int totalAccountBalanceMinor;
+  final int freeCashBalanceMinor;
 }

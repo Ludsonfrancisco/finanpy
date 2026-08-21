@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
+import '../../../core/money/minor_units.dart';
 import '../../../../design_system/lar_colors.dart';
 import '../../../../design_system/lar_spacing.dart';
 import '../../accounts/data/accounts_repository.dart';
@@ -112,7 +112,6 @@ final class _BillsScreenState extends State<BillsScreen>
   @override
   Widget build(BuildContext context) {
     final state = widget.controller.state;
-    final currencyFmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final isDesktop = MediaQuery.sizeOf(context).width >= 900;
 
     return Scaffold(
@@ -138,7 +137,7 @@ final class _BillsScreenState extends State<BillsScreen>
                     const SizedBox(height: LarSpacing.xl),
 
                     // 4 Bento Metric Cards (Saldo Livre Real, A Vencer, Pagas, Total)
-                    _buildMetricsGrid(state, currencyFmt, isDesktop),
+                    _buildMetricsGrid(state, isDesktop),
                     const SizedBox(height: LarSpacing.xl),
 
                     // Tabs
@@ -177,9 +176,9 @@ final class _BillsScreenState extends State<BillsScreen>
                         ),
                       )
                     else if (state.activeTab == 0)
-                      _buildInstancesList(state, currencyFmt)
+                      _buildInstancesList(state)
                     else
-                      _buildRecurringBillsList(state, currencyFmt),
+                      _buildRecurringBillsList(state),
                   ],
                 ),
               ),
@@ -316,19 +315,15 @@ final class _BillsScreenState extends State<BillsScreen>
     );
   }
 
-  Widget _buildMetricsGrid(
-    BillsState state,
-    NumberFormat currencyFmt,
-    bool isDesktop,
-  ) {
+  Widget _buildMetricsGrid(BillsState state, bool isDesktop) {
     final m = state.metrics;
 
     final cards = [
       _buildMetricCard(
         title: 'Saldo Livre Real',
-        value: currencyFmt.format(m.freeCashBalance),
+        value: formatBrlMinorUnits(m.freeCashBalanceMinor),
         subtitle: 'Disponível após faturas a vencer',
-        color: m.freeCashBalance >= 0
+        color: m.freeCashBalanceMinor >= 0
             ? LarColors.mineralOnDark
             : LarColors.danger,
         icon: Icons.shield_outlined,
@@ -336,21 +331,21 @@ final class _BillsScreenState extends State<BillsScreen>
       ),
       _buildMetricCard(
         title: 'A Vencer no Mês',
-        value: currencyFmt.format(m.pendingExpensesTotal),
+        value: formatBrlMinorUnits(m.pendingExpensesTotalMinor),
         subtitle: m.overdueCount > 0 ? '${m.overdueCount} em atraso' : 'Em dia',
         color: m.overdueCount > 0 ? LarColors.danger : Colors.white,
         icon: Icons.schedule,
       ),
       _buildMetricCard(
         title: 'Já Pagas',
-        value: currencyFmt.format(m.paidExpensesTotal),
+        value: formatBrlMinorUnits(m.paidExpensesTotalMinor),
         subtitle: 'Baixadas no extrato',
         color: LarColors.mineralOnDark,
         icon: Icons.check_circle_outline,
       ),
       _buildMetricCard(
         title: 'Total Comprometido',
-        value: currencyFmt.format(m.totalCommitted),
+        value: formatBrlMinorUnits(m.totalCommittedMinor),
         subtitle: 'Orçamento fixo',
         color: Colors.white,
         icon: Icons.receipt_long_outlined,
@@ -452,7 +447,7 @@ final class _BillsScreenState extends State<BillsScreen>
     );
   }
 
-  Widget _buildInstancesList(BillsState state, NumberFormat currencyFmt) {
+  Widget _buildInstancesList(BillsState state) {
     if (state.instances.isEmpty) {
       return _buildEmptyState('Nenhuma fatura de conta fixa para este mês.');
     }
@@ -568,7 +563,7 @@ final class _BillsScreenState extends State<BillsScreen>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    currencyFmt.format(item.amount),
+                    formatBrlMinorUnits(item.amountMinor),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
@@ -648,12 +643,12 @@ final class _BillsScreenState extends State<BillsScreen>
                           onPay:
                               ({
                                 required accountId,
-                                required paidAmount,
+                                required paidAmountMinor,
                                 required paidDate,
                               }) => widget.controller.payBill(
                                 instanceId: item.id,
                                 accountId: accountId,
-                                paidAmount: paidAmount,
+                                paidAmountMinor: paidAmountMinor,
                                 paidDate: paidDate,
                               ),
                         );
@@ -668,7 +663,7 @@ final class _BillsScreenState extends State<BillsScreen>
     );
   }
 
-  Widget _buildRecurringBillsList(BillsState state, NumberFormat currencyFmt) {
+  Widget _buildRecurringBillsList(BillsState state) {
     if (state.recurringBills.isEmpty) {
       return _buildEmptyState('Nenhuma regra de conta fixa cadastrada.');
     }
@@ -740,7 +735,7 @@ final class _BillsScreenState extends State<BillsScreen>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    currencyFmt.format(bill.amount),
+                    formatBrlMinorUnits(bill.amountMinor),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
@@ -769,7 +764,7 @@ final class _BillsScreenState extends State<BillsScreen>
                             onSave:
                                 ({
                                   required name,
-                                  required amount,
+                                  required amountMinor,
                                   required dueDay,
                                   required type,
                                   financialOwnerType,
@@ -778,7 +773,7 @@ final class _BillsScreenState extends State<BillsScreen>
                                 }) => widget.controller.updateRecurringBill(
                                   bill.id,
                                   name: name,
-                                  amount: amount,
+                                  amountMinor: amountMinor,
                                   dueDay: dueDay,
                                   type: type,
                                   financialOwnerType: financialOwnerType,
