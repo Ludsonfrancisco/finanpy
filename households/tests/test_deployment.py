@@ -262,6 +262,7 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
             '--volume lar-finance-ci-data:/app/data',
             '--env R2_BACKUP_ENDPOINT_URL=https://example.invalid',
             "'version': os.environ['GITHUB_SHA']",
+            'docker top lar-finance-ci-smoke -eo pid,args > processes.txt',
             "grep -F 'gunicorn core.wsgi:application' processes.txt",
             "grep -F 'python manage.py run_backup_scheduler' processes.txt",
             "grep -F 'python manage.py run_import_preview_purge_scheduler' "

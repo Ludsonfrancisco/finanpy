@@ -123,7 +123,7 @@ jobs:
               'version': os.environ['GITHUB_SHA'],
           }
           PY
-          docker top lar-finance-ci-smoke -eo args > processes.txt
+          docker top lar-finance-ci-smoke -eo pid,args > processes.txt
           grep -F 'gunicorn core.wsgi:application' processes.txt
           grep -F 'python manage.py run_backup_scheduler' processes.txt
           grep -F 'python manage.py run_import_preview_purge_scheduler' processes.txt
