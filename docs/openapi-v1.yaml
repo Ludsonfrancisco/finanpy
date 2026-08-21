@@ -19,10 +19,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["status", "api_version"],
+                  "required": ["status", "api_version", "version"],
                   "properties": {
                     "status": {"const": "ok"},
-                    "api_version": {"const": "v1"}
+                    "api_version": {"const": "v1"},
+                    "version": {
+                      "type": "string",
+                      "pattern": "^(development|[0-9a-f]{40})$"
+                    }
                   }
                 }
               }

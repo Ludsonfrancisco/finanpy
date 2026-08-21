@@ -125,6 +125,19 @@ class OpenApiContractTest(SimpleTestCase):
         )
         self.assertEqual(self.contract['servers'], [{'url': '/api/v1'}])
 
+    def test_health_documents_observable_release_version(self):
+        schema = self.contract['paths']['/health/']['get']['responses']['200'][
+            'content'
+        ]['application/json']['schema']
+        self.assertEqual(schema['required'], ['status', 'api_version', 'version'])
+        self.assertEqual(
+            schema['properties']['version'],
+            {
+                'type': 'string',
+                'pattern': r'^(development|[0-9a-f]{40})$',
+            },
+        )
+
     def test_opaque_bearer_security_scheme_does_not_claim_jwt(self):
         scheme = self.contract['components']['securitySchemes']['opaqueBearer']
 
