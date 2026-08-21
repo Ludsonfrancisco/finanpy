@@ -92,12 +92,20 @@ Objetivo: congelar expansão e recuperar uma base liberável antes do redesenho.
 
 ### R1.4 — Deploy fail-fast e versão observável
 
-- [ ] reproduzir falha de migration no fluxo atual;
-- [ ] retirar `migrate` de `core/wsgi.py`;
-- [ ] executar preflight/audit/backup/migration antes de iniciar Supervisor;
-- [ ] abortar deploy quando migration falhar;
-- [ ] expor versão/SHA sem segredo no health;
-- [ ] validar EasyPanel com uma réplica e um worker.
+- [x] reproduzir o fail-fast em SQLite descartável sem alterar hash ou migrations;
+- [x] retirar `migrate` de `core/wsgi.py`;
+- [x] executar preflight, backup opcional, migration, auditoria e `collectstatic`
+  antes de iniciar Supervisor;
+- [x] abortar o entrypoint quando qualquer etapa de preparação falhar;
+- [x] expor versão/SHA sem segredo no health, com os campos exatos `status`,
+  `api_version` e `version`;
+- [x] comprovar na CI `32529705321` a imagem, o health com SHA e os três processos;
+- [ ] Task 7: publicar a tag GHCR `sha-<40-char-sha>`, ensaiar a imagem anterior
+  e validar no EasyPanel uma réplica, um worker e os dois schedulers.
+
+R1.4 permanece **em andamento**. A prova local e a CI não autorizam declarar
+publicação GHCR ou deploy EasyPanel concluídos. Evidência:
+`docs/audits/2026-08-21-fail-fast-deploy-rehearsal.md`.
 
 Aceite R1: CI verde, dinheiro recente exato, deploy não inicia com schema inválido
 e documentação corresponde ao código.

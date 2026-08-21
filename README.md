@@ -15,8 +15,8 @@ modernização incremental.
 - SQLite persistido em `/app/data/db.sqlite3` no container;
 - backup R2 diário ativo em produção, com agenda supervisionada, retenção
   `14/8/12`, idempotência após restart e restauração isolada comprovada;
-- 526 testes Django e 336 testes Flutter não-golden passaram na auditoria de
-  20/08/2026; a CI atual está vermelha por lint, formato e goldens;
+- 581 testes Django e 374 testes Flutter passaram localmente em 21/08/2026;
+  a CI do SHA candidato também está verde;
 - cadastro público removido;
 - piloto de importação manual OFX Nubank de conta/cartão, com prévia, confirmação
   explícita, deduplicação e sincronização;
@@ -45,6 +45,7 @@ total.
 - [UX mobile e desktop](docs/mobile-ux.md)
 - [Segurança e operação](docs/security-and-operations.md)
 - [Runbook do EasyPanel](docs/deploy-easypanel.md)
+- [Ensaio do deploy fail-fast](docs/audits/2026-08-21-fail-fast-deploy-rehearsal.md)
 - [Backup automático no R2](docs/sprints/automatic-r2-backup.md)
 - [Auditoria da ativação R2 em produção](docs/audits/automatic-r2-backup-production.md)
 - [Sprint 1 — Household Ledger](docs/sprints/sprint-1-household-ledger.md)
@@ -92,6 +93,10 @@ docker compose logs -f web
 
 O projeto usa uma réplica e um worker enquanto estiver em SQLite. Para produção
 no servidor caseiro, siga o [runbook do EasyPanel](docs/deploy-easypanel.md).
+A imagem executa `prepare_deploy` antes do Supervisor, na ordem: preflight,
+backup R2 quando houver banco existente com migration pendente, `migrate`,
+auditoria, `collectstatic` e, somente após sucesso, Supervisor. Não sobrescreva o
+command da imagem nem execute migration manual em paralelo.
 
 ## API privada v1
 
@@ -162,18 +167,23 @@ coverage report --fail-under=90
 
 ## Situação de produção
 
-O EasyPanel acompanha o GitHub `main`, conforme confirmado pelo proprietário.
-Em 20/08/2026, `/api/v1/health/` respondeu HTTP 200 e `/` redirecionou para
-login. O health ainda não expõe o SHA, portanto o commit efetivo deve ser
-considerado `[INVESTIGAR]` até o ciclo R1 adicionar versão observável.
+O contrato de release usa a imagem GHCR
+`ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`. O health
+`GET /api/v1/health/` retorna exatamente `status`, `api_version` e `version`; em
+imagem de release, `version` deve ser o mesmo SHA da tag.
 
-Supervisor, um worker, scheduler, proxy e backup R2 foram validados no ensaio
-operacional de 2026-08-13. A automação diária criou objeto no bucket privado,
-permaneceu idempotente após restart e foi restaurada com hash idêntico em cópia
-descartável. Consulte a
-[auditoria sanitizada](docs/audits/automatic-r2-backup-production.md).
+As evidências têm fronteiras distintas:
 
-Enquanto o banco for SQLite, a operação permanece limitada a uma réplica e um
-worker, topologia suficiente para o uso pessoal. O fechamento exige CI verde,
-migrations fail-fast, rollback por imagem imutável, rate limit persistente e
-alertas externos.
+- localmente, a matriz, o fail-fast em SQLite descartável e um fallback de
+  restauração local passaram em 21/08/2026;
+- a CI `32529705321`, no SHA
+  `2584fa7db5e9ee9fa158cdfce54d3b2b24ef4a9d`, construiu a imagem e confirmou
+  health com SHA e os três processos do Supervisor;
+- a publicação da tag GHCR foi pulada por ser um push de branch, e a imagem
+  candidata ainda não foi implantada nem validada no EasyPanel.
+
+A produção anteriormente validada mantém backup R2 diário, uma réplica, um
+worker Gunicorn e dois schedulers supervisionados: backup R2 e purge de prévias
+OFX. R1.4 continua em andamento; a Task 7 precisa publicar/selecionar o SHA
+imutável, ensaiar rollback e validar o EasyPanel antes do aceite. Consulte a
+[auditoria do ensaio](docs/audits/2026-08-21-fail-fast-deploy-rehearsal.md).

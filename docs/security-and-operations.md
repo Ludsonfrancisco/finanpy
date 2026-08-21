@@ -122,9 +122,11 @@ nulo e o mesmo request ID, sem expor o texto da exceção.
 - restauração ensaiada periodicamente em ambiente isolado;
 - RPO/RTO iniciais `[INVESTIGAR]` após entender tolerância do usuário.
 
-Backup só é considerado válido após restauração testada. A prova de
-2026-08-12 validou o mecanismo manual anterior, não o objeto criado pela nova
-automação; ativação, download e restauração reais continuam abertos.
+Backup só é considerado válido após restauração testada. A prova de 2026-08-12
+validou o mecanismo manual; em 2026-08-13, a automação também criou e confirmou
+o objeto do dia e ele foi restaurado em cópias descartáveis no servidor e
+off-host. Isso não substitui o ensaio do objeto que será selecionado para uma
+nova release.
 
 O token operacional R2 deve ter somente Object Read & Write, limitado ao bucket
 privado de backup. Isso cobre listar, ler, criar e excluir objetos sem conceder
@@ -197,16 +199,27 @@ Ferramenta self-hosted ou gratuita será escolhida no Sprint 11 `[INVESTIGAR]`.
 
 ## EasyPanel
 
-Checklist a documentar sem segredos:
+O contrato de release é
+`ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`. Sem sobrescrever
+o command da imagem, o entrypoint executa preflight, backup opcional, `migrate`,
+auditoria e `collectstatic`; somente então inicia o Supervisor. Falha em qualquer
+etapa impede o web e os dois schedulers de iniciar.
+
+Topologia suportada: uma réplica, um worker Gunicorn, um `backup-scheduler` e um
+`import-preview-purge`. O health retorna exatamente `status`, `api_version` e
+`version`, e a versão precisa coincidir com o SHA da imagem selecionada.
+
+Checklist operacional sem segredos:
 
 - domínio e certificado;
 - container image/tag;
 - variáveis e secret store;
 - volumes e owners;
 - volume SQLite atual; PostgreSQL e rede privada somente após a migração futura;
-- healthcheck e restart;
-- comando de migration;
-- rollback da imagem;
+- healthcheck, SHA e restart;
+- entrypoint da imagem preservado, sem migration manual paralela;
+- rollback manual da imagem: parar processos, preservar o banco que falhou,
+  verificar/restaurar uma cópia isolada e selecionar o SHA anterior;
 - retenção de logs;
 - backup e restauração;
 - acesso administrativo.
@@ -242,3 +255,8 @@ Mesmo sendo uso doméstico, aplicar minimização, finalidade, segurança, porta
 - healthcheck/alerta ativos;
 - exportação do usuário funcionando;
 - plano de rollback escrito.
+
+Para o candidato R1.4, matriz local e CI estão comprovadas; publicação GHCR,
+download/restauração R2 do objeto selecionado, imagem anterior e validação no
+EasyPanel permanecem gates da Task 7. Veja
+`docs/audits/2026-08-21-fail-fast-deploy-rehearsal.md`.

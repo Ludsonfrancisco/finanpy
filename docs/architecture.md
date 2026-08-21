@@ -11,9 +11,10 @@ Lar Finance é um monólito modular Django com duas interfaces:
 - Web server-rendered com sessão Django;
 - Flutter para Windows, Android e iOS com API privada e sessão por dispositivo.
 
-SQLite no EasyPanel é a fonte canônica. A topologia suportada é uma réplica e um
-worker Gunicorn. Supervisor inicia web, backup R2 e purge de prévias OFX. O
-cliente Flutter usa Drift para o ledger principal e Secure Storage para tokens.
+SQLite no EasyPanel é a fonte canônica. A topologia suportada é uma réplica, um
+worker Gunicorn e dois schedulers sob Supervisor: backup R2 e purge de prévias
+OFX. O cliente Flutter usa Drift para o ledger principal e Secure Storage para
+tokens.
 
 ```mermaid
 flowchart TB
@@ -133,18 +134,27 @@ CSV, PDF/OCR, outros bancos e Open Finance permanecem opcionais.
 - backup consistente e verificado enviado ao R2;
 - retenção R2 `14/8/12` e restauração ensaiada;
 - logs JSON e `X-Request-ID` na API;
-- `/api/v1/health/` sem SHA no estado atual;
+- `/api/v1/health/` com exatamente `status`, `api_version` e `version`; em release,
+  `version` é o SHA Git de 40 caracteres;
 - sem métricas/tracing/alertas externos completos.
 
-### Dívida de inicialização
+### Inicialização fail-fast
 
-`core/wsgi.py` executa `migrate` durante o startup Gunicorn e captura a exceção.
-Esse comportamento é fail-open e deve ser substituído no ciclo R1 por:
+O entrypoint executa `python manage.py prepare_deploy` antes de qualquer processo
+supervisionado. A ordem é:
 
-1. backup/preflight;
-2. auditoria;
-3. migration única e fail-fast;
-4. inicialização do Supervisor somente após sucesso.
+1. validar versão, caminho e integridade do SQLite e detectar migrations;
+2. criar e confirmar backup R2 somente para banco existente com migration pendente;
+3. executar `migrate` quando houver plano pendente;
+4. executar `audit_household_integrity`;
+5. executar `collectstatic --noinput`;
+6. iniciar o Supervisor somente após todas as etapas concluírem.
+
+Qualquer falha termina o entrypoint com exit diferente de zero. O Supervisor
+então inicia exatamente o web, `backup-scheduler` e `import-preview-purge`; o
+Gunicorn mantém um worker. A CI comprovou essa topologia e o health com SHA no
+candidato. Publicação GHCR e comportamento no EasyPanel continuam separados e
+abertos para a Task 7.
 
 ## Arquitetura alvo de fechamento
 
@@ -178,7 +188,7 @@ Princípios:
 
 ## Decisões pendentes
 
-- rollback por imagem/tag imutável;
+- seleção e ensaio no EasyPanel da imagem/tag imutável anterior;
 - cache de leitura de cartões/contas fixas;
 - retenção de tombstones;
 - rate limit persistente e alertas externos;

@@ -4,6 +4,8 @@
 > no `main` em `4810af4`, a CI, a produção pública e as interfaces Web/Flutter.
 > Evidência detalhada:
 > [auditoria de estado e paridade](docs/audits/2026-08-20-product-state-and-design-parity.md).
+> O incremento R1.4 foi revalidado separadamente em 21/08/2026; a prova local e
+> de CI não deve ser confundida com publicação GHCR ou deploy no EasyPanel.
 
 ## Status e convenções
 
@@ -285,7 +287,7 @@ diretos para cartões e contas fixas.
 
 ### 6.3 Comandos atuais
 
-`manage.py migrate`, `collectstatic`, `runserver`, `test`, `check`,
+`manage.py prepare_deploy`, `migrate`, `collectstatic`, `runserver`, `test`, `check`,
 `makemigrations --check`, `createsuperuser`, `backup_sqlite`, `backup_to_r2`,
 `run_backup_scheduler`, `purge_import_previews`,
 `run_import_preview_purge_scheduler`, `audit_household_integrity`, `coverage`
@@ -324,9 +326,9 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 | Severidade | Evidência | Impacto | Tratamento |
 |---|---|---|---|
-| Alto | `core/wsgi.py` executa migration e captura qualquer exceção | web pode iniciar com schema incompatível | migration explícita e fail-fast antes do Supervisor |
+| Mitigado no código; validação operacional aberta | o entrypoint executa `prepare_deploy` antes do Supervisor | falha de configuração, backup, migration, auditoria ou static não inicia processos | publicar a imagem imutável e validar no EasyPanel na Task 7 |
 | Alto | sync central cobre só Account/Category/Transaction | cartões/contas fixas não têm a mesma garantia offline | servidor canônico, escrita online e cache de leitura vinculado à sessão |
-| Alto `[INVESTIGAR]` | EasyPanel acompanha `main` sem SHA exposto no health ou digest de rollback registrado | produção/rollback não são verificáveis pela aplicação | health com versão e imagem/tag imutável |
+| Alto | o health e a tag GHCR têm contrato por SHA, mas a tag não foi publicada nem selecionada no EasyPanel | produção/rollback ainda não foram validados para o candidato | publicar `sha-<40-char-sha>` e ensaiar rollback manual na Task 7 |
 | Médio | PRD, roadmap, README e instruções descreviam estado anterior | decisões e novas tasks podem duplicar trabalho pronto | auditoria datada e atualização documental |
 | Médio | Web hardcoded dark e 821 cores hex espalhadas | paridade/tema/manutenção frágeis | tokens Casa de Valores 2.0 e migração incremental |
 | Médio | Tailwind, Alpine, Chart.js e fonte vêm de CDN | supply chain, CSP e indisponibilidade | fixar e servir assets locais, sem trocar framework |
@@ -348,11 +350,12 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 ## 10. Cobertura de testes atual
 
-No `main` auditado em 20/08/2026, 526 testes Django e 336 testes Flutter
-não-golden passaram; `flutter analyze`, Django check e migrations check também
-passaram. Entretanto, a CI está vermelha: Ruff tem 7 achados, 17 arquivos Dart
-divergem do formato e 10 de 12 goldens falham. Android e iOS sem assinatura
-compilaram; Windows/MSIX foi bloqueado pelo gate visual. Há testes de isolamento
+Na branch candidata em 21/08/2026, 581 testes Django e 374 testes Flutter
+passaram localmente; Ruff, formato após resolução de dependências, análise,
+checks, migrations e cobertura de 95% também passaram. Os builds Windows e APK
+release foram produzidos. A CI `32529705321` ficou verde no SHA
+`2584fa7db5e9ee9fa158cdfce54d3b2b24ef4a9d`, inclusive nos jobs Windows/MSIX,
+Android e iOS. Há testes de isolamento
 por Lar, tokens/dispositivos, reutilização de
 refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI,
 observabilidade, migrations fresh/legadas/rollback/replay, backup consistente,
@@ -360,7 +363,7 @@ gateway R2, retenção, scheduler, concorrência e logs sanitizados.
 
 Sem cobertura comprovada:
 
-- CI verde no estado atual e rollback por digest imutável no EasyPanel real;
+- tag GHCR publicada e rollback por SHA imutável no EasyPanel real;
 - concorrência além da topologia suportada de uma réplica/um worker;
 - CSV/outros bancos e escrita offline de cartões/contas fixas;
 - instalação em iPhone físico, assinatura e distribuição iOS;
@@ -373,10 +376,11 @@ Novos recursos seguirão TDD: teste falha, implementação mínima, refatoraçã
 ## 11. Observabilidade atual
 
 As-is: a API emite log JSON seguro por request, propaga/gera `X-Request-ID`
-UUID e expõe `/api/v1/health/`. O health público responde 200, mas não informa o
-SHA da aplicação. Backup SQLite e auditoria de integridade continuam disponíveis
-sem PII. Não há métricas, tracing, alertas, rastreamento de erros ou auditoria de
-eventos financeiros.
+UUID e expõe `/api/v1/health/`. O payload contém exatamente `status`,
+`api_version` e `version`; na release, `version` é o SHA Git de 40 caracteres.
+Backup SQLite e auditoria de integridade continuam disponíveis sem PII. Não há
+métricas, tracing, alertas, rastreamento de erros ou auditoria de eventos
+financeiros.
 
 To-be mínimo:
 
@@ -457,7 +461,10 @@ Offline por capacidade:
 ## 16. CI/CD e publicação
 
 - GitHub Actions para lint, testes Django, migrations, segurança de dependências, testes Flutter e builds por plataforma.
-- Imagens do backend identificadas por commit e implantadas no EasyPanel com migração controlada.
+- Imagens do backend usam o contrato imutável
+  `ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`. O entrypoint
+  faz preflight, backup opcional, migration, auditoria e `collectstatic` antes
+  de iniciar o Supervisor; a publicação e o deploy reais aguardam a Task 7.
 - Windows: MSIX piloto gerado com certificado de teste; distribuição ainda exige
   certificado privado compatível com `CN=Lar Finance Private`.
 - Android: distribuição privada primeiro; Play Store depois se fizer sentido `[INVESTIGAR conta e política]`.
@@ -471,8 +478,9 @@ Sprints 0–5 e seus incrementos posteriores entregaram operação, Lar, API/syn
 OFX, fundação Flutter, contas/transações, cartões/faturas, contas fixas,
 orçamento e relatórios. O fechamento foi reorganizado em:
 
-- [~] **R1 — Verdade e estabilização:** documentação, CI e dinheiro exato estão
-  concluídos; deploy fail-fast e versão observável permanecem pendentes.
+- [~] **R1 — Verdade e estabilização:** documentação, CI, dinheiro exato, código
+  fail-fast e versão observável estão entregues; publicação GHCR, ensaio de
+  rollback da imagem anterior e validação EasyPanel permanecem na Task 7.
 - [ ] **R2 — Fundação Web Casa de Valores 2.0:** tokens, tema, assets e shell.
 - [ ] **R3 — Paridade visual incremental:** uma tela por task.
 - [ ] **R4 — Consistência entre dispositivos:** contrato de maturidade, cache de
@@ -494,8 +502,10 @@ objeto, restart, idempotência e restauração descartável comprovados.
 
 Pendentes imediatos:
 
-- tornar migrations fail-fast e expor versão no health;
-- materializar rollback de imagem imutável;
+- publicar e selecionar a tag GHCR imutável do SHA candidato;
+- materializar e ensaiar o rollback manual para a imagem anterior;
+- validar preflight, topologia e health no EasyPanel sem sobrescrever o
+  entrypoint;
 - aplicar Casa de Valores 2.0 incrementalmente;
 - exibir “não informado” em vez de `R$ 0,00` para dado realmente ausente.
 
@@ -564,3 +574,10 @@ Pendentes imediatos:
 - Cadastro público e landing foram removidos; login e fallback web privado permanecem.
 - O servidor EasyPanel foi atualizado de forma controlada em 2026-08-13. O ensaio
   de restauração nunca apontou para a base real; a base permaneceu íntegra.
+- Em 21/08/2026, a CI `32529705321` comprovou no SHA
+  `2584fa7db5e9ee9fa158cdfce54d3b2b24ef4a9d` o build da imagem, o health com o
+  mesmo SHA e os três processos do Supervisor. O job de publicação GHCR foi
+  pulado, porque o evento foi push de branch; nenhuma tag foi publicada.
+- A matriz e os ensaios locais sanitizados estão em
+  `docs/audits/2026-08-21-fail-fast-deploy-rehearsal.md`. Eles não comprovam
+  download R2 atual, imagem anterior ou configuração do EasyPanel.

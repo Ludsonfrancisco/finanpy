@@ -5,6 +5,8 @@ SQLite persistente. Runtime, Supervisor, proxy, smoke público e backup R2 foram
 validados no EasyPanel `v2.33.1` em 2026-08-13. O aceite integral do runbook ainda
 tem gates abertos. A evidência sanitizada está em
 [automatic-r2-backup-production.md](audits/automatic-r2-backup-production.md).
+O ensaio do candidato R1.4 está em
+[2026-08-21-fail-fast-deploy-rehearsal.md](audits/2026-08-21-fail-fast-deploy-rehearsal.md).
 
 ## Estado e bloqueios de produção
 
@@ -24,11 +26,16 @@ Estado dos gates operacionais, sem registrar segredos:
   persistência, proxy e smoke validados em 2026-08-13.
 - [x] O proprietário confirmou em 20/08/2026 que o EasyPanel acompanha o GitHub
   `main`; health público respondeu 200.
-- [ ] Expor o SHA efetivo no health e validar o deploy candidato atual. O
-  `core/wsgi.py` passou a chamar `migrate` de forma fail-open durante startup;
-  retirar esse comportamento no ciclo R1 e usar o procedimento fail-fast abaixo.
-- [ ] `[INVESTIGAR]` Materializar rollback por digest/tag imutável da imagem e
-  confirmar rate limit persistente para `POST /login/`.
+- [x] O código removeu migration de `core/wsgi.py`; o entrypoint agora executa
+  `prepare_deploy` de forma fail-fast antes do Supervisor.
+- [x] A CI `32529705321`, no SHA
+  `2584fa7db5e9ee9fa158cdfce54d3b2b24ef4a9d`, construiu a imagem e confirmou
+  health com o SHA e os três processos esperados.
+- [ ] A publicação GHCR foi pulada no push de branch. A Task 7 deve publicar a
+  tag `sha-<40-char-sha>`, selecionar o candidato no EasyPanel e provar o health
+  externo com o mesmo SHA.
+- [ ] A Task 7 deve ensaiar rollback para a imagem anterior e confirmar rate
+  limit persistente para `POST /login/`.
 
 Interrompa o deploy se qualquer pré-requisito, backup, auditoria ou ensaio falhar.
 
@@ -38,8 +45,9 @@ O SQLite exige que esta aplicação opere com uma única instância gravadora:
 
 - exatamente **1 réplica** do serviço web no EasyPanel;
 - Gunicorn com exatamente **1 worker**;
-- Supervisor inicia Gunicorn, um único `run_backup_scheduler` e um único
-  `run_import_preview_purge_scheduler`; não crie cron/job duplicado;
+- Supervisor inicia Gunicorn e exatamente dois schedulers: um único
+  `run_backup_scheduler` e um único `run_import_preview_purge_scheduler`; não
+  crie cron/job duplicado;
 - volume persistente montado em `/app/data`;
 - `SQLITE_PATH=/app/data/db.sqlite3`;
 - se houver uploads, volume persistente adicional montado em `/app/media`.
@@ -152,7 +160,8 @@ proteção equivalente e persistente.
 
 Execute em uma janela de manutenção, antes de alterar o banco:
 
-1. Registre a versão atual e a nova versão imutável da imagem.
+1. Registre a versão atual e a nova versão imutável da imagem no formato
+   `ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`.
 2. Confirme uma réplica, um worker, o mount `/app/data` e o caminho absoluto do
    banco. Não imprima variáveis secretas.
 3. Confirme espaço livre suficiente para o banco ativo, o backup e a reconstrução
@@ -253,39 +262,31 @@ Um ensaio antigo ou feito com outro backup/hash não autoriza o deploy atual.
 ## Sequência de deploy
 
 1. Ative modo de manutenção e confirme que não há requisições de escrita.
-2. Repita o preflight no alvo real.
-3. Gere o backup verificado, copie-o para fora do host e valide o hash no destino.
-4. Selecione a imagem candidata pelo identificador imutável ensaiado.
-5. Execute a migration como etapa única e controlada, conectada ao volume
-   `/app/data`:
+2. Repita o preflight no alvo real e confirme que as credenciais R2 estão
+   disponíveis sem imprimir valores.
+3. Confirme um backup externo verificável e conclua o ensaio na restauração
+   descartável. Preserve o objeto R2 selecionado.
+4. Selecione a imagem candidata pela tag GHCR imutável `sha-<40-char-sha>`.
+5. Configure exatamente uma réplica e não sobrescreva `ENTRYPOINT`, `CMD` ou
+   command no EasyPanel. O entrypoint da imagem executa automaticamente:
 
-   ```sh
-   python manage.py migrate
-   python manage.py audit_household_integrity
-   python manage.py collectstatic --noinput
+   ```text
+   preflight → backup R2 opcional → migrate → audit → collectstatic → Supervisor
    ```
 
-6. Se qualquer comando falhar, mantenha manutenção ativa e inicie o rollback. Não
-   inicie uma segunda migration concorrente.
-7. Inicie exatamente uma réplica sem sobrescrever o command da imagem, para que
-   seu `CMD` inicie o Supervisor. Se o EasyPanel exigir command explícito, use:
-
-   ```sh
-   supervisord -c /app/deploy/supervisord.conf
-   ```
-
-   Não inicie Gunicorn diretamente: isso ignora os schedulers. A configuração
-   versionada mantém o web com um worker, um `backup-scheduler` e um
-   `import-preview-purge` independente do R2.
-8. Confirme novamente o mount, `SQLITE_PATH`, uma réplica, um worker e os três
-   processos `web`, `backup-scheduler` e `import-preview-purge`; execute a
-   auditoria no container em execução e faça os smoke checks.
-9. Libere o tráfego somente após todas as verificações passarem.
-
-Prefira um job one-off ou deploy hook para `migrate`; não o acople a todo restart do
-serviço. `[INVESTIGAR]` Confirmar o mecanismo suportado pela versão instalada do
-EasyPanel para executar essa etapa sem iniciar duas réplicas e sem liberar tráfego
-antes da auditoria.
+   O backup de deploy ocorre somente quando já existe banco e há migration
+   pendente. Nessa condição ele é obrigatório: falha de configuração ou R2
+   encerra o container antes de `migrate`. Banco novo ou sem migration pendente
+   pula essa etapa.
+6. Se o container terminar com exit diferente de zero, mantenha manutenção
+   ativa. Não execute `migrate` manualmente, não inicie Gunicorn/Supervisor à
+   parte e não tente uma segunda migration concorrente; preserve a evidência e
+   siga o rollback.
+7. Após startup bem-sucedido, confirme o mount, `SQLITE_PATH`, uma réplica, um
+   worker e os três processos `web`, `backup-scheduler` e
+   `import-preview-purge`.
+8. Execute a auditoria no container em execução, valide o health e faça os smoke
+   checks. Libere o tráfego somente após todas as verificações passarem.
 
 ## Smoke checks
 
@@ -299,6 +300,9 @@ Registre apenas status e identificadores técnicos, nunca conteúdo financeiro:
 - logout encerra a sessão;
 - `python manage.py audit_household_integrity` termina com
   `integrity_status=ok`;
+- `GET /api/v1/health/` responde HTTP 200 com exatamente `status`, `api_version`
+  e `version`; `status=ok`, `api_version=v1` e `version` coincide com o SHA da
+  tag selecionada;
 - a regra de rate limit devolve `429` após o limite em teste controlado;
 - logs não contêm senha, corpo de login, cookies ou segredos;
 - após um restart controlado, o mesmo arquivo em `/app/data/db.sqlite3` continua
@@ -322,12 +326,13 @@ Django ou Gunicorn estiver aberto.
 1. Ative ou mantenha manutenção e pare a réplica candidata.
 2. Preserve o banco que falhou com nome separado para diagnóstico, sem substituir
    o backup pré-deploy.
-3. Confirme o caminho absoluto e o hash do backup escolhido. Verifique a cópia
-   novamente antes de restaurar.
-4. Restaure o arquivo em `/app/data/db.sqlite3` com permissões do usuário do
-   container.
-5. Selecione a imagem anterior pelo identificador imutável e inicie uma única
-   réplica com um worker.
+3. Confirme tamanho e SHA remoto do objeto escolhido; baixe e verifique uma cópia
+   em diretório descartável, incluindo `PRAGMA integrity_check`, sem excluir nem
+   sobrescrever o objeto R2.
+4. Com todos os processos ainda parados, restaure a cópia verificada no path de
+   produção com as permissões do usuário do container.
+5. Selecione a imagem anterior pela tag `sha-<40-char-sha>` e inicie uma única
+   réplica com um worker, preservando seu entrypoint.
 6. Execute checks e auditoria compatíveis com o schema restaurado, depois repita os
    smoke checks antes de liberar tráfego.
 7. Registre motivo, horários, imagens, hash do backup e resultados, sem dados
@@ -345,10 +350,9 @@ em restauração descartável. Na ausência dessa prova específica, restaure o 
 não improvise um downgrade em produção e nunca altere manualmente a tabela
 `django_migrations`.
 
-`[INVESTIGAR]` A versão instalada permitiu uma réplica sem sobreposição, start/stop
-e restore isolado, mas não expôs no fluxo usado um digest de imagem selecionável.
-Materializar e ensaiar rollback por digest/tag imutável antes da próxima mudança de
-schema ou infraestrutura.
+A versão instalada permitiu uma réplica sem sobreposição, start/stop e restore
+isolado em 2026-08-13, mas a imagem anterior por tag imutável ainda não foi
+ensaiada. Essa é uma ação explícita da Task 7 antes de aceitar R1.4.
 
 ## Registro da validação real
 
@@ -368,4 +372,6 @@ O registro real de 2026-08-13 está em
 [automatic-r2-backup-production.md](audits/automatic-r2-backup-production.md). Ele
 comprova deploy, restart, topologia, proxy, smoke público, objeto idempotente e
 restauração isolada. Não comprova ainda rollback por digest imutável, rate limit de
-login ou alertas externos.
+login ou alertas externos. A prova local/CI de 21/08/2026 comprova o código e a
+imagem candidata na CI, mas não comprova publicação GHCR nem alteração no
+EasyPanel; essas ações aguardam a Task 7.
