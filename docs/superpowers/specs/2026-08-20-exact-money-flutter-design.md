@@ -1,7 +1,7 @@
 # Dinheiro exato em cartões e contas fixas — Design
 
-**Data:** 2026-08-20  
-**Roadmap:** R1.3  
+**Data:** 2026-08-20
+**Roadmap:** R1.3
 **Estado:** aprovado para planejamento
 
 ## Objetivo
