@@ -70,7 +70,37 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
                     },
                 )
 
-    def test_docker_image_starts_supervisor_as_pid_one(self):
+    def test_wsgi_never_runs_migrations(self):
+        source = Path(BASE_DIR, 'core', 'wsgi.py').read_text(encoding='utf-8')
+
+        self.assertNotIn('call_command', source)
+        self.assertNotIn("'migrate'", source)
+        self.assertNotIn('gunicorn', source.lower())
+
+    def test_start_script_is_fail_fast_before_supervisor(self):
+        script_path = Path(BASE_DIR, 'deploy', 'start.sh')
+
+        self.assertTrue(script_path.is_file())
+        source = script_path.read_text(encoding='utf-8')
+        self.assertEqual(
+            [line for line in source.splitlines() if line and not line.startswith('#')],
+            [
+                'set -eu',
+                'python manage.py prepare_deploy',
+                'exec supervisord -c /app/deploy/supervisord.conf',
+            ],
+        )
+
+    def test_start_script_is_normalized_to_lf(self):
+        attributes_path = Path(BASE_DIR, '.gitattributes')
+
+        self.assertTrue(attributes_path.is_file())
+        self.assertEqual(
+            attributes_path.read_text(encoding='utf-8').splitlines(),
+            ['deploy/start.sh text eol=lf'],
+        )
+
+    def test_docker_image_runs_fail_fast_entrypoint_as_pid_one(self):
         dockerfile_lines = Path(BASE_DIR, 'Dockerfile').read_text(
             encoding='utf-8'
         ).splitlines()
@@ -86,7 +116,17 @@ class SQLiteDeploymentConfigurationTest(SimpleTestCase):
         self.assertEqual(len(command_lines), 1)
         self.assertEqual(
             json.loads(command_lines[0].split(maxsplit=1)[1]),
-            ['supervisord', '-c', '/app/deploy/supervisord.conf'],
+            ['/app/deploy/start.sh'],
+        )
+        self.assertIn('ARG APP_VERSION=development', instructions)
+        self.assertIn('ENV APP_VERSION=${APP_VERSION}', instructions)
+        self.assertIn(
+            'LABEL org.opencontainers.image.revision=${APP_VERSION}',
+            instructions,
+        )
+        self.assertIn(
+            'RUN chmod 0755 /app/deploy/start.sh',
+            instructions,
         )
 
     def test_compose_web_service_inherits_the_image_command(self):

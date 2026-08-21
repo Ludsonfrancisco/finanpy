@@ -15,10 +15,15 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY . .
 
+ARG APP_VERSION=development
+ENV APP_VERSION=${APP_VERSION}
+LABEL org.opencontainers.image.revision=${APP_VERSION}
+RUN chmod 0755 /app/deploy/start.sh
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-# Supervisor is PID 1 and keeps the single SQLite web worker and backup scheduler isolated.
-CMD ["supervisord", "-c", "/app/deploy/supervisord.conf"]
+# The startup gate hands PID 1 to Supervisor after deployment preparation succeeds.
+CMD ["/app/deploy/start.sh"]
