@@ -694,9 +694,7 @@ final class _BillsShellState extends State<_BillsShell> {
     final repository = widget.billsRepository;
     _controller = repository == null
         ? null
-        : BillsController(
-            repository: repository,
-          );
+        : BillsController(repository: repository);
   }
 
   @override
@@ -756,9 +754,7 @@ final class _CardsShellState extends State<_CardsShell> {
     final repository = widget.cardsRepository;
     _controller = repository == null
         ? null
-        : CardsController(
-            repository: repository,
-          );
+        : CardsController(repository: repository);
   }
 
   @override

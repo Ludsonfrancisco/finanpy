@@ -72,9 +72,8 @@ final class BillsState {
 const Object _sentinel = Object();
 
 final class BillsController extends ChangeNotifier {
-  BillsController({
-    required BillsRepository repository,
-  }) : _repository = repository;
+  BillsController({required BillsRepository repository})
+    : _repository = repository;
 
   final BillsRepository _repository;
   BillsState _state = BillsState.initial();

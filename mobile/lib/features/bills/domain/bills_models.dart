@@ -34,7 +34,9 @@ final class BillInstanceModel {
       dueDay: (json['due_day'] as num?)?.toInt() ?? 1,
       amount: double.tryParse(json['amount'] as String? ?? '0.00') ?? 0.0,
       status: json['status'] as String? ?? 'pending',
-      paidAt: json['paid_at'] != null ? DateTime.tryParse(json['paid_at'] as String) : null,
+      paidAt: json['paid_at'] != null
+          ? DateTime.tryParse(json['paid_at'] as String)
+          : null,
       type: json['type'] as String? ?? 'expense',
       categoryName: json['category_name'] as String? ?? 'Geral',
       categoryId: (json['category_id'] as num?)?.toInt(),
@@ -77,7 +79,9 @@ final class BillInstanceModel {
 
   bool isDueToday(DateTime now) {
     if (!isPending) return false;
-    return dueDate.year == now.year && dueDate.month == now.month && dueDate.day == now.day;
+    return dueDate.year == now.year &&
+        dueDate.month == now.month &&
+        dueDate.day == now.day;
   }
 }
 
@@ -150,13 +154,24 @@ final class BillsMetricsModel {
     return BillsMetricsModel(
       month: (json['month'] as num?)?.toInt() ?? DateTime.now().month,
       year: (json['year'] as num?)?.toInt() ?? DateTime.now().year,
-      pendingExpensesTotal: double.tryParse(json['pending_expenses_total'] as String? ?? '0.00') ?? 0.0,
-      paidExpensesTotal: double.tryParse(json['paid_expenses_total'] as String? ?? '0.00') ?? 0.0,
-      totalCommitted: double.tryParse(json['total_committed'] as String? ?? '0.00') ?? 0.0,
+      pendingExpensesTotal:
+          double.tryParse(
+            json['pending_expenses_total'] as String? ?? '0.00',
+          ) ??
+          0.0,
+      paidExpensesTotal:
+          double.tryParse(json['paid_expenses_total'] as String? ?? '0.00') ??
+          0.0,
+      totalCommitted:
+          double.tryParse(json['total_committed'] as String? ?? '0.00') ?? 0.0,
       overdueCount: (json['overdue_count'] as num?)?.toInt() ?? 0,
       dueTodayCount: (json['due_today_count'] as num?)?.toInt() ?? 0,
-      totalAccountBalance: double.tryParse(json['total_account_balance'] as String? ?? '0.00') ?? 0.0,
-      freeCashBalance: double.tryParse(json['free_cash_balance'] as String? ?? '0.00') ?? 0.0,
+      totalAccountBalance:
+          double.tryParse(json['total_account_balance'] as String? ?? '0.00') ??
+          0.0,
+      freeCashBalance:
+          double.tryParse(json['free_cash_balance'] as String? ?? '0.00') ??
+          0.0,
     );
   }
 

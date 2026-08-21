@@ -192,10 +192,12 @@ class AccountViewTest(TestCase):
         self.assertFalse(Account.objects.filter(pk=self.account.pk).exists())
 
     def test_delete_account_with_imported_data_and_references(self):
+        import datetime
+
+        from django.utils import timezone
+
         from api.models import DeviceSession
         from imports.models import ImportAccountLink, ImportBatch, SourceReference
-        import datetime
-        from django.utils import timezone
 
         device_session = DeviceSession.objects.create(
             user=self.user,

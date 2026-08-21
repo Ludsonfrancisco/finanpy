@@ -371,9 +371,11 @@ class TransactionImportOFXView(LoginRequiredMixin, HouseholdContextMixin, View):
 
     def post(self, request, *args, **kwargs):
         from decimal import Decimal
+
         from django.db import transaction
+
         from imports.models import SourceReference
-        from imports.ofx import parse_nubank_ofx, OfxParseError
+        from imports.ofx import OfxParseError, parse_nubank_ofx
 
         action = request.POST.get('action', 'preview')
         accounts = Account.objects.filter(household=self.household).order_by('name')

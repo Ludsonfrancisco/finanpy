@@ -6,7 +6,7 @@ from categories.models import Category
 from households.forms import HouseholdModelFormMixin
 from households.models import FinancialOwner
 
-from .models import BillInstance, RecurringBill
+from .models import RecurringBill
 
 _INPUT_CLASSES = (
     'block w-full rounded-xl border border-[#24302A] bg-[#121815] '

@@ -34,7 +34,9 @@ final class CardExpenseSheet extends StatefulWidget {
         context: context,
         builder: (_) => Dialog(
           backgroundColor: const Color(0xFF1A221E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: CardExpenseSheet(
@@ -55,7 +57,9 @@ final class CardExpenseSheet extends StatefulWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: CardExpenseSheet(
           controller: controller,
           cards: cards,
@@ -85,7 +89,9 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
   void initState() {
     super.initState();
     _selectedCard = widget.initialCard ?? widget.cards.firstOrNull;
-    final expenseCats = widget.categories.where((c) => c.type == TransactionType.expense).toList();
+    final expenseCats = widget.categories
+        .where((c) => c.type == TransactionType.expense)
+        .toList();
     _selectedCategoryUuid = expenseCats.firstOrNull?.uuid;
   }
 
@@ -97,7 +103,11 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
   }
 
   double get _parsedAmount {
-    final text = _amountCtrl.text.replaceAll('R\$', '').replaceAll('.', '').replaceAll(',', '.').trim();
+    final text = _amountCtrl.text
+        .replaceAll('R\$', '')
+        .replaceAll('.', '')
+        .replaceAll(',', '.')
+        .trim();
     return double.tryParse(text) ?? 0.0;
   }
 
@@ -126,7 +136,10 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro: $e'), backgroundColor: LarColors.danger),
+          SnackBar(
+            content: Text('Erro: $e'),
+            backgroundColor: LarColors.danger,
+          ),
         );
       }
     } finally {
@@ -138,9 +151,13 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
   Widget build(BuildContext context) {
     final currencyFmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final dateFmt = DateFormat('dd/MM/yyyy');
-    final expenseCategories = widget.categories.where((c) => c.type == TransactionType.expense).toList();
+    final expenseCategories = widget.categories
+        .where((c) => c.type == TransactionType.expense)
+        .toList();
 
-    final installmentValue = _installments > 0 && _parsedAmount > 0 ? _parsedAmount / _installments : 0.0;
+    final installmentValue = _installments > 0 && _parsedAmount > 0
+        ? _parsedAmount / _installments
+        : 0.0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -170,13 +187,19 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
 
             // Card selector
             if (widget.cards.isNotEmpty) ...[
-              Text('Cartão de Crédito', style: Theme.of(context).textTheme.labelMedium),
+              Text(
+                'Cartão de Crédito',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
               const SizedBox(height: LarSpacing.xs),
               DropdownButtonFormField<CreditCardModel>(
                 initialValue: _selectedCard,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
                 ),
                 items: widget.cards.map((c) {
                   return DropdownMenuItem(
@@ -190,7 +213,10 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
             ],
 
             // Description
-            Text('Descrição da Compra', style: Theme.of(context).textTheme.labelMedium),
+            Text(
+              'Descrição da Compra',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
             const SizedBox(height: LarSpacing.xs),
             TextFormField(
               controller: _descriptionCtrl,
@@ -198,7 +224,9 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
                 hintText: 'Ex: Supermercado, Passagens',
                 border: OutlineInputBorder(),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe a descrição' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Informe a descrição'
+                  : null,
             ),
             const SizedBox(height: LarSpacing.md),
 
@@ -209,17 +237,24 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Valor Total (R\$)', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Valor Total (R\$)',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       TextFormField(
                         controller: _amountCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: const InputDecoration(
                           hintText: '0,00',
                           border: OutlineInputBorder(),
                         ),
                         onChanged: (_) => setState(() {}),
-                        validator: (v) => _parsedAmount <= 0 ? 'Informe um valor maior que 0' : null,
+                        validator: (v) => _parsedAmount <= 0
+                            ? 'Informe um valor maior que 0'
+                            : null,
                       ),
                     ],
                   ),
@@ -229,7 +264,10 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Data da Compra', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Data da Compra',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       InkWell(
                         onTap: () async {
@@ -239,11 +277,18 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
                             firstDate: DateTime(2020),
                             lastDate: DateTime(2030),
                           );
-                          if (picked != null) setState(() => _purchaseDate = picked);
+                          if (picked != null) {
+                            setState(() => _purchaseDate = picked);
+                          }
                         },
                         child: InputDecorator(
-                          decoration: const InputDecoration(border: OutlineInputBorder()),
-                          child: Text(dateFmt.format(_purchaseDate), style: const TextStyle(color: Colors.white)),
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                          child: Text(
+                            dateFmt.format(_purchaseDate),
+                            style: const TextStyle(color: Colors.white),
+                          ),
                         ),
                       ),
                     ],
@@ -261,34 +306,51 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Categoria', style: Theme.of(context).textTheme.labelMedium),
+                        Text(
+                          'Categoria',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
                         const SizedBox(height: LarSpacing.xs),
                         DropdownButtonFormField<String>(
                           initialValue: _selectedCategoryUuid,
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 14,
+                            ),
                           ),
                           items: expenseCategories.map((cat) {
-                            return DropdownMenuItem<String>(value: cat.uuid, child: Text(cat.name));
+                            return DropdownMenuItem<String>(
+                              value: cat.uuid,
+                              child: Text(cat.name),
+                            );
                           }).toList(),
-                          onChanged: (val) => setState(() => _selectedCategoryUuid = val),
+                          onChanged: (val) =>
+                              setState(() => _selectedCategoryUuid = val),
                         ),
                       ],
                     ),
                   ),
-                if (expenseCategories.isNotEmpty) const SizedBox(width: LarSpacing.md),
+                if (expenseCategories.isNotEmpty)
+                  const SizedBox(width: LarSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Parcelas', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Parcelas',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       DropdownButtonFormField<int>(
                         initialValue: _installments,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
                         ),
                         items: List.generate(24, (i) => i + 1).map((n) {
                           return DropdownMenuItem(
@@ -296,7 +358,8 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
                             child: Text(n == 1 ? '1x (À vista)' : '${n}x'),
                           );
                         }).toList(),
-                        onChanged: (val) => setState(() => _installments = val ?? 1),
+                        onChanged: (val) =>
+                            setState(() => _installments = val ?? 1),
                       ),
                     ],
                   ),
@@ -316,10 +379,17 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Plano de Parcelamento:', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                    const Text(
+                      'Plano de Parcelamento:',
+                      style: TextStyle(fontSize: 12, color: Colors.white70),
+                    ),
                     Text(
                       '${_installments}x de ${currencyFmt.format(installmentValue)}',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: LarColors.champagne),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: LarColors.champagne,
+                      ),
                     ),
                   ],
                 ),
@@ -337,11 +407,23 @@ final class _CardExpenseSheetState extends State<CardExpenseSheet> {
                 style: FilledButton.styleFrom(
                   backgroundColor: LarColors.champagne,
                   foregroundColor: const Color(0xFF0F1714),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: _isSubmitting
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Lançar na Fatura', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text(
+                        'Lançar na Fatura',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
               ),
             ),
           ],

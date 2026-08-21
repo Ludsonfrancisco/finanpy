@@ -45,10 +45,16 @@ final class CreditCardModel {
       id: json['id'] as int? ?? 0,
       name: json['name'] as String? ?? '',
       limit: double.tryParse(json['limit']?.toString() ?? '0') ?? 0.0,
-      availableLimit: double.tryParse(json['available_limit']?.toString() ?? '0') ?? 0.0,
-      unpaidExpensesTotal: double.tryParse(json['unpaid_expenses_total']?.toString() ?? '0') ?? 0.0,
-      currentInvoiceTotal: double.tryParse(json['current_invoice_total']?.toString() ?? '0') ?? 0.0,
-      limitUsagePercent: (json['limit_usage_percent'] as num?)?.toDouble() ?? 0.0,
+      availableLimit:
+          double.tryParse(json['available_limit']?.toString() ?? '0') ?? 0.0,
+      unpaidExpensesTotal:
+          double.tryParse(json['unpaid_expenses_total']?.toString() ?? '0') ??
+          0.0,
+      currentInvoiceTotal:
+          double.tryParse(json['current_invoice_total']?.toString() ?? '0') ??
+          0.0,
+      limitUsagePercent:
+          (json['limit_usage_percent'] as num?)?.toDouble() ?? 0.0,
       closingDay: json['closing_day'] as int? ?? 10,
       dueDay: json['due_day'] as int? ?? 17,
       color: json['color'] as String? ?? '#2F756A',
@@ -171,17 +177,27 @@ final class CardInvoiceModel {
       cardName: json['card_name'] as String? ?? '',
       month: json['month'] as int? ?? 1,
       year: json['year'] as int? ?? 2026,
-      closingDate: DateTime.tryParse(json['closing_date'] as String? ?? '') ?? DateTime.now(),
-      dueDate: DateTime.tryParse(json['due_date'] as String? ?? '') ?? DateTime.now(),
+      closingDate:
+          DateTime.tryParse(json['closing_date'] as String? ?? '') ??
+          DateTime.now(),
+      dueDate:
+          DateTime.tryParse(json['due_date'] as String? ?? '') ??
+          DateTime.now(),
       status: json['status'] as String? ?? 'open',
       statusDisplay: json['status_display'] as String? ?? 'Aberta',
-      totalAmount: double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0.0,
-      paidAmount: double.tryParse(json['paid_amount']?.toString() ?? '0') ?? 0.0,
-      paidAt: json['paid_at'] != null ? DateTime.tryParse(json['paid_at'] as String) : null,
+      totalAmount:
+          double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0.0,
+      paidAmount:
+          double.tryParse(json['paid_amount']?.toString() ?? '0') ?? 0.0,
+      paidAt: json['paid_at'] != null
+          ? DateTime.tryParse(json['paid_at'] as String)
+          : null,
       paymentAccountId: json['payment_account_id'] as int?,
       paymentAccountName: json['payment_account_name'] as String?,
       expensesCount: json['expenses_count'] as int? ?? expList.length,
-      expenses: expList.map((e) => CardExpenseModel.fromJson(e as Map<String, dynamic>)).toList(),
+      expenses: expList
+          .map((e) => CardExpenseModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }
@@ -220,21 +236,23 @@ final class CardsSummaryModel {
     return CardsSummaryModel(
       month: json['month'] as int? ?? 1,
       year: json['year'] as int? ?? 2026,
-      totalLimit: double.tryParse(json['total_limit']?.toString() ?? '0') ?? 0.0,
+      totalLimit:
+          double.tryParse(json['total_limit']?.toString() ?? '0') ?? 0.0,
       totalUsed: double.tryParse(json['total_used']?.toString() ?? '0') ?? 0.0,
-      totalAvailable: double.tryParse(json['total_available']?.toString() ?? '0') ?? 0.0,
-      totalCurrentInvoices: double.tryParse(json['total_current_invoices']?.toString() ?? '0') ?? 0.0,
-      limitUsagePercent: (json['limit_usage_percent'] as num?)?.toDouble() ?? 0.0,
+      totalAvailable:
+          double.tryParse(json['total_available']?.toString() ?? '0') ?? 0.0,
+      totalCurrentInvoices:
+          double.tryParse(json['total_current_invoices']?.toString() ?? '0') ??
+          0.0,
+      limitUsagePercent:
+          (json['limit_usage_percent'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
 
 @immutable
 final class CardsSnapshot {
-  const CardsSnapshot({
-    required this.cards,
-    required this.summary,
-  });
+  const CardsSnapshot({required this.cards, required this.summary});
 
   final List<CreditCardModel> cards;
   final CardsSummaryModel summary;

@@ -5,11 +5,7 @@ import '../../../../design_system/lar_spacing.dart';
 import '../../domain/bills_models.dart';
 
 final class BillFormSheet extends StatefulWidget {
-  const BillFormSheet({
-    this.initialBill,
-    required this.onSave,
-    super.key,
-  });
+  const BillFormSheet({this.initialBill, required this.onSave, super.key});
 
   final RecurringBillModel? initialBill;
   final Future<void> Function({
@@ -20,7 +16,8 @@ final class BillFormSheet extends StatefulWidget {
     String? financialOwnerType,
     bool isActive,
     String notes,
-  }) onSave;
+  })
+  onSave;
 
   static Future<void> show(
     BuildContext context, {
@@ -33,7 +30,8 @@ final class BillFormSheet extends StatefulWidget {
       String? financialOwnerType,
       bool isActive,
       String notes,
-    }) onSave,
+    })
+    onSave,
   }) {
     final desktop = MediaQuery.sizeOf(context).width >= 900;
     if (desktop) {
@@ -119,7 +117,8 @@ final class _BillFormSheetState extends State<BillFormSheet> {
     if (!_formKey.currentState!.validate()) return;
 
     final name = _nameController.text.trim();
-    final amount = double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0.0;
+    final amount =
+        double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0.0;
     final dueDay = int.tryParse(_dueDayController.text) ?? 10;
 
     setState(() => _submitting = true);
@@ -174,9 +173,9 @@ final class _BillFormSheetState extends State<BillFormSheet> {
             children: [
               Text(
                 isEditing ? 'Editar Conta Fixa' : 'Nova Conta Fixa',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -189,23 +188,30 @@ final class _BillFormSheetState extends State<BillFormSheet> {
             isEditing
                 ? 'Atualize as regras deste compromisso fixo.'
                 : 'Cadastre despesas e receitas regulares para acompanhar os vencimentos automáticos.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white70,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: LarSpacing.lg),
 
           // Name
-          Text('Nome do Compromisso*', style: Theme.of(context).textTheme.labelMedium),
+          Text(
+            'Nome do Compromisso*',
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
           const SizedBox(height: LarSpacing.xs),
           TextFormField(
             controller: _nameController,
             decoration: const InputDecoration(
               hintText: 'Ex.: Aluguel, Luz, Internet Claro...',
               border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 14,
+              ),
             ),
-            validator: (v) => v == null || v.trim().isEmpty ? 'Informe o nome' : null,
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? 'Informe o nome' : null,
           ),
           const SizedBox(height: LarSpacing.md),
 
@@ -217,19 +223,31 @@ final class _BillFormSheetState extends State<BillFormSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Valor Estimado (R\$)*', style: Theme.of(context).textTheme.labelMedium),
+                    Text(
+                      'Valor Estimado (R\$)*',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
                     const SizedBox(height: LarSpacing.xs),
                     TextFormField(
                       controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
                         hintText: '0,00',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
                       ),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Informe o valor';
-                        if (double.tryParse(v.replaceAll(',', '.')) == null) return 'Inválido';
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Informe o valor';
+                        }
+                        if (double.tryParse(v.replaceAll(',', '.')) == null) {
+                          return 'Inválido';
+                        }
                         return null;
                       },
                     ),
@@ -242,7 +260,10 @@ final class _BillFormSheetState extends State<BillFormSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Dia Venc.*', style: Theme.of(context).textTheme.labelMedium),
+                    Text(
+                      'Dia Venc.*',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
                     const SizedBox(height: LarSpacing.xs),
                     TextFormField(
                       controller: _dueDayController,
@@ -250,7 +271,10 @@ final class _BillFormSheetState extends State<BillFormSheet> {
                       decoration: const InputDecoration(
                         hintText: '1 a 31',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
                       ),
                       validator: (v) {
                         final val = int.tryParse(v ?? '');
@@ -272,17 +296,29 @@ final class _BillFormSheetState extends State<BillFormSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Tipo', style: Theme.of(context).textTheme.labelMedium),
+                    Text(
+                      'Tipo',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
                     const SizedBox(height: LarSpacing.xs),
                     DropdownButtonFormField<String>(
                       initialValue: _type,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'expense', child: Text('Despesa')),
-                        DropdownMenuItem(value: 'income', child: Text('Receita')),
+                        DropdownMenuItem(
+                          value: 'expense',
+                          child: Text('Despesa'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'income',
+                          child: Text('Receita'),
+                        ),
                       ],
                       onChanged: (v) => setState(() => _type = v ?? 'expense'),
                     ),
@@ -294,20 +330,33 @@ final class _BillFormSheetState extends State<BillFormSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Titular', style: Theme.of(context).textTheme.labelMedium),
+                    Text(
+                      'Titular',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
                     const SizedBox(height: LarSpacing.xs),
                     DropdownButtonFormField<String>(
                       initialValue: _ownerType,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'shared', child: Text('Conjunto (Lar)')),
+                        DropdownMenuItem(
+                          value: 'shared',
+                          child: Text('Conjunto (Lar)'),
+                        ),
                         DropdownMenuItem(value: 'self', child: Text('Eu')),
-                        DropdownMenuItem(value: 'spouse', child: Text('Esposa')),
+                        DropdownMenuItem(
+                          value: 'spouse',
+                          child: Text('Esposa'),
+                        ),
                       ],
-                      onChanged: (v) => setState(() => _ownerType = v ?? 'shared'),
+                      onChanged: (v) =>
+                          setState(() => _ownerType = v ?? 'shared'),
                     ),
                   ],
                 ),
@@ -325,7 +374,10 @@ final class _BillFormSheetState extends State<BillFormSheet> {
             decoration: const InputDecoration(
               hintText: 'Código de barras, chave Pix ou anotações...',
               border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
             ),
           ),
           const SizedBox(height: LarSpacing.sm),
@@ -333,7 +385,10 @@ final class _BillFormSheetState extends State<BillFormSheet> {
           // Active Switch
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Conta Fixa Ativa', style: TextStyle(fontSize: 14)),
+            title: const Text(
+              'Conta Fixa Ativa',
+              style: TextStyle(fontSize: 14),
+            ),
             subtitle: const Text(
               'Gera cobrança automaticamente nos próximos meses',
               style: TextStyle(fontSize: 11, color: Colors.white70),
@@ -348,24 +403,34 @@ final class _BillFormSheetState extends State<BillFormSheet> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+                onPressed: _submitting
+                    ? null
+                    : () => Navigator.of(context).pop(),
                 child: const Text('Cancelar'),
               ),
               const SizedBox(width: LarSpacing.sm),
               FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: LarColors.mineral,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
                 ),
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
                     ? const SizedBox(
                         height: 18,
                         width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : Text(
-                        isEditing ? 'Salvar Alterações' : 'Cadastrar Conta Fixa',
+                        isEditing
+                            ? 'Salvar Alterações'
+                            : 'Cadastrar Conta Fixa',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
               ),

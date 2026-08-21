@@ -536,6 +536,7 @@ class TransactionFilterViewTest(TestCase):
 
     def test_import_ofx_preview_and_confirm_flow(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         from imports.models import SourceReference
 
         sample_ofx = (

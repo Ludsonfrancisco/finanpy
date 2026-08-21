@@ -48,7 +48,9 @@ final class CardsState {
       cards: cards ?? this.cards,
       summary: summary ?? this.summary,
       selectedCard: selectedCard != null ? selectedCard() : this.selectedCard,
-      selectedInvoice: selectedInvoice != null ? selectedInvoice() : this.selectedInvoice,
+      selectedInvoice: selectedInvoice != null
+          ? selectedInvoice()
+          : this.selectedInvoice,
       futureInvoices: futureInvoices ?? this.futureInvoices,
       selectedMonth: selectedMonth ?? this.selectedMonth,
       selectedYear: selectedYear ?? this.selectedYear,
@@ -60,7 +62,8 @@ final class CardsState {
 }
 
 final class CardsController extends ChangeNotifier {
-  CardsController({required CardsRepository repository}) : _repository = repository {
+  CardsController({required CardsRepository repository})
+    : _repository = repository {
     final now = DateTime.now();
     _state = CardsState(selectedMonth: now.month, selectedYear: now.year);
   }
@@ -82,14 +85,18 @@ final class CardsController extends ChangeNotifier {
       final snapshot = await _repository.fetchCards(
         month: _state.selectedMonth,
         year: _state.selectedYear,
-        owner: _state.selectedOwner == 'household' ? null : _state.selectedOwner,
+        owner: _state.selectedOwner == 'household'
+            ? null
+            : _state.selectedOwner,
       );
 
       CreditCardModel? selected = _state.selectedCard;
       if (selected == null && snapshot.cards.isNotEmpty) {
         selected = snapshot.cards.first;
       } else if (selected != null) {
-        selected = snapshot.cards.where((c) => c.id == selected!.id).firstOrNull ?? snapshot.cards.firstOrNull;
+        selected =
+            snapshot.cards.where((c) => c.id == selected!.id).firstOrNull ??
+            snapshot.cards.firstOrNull;
       }
 
       _state = _state.copyWith(
@@ -104,7 +111,10 @@ final class CardsController extends ChangeNotifier {
         await loadCardDetail(selected.id);
       }
     } catch (e) {
-      _state = _state.copyWith(isLoading: false, errorMessage: () => e.toString());
+      _state = _state.copyWith(
+        isLoading: false,
+        errorMessage: () => e.toString(),
+      );
       notifyListeners();
     }
   }
@@ -176,7 +186,10 @@ final class CardsController extends ChangeNotifier {
       _state = _state.copyWith(selectedCard: () => newCard);
       await loadCards();
     } catch (e) {
-      _state = _state.copyWith(isLoading: false, errorMessage: () => e.toString());
+      _state = _state.copyWith(
+        isLoading: false,
+        errorMessage: () => e.toString(),
+      );
       notifyListeners();
       rethrow;
     }

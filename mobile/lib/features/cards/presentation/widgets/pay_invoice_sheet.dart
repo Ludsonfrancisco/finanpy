@@ -30,7 +30,9 @@ final class PayInvoiceSheet extends StatefulWidget {
         context: context,
         builder: (_) => Dialog(
           backgroundColor: const Color(0xFF1A221E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: PayInvoiceSheet(
@@ -50,7 +52,9 @@ final class PayInvoiceSheet extends StatefulWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: PayInvoiceSheet(
           controller: controller,
           invoice: invoice,
@@ -87,7 +91,11 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
   }
 
   double get _parsedAmount {
-    final text = _amountCtrl.text.replaceAll('R\$', '').replaceAll('.', '').replaceAll(',', '.').trim();
+    final text = _amountCtrl.text
+        .replaceAll('R\$', '')
+        .replaceAll('.', '')
+        .replaceAll(',', '.')
+        .trim();
     return double.tryParse(text) ?? 0.0;
   }
 
@@ -115,7 +123,10 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro: $e'), backgroundColor: LarColors.danger),
+          SnackBar(
+            content: Text('Erro: $e'),
+            backgroundColor: LarColors.danger,
+          ),
         );
       }
     } finally {
@@ -172,7 +183,11 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
                   const SizedBox(height: 4),
                   Text(
                     currencyFmt.format(widget.invoice.totalAmount),
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: LarColors.mineralOnDark),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: LarColors.mineralOnDark,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -186,13 +201,19 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
 
             // Account selector
             if (widget.accounts.isNotEmpty) ...[
-              Text('Conta de Débito', style: Theme.of(context).textTheme.labelMedium),
+              Text(
+                'Conta de Débito',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
               const SizedBox(height: LarSpacing.xs),
               DropdownButtonFormField<AccountItem>(
                 initialValue: _selectedAccount,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
                 ),
                 items: widget.accounts.map((acc) {
                   final balance = acc.currentBalanceMinor / 100.0;
@@ -213,13 +234,22 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Valor Pago (R\$)', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Valor Pago (R\$)',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       TextFormField(
                         controller: _amountCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(border: OutlineInputBorder()),
-                        validator: (v) => _parsedAmount <= 0 ? 'Informe um valor válido' : null,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) => _parsedAmount <= 0
+                            ? 'Informe um valor válido'
+                            : null,
                       ),
                     ],
                   ),
@@ -229,7 +259,10 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Data do Pagamento', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Data do Pagamento',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       InkWell(
                         onTap: () async {
@@ -239,11 +272,18 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
                             firstDate: DateTime(2020),
                             lastDate: DateTime(2030),
                           );
-                          if (picked != null) setState(() => _paymentDate = picked);
+                          if (picked != null) {
+                            setState(() => _paymentDate = picked);
+                          }
                         },
                         child: InputDecorator(
-                          decoration: const InputDecoration(border: OutlineInputBorder()),
-                          child: Text(dateFmt.format(_paymentDate), style: const TextStyle(color: Colors.white)),
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                          child: Text(
+                            dateFmt.format(_paymentDate),
+                            style: const TextStyle(color: Colors.white),
+                          ),
                         ),
                       ),
                     ],
@@ -262,11 +302,26 @@ final class _PayInvoiceSheetState extends State<PayInvoiceSheet> {
                 style: FilledButton.styleFrom(
                   backgroundColor: LarColors.mineral,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: _isSubmitting
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Confirmar Pagamento', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Confirmar Pagamento',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
               ),
             ),
           ],

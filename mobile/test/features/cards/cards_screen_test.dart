@@ -11,44 +11,47 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() => initializeDateFormatting('pt_BR'));
 
-  testWidgets('CardsScreen renders cards deck, metrics, tabs and invoice expenses', (tester) async {
-    tester.view.physicalSize = const Size(1080, 1920);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() => tester.view.resetPhysicalSize());
+  testWidgets(
+    'CardsScreen renders cards deck, metrics, tabs and invoice expenses',
+    (tester) async {
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
-    final fakeRepo = _FakeCardsRepository();
-    final controller = CardsController(repository: fakeRepo);
+      final fakeRepo = _FakeCardsRepository();
+      final controller = CardsController(repository: fakeRepo);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: LarTheme.dark,
-        home: CardsScreen(controller: controller),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LarTheme.dark,
+          home: CardsScreen(controller: controller),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    // Verify Title
-    expect(find.text('Cartões de Crédito'), findsOneWidget);
+      // Verify Title
+      expect(find.text('Cartões de Crédito'), findsOneWidget);
 
-    // Verify Cards in deck
-    expect(find.text('Nubank Ultravioleta'), findsOneWidget);
-    expect(find.text('XP Infinite'), findsOneWidget);
+      // Verify Cards in deck
+      expect(find.text('Nubank Ultravioleta'), findsOneWidget);
+      expect(find.text('XP Infinite'), findsOneWidget);
 
-    // Verify Selected Invoice metrics
-    expect(find.text('FATURA 08/2026'), findsOneWidget);
-    expect(find.text('Pagar Fatura'), findsOneWidget);
+      // Verify Selected Invoice metrics
+      expect(find.text('FATURA 08/2026'), findsOneWidget);
+      expect(find.text('Pagar Fatura'), findsOneWidget);
 
-    // Verify Tabs
-    expect(find.text('Compras da Fatura'), findsOneWidget);
-    expect(find.text('Faturas Futuras'), findsOneWidget);
+      // Verify Tabs
+      expect(find.text('Compras da Fatura'), findsOneWidget);
+      expect(find.text('Faturas Futuras'), findsOneWidget);
 
-    // Verify Expenses
-    expect(find.text('Supermercado Extra'), findsOneWidget);
-    expect(find.text('Passagens Aéreas'), findsOneWidget);
-    expect(find.text('1/3x'), findsOneWidget);
+      // Verify Expenses
+      expect(find.text('Supermercado Extra'), findsOneWidget);
+      expect(find.text('Passagens Aéreas'), findsOneWidget);
+      expect(find.text('1/3x'), findsOneWidget);
 
-    controller.dispose();
-  });
+      controller.dispose();
+    },
+  );
 
   testWidgets('CardsScreen switches to Faturas Futuras tab', (tester) async {
     tester.view.physicalSize = const Size(1080, 1920);
@@ -120,7 +123,11 @@ final class _FakeCardsRepository implements CardsRepository {
   ];
 
   @override
-  Future<CardsSnapshot> fetchCards({int? month, int? year, String? owner}) async {
+  Future<CardsSnapshot> fetchCards({
+    int? month,
+    int? year,
+    String? owner,
+  }) async {
     return CardsSnapshot(
       cards: _cards,
       summary: const CardsSummaryModel(
@@ -136,8 +143,15 @@ final class _FakeCardsRepository implements CardsRepository {
   }
 
   @override
-  Future<CardDetailSnapshot> fetchCardDetail(int cardId, {int? month, int? year}) async {
-    final card = _cards.firstWhere((c) => c.id == cardId, orElse: () => _cards.first);
+  Future<CardDetailSnapshot> fetchCardDetail(
+    int cardId, {
+    int? month,
+    int? year,
+  }) async {
+    final card = _cards.firstWhere(
+      (c) => c.id == cardId,
+      orElse: () => _cards.first,
+    );
     return CardDetailSnapshot(
       card: card,
       selectedInvoice: CardInvoiceModel(

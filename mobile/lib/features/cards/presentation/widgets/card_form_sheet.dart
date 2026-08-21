@@ -5,11 +5,7 @@ import '../../application/cards_controller.dart';
 import '../../domain/cards_models.dart';
 
 final class CardFormSheet extends StatefulWidget {
-  const CardFormSheet({
-    required this.controller,
-    this.card,
-    super.key,
-  });
+  const CardFormSheet({required this.controller, this.card, super.key});
 
   final CardsController controller;
   final CreditCardModel? card;
@@ -25,7 +21,9 @@ final class CardFormSheet extends StatefulWidget {
         context: context,
         builder: (_) => Dialog(
           backgroundColor: const Color(0xFF1A221E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: CardFormSheet(controller: controller, card: card),
@@ -41,7 +39,9 @@ final class CardFormSheet extends StatefulWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: CardFormSheet(controller: controller, card: card),
       ),
     );
@@ -79,7 +79,9 @@ final class _CardFormSheetState extends State<CardFormSheet> {
     super.initState();
     final c = widget.card;
     _nameCtrl = TextEditingController(text: c?.name ?? '');
-    _limitCtrl = TextEditingController(text: c != null ? c.limit.toStringAsFixed(2) : '');
+    _limitCtrl = TextEditingController(
+      text: c != null ? c.limit.toStringAsFixed(2) : '',
+    );
     _lastDigitsCtrl = TextEditingController(text: c?.lastDigits ?? '');
     _closingDay = c?.closingDay ?? 10;
     _dueDay = c?.dueDay ?? 17;
@@ -97,7 +99,11 @@ final class _CardFormSheetState extends State<CardFormSheet> {
   }
 
   double get _parsedLimit {
-    final text = _limitCtrl.text.replaceAll('R\$', '').replaceAll('.', '').replaceAll(',', '.').trim();
+    final text = _limitCtrl.text
+        .replaceAll('R\$', '')
+        .replaceAll('.', '')
+        .replaceAll(',', '.')
+        .trim();
     return double.tryParse(text) ?? 0.0;
   }
 
@@ -134,7 +140,11 @@ final class _CardFormSheetState extends State<CardFormSheet> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.card != null ? 'Cartão atualizado com sucesso!' : 'Cartão criado com sucesso!'),
+            content: Text(
+              widget.card != null
+                  ? 'Cartão atualizado com sucesso!'
+                  : 'Cartão criado com sucesso!',
+            ),
             backgroundColor: LarColors.mineral,
           ),
         );
@@ -142,7 +152,10 @@ final class _CardFormSheetState extends State<CardFormSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro: $e'), backgroundColor: LarColors.danger),
+          SnackBar(
+            content: Text('Erro: $e'),
+            backgroundColor: LarColors.danger,
+          ),
         );
       }
     } finally {
@@ -192,7 +205,10 @@ final class _CardFormSheetState extends State<CardFormSheet> {
             const SizedBox(height: LarSpacing.lg),
 
             // Card name
-            Text('Nome do Cartão', style: Theme.of(context).textTheme.labelMedium),
+            Text(
+              'Nome do Cartão',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
             const SizedBox(height: LarSpacing.xs),
             TextFormField(
               controller: _nameCtrl,
@@ -200,7 +216,9 @@ final class _CardFormSheetState extends State<CardFormSheet> {
                 hintText: 'Ex: Nubank Ultravioleta, XP Infinite',
                 border: OutlineInputBorder(),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o nome do cartão' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Informe o nome do cartão'
+                  : null,
             ),
             const SizedBox(height: LarSpacing.md),
 
@@ -211,13 +229,23 @@ final class _CardFormSheetState extends State<CardFormSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Limite Total (R\$)', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Limite Total (R\$)',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       TextFormField(
                         controller: _limitCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(hintText: '5000,00', border: OutlineInputBorder()),
-                        validator: (v) => _parsedLimit <= 0 ? 'Informe um limite válido' : null,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          hintText: '5000,00',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) => _parsedLimit <= 0
+                            ? 'Informe um limite válido'
+                            : null,
                       ),
                     ],
                   ),
@@ -227,23 +255,39 @@ final class _CardFormSheetState extends State<CardFormSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Bandeira', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Bandeira',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       DropdownButtonFormField<String>(
                         initialValue: _brand,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
                         ),
                         items: const [
                           DropdownMenuItem(value: 'visa', child: Text('Visa')),
-                          DropdownMenuItem(value: 'mastercard', child: Text('Mastercard')),
+                          DropdownMenuItem(
+                            value: 'mastercard',
+                            child: Text('Mastercard'),
+                          ),
                           DropdownMenuItem(value: 'elo', child: Text('Elo')),
                           DropdownMenuItem(value: 'amex', child: Text('Amex')),
-                          DropdownMenuItem(value: 'hipercard', child: Text('Hipercard')),
-                          DropdownMenuItem(value: 'other', child: Text('Outro')),
+                          DropdownMenuItem(
+                            value: 'hipercard',
+                            child: Text('Hipercard'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'other',
+                            child: Text('Outro'),
+                          ),
                         ],
-                        onChanged: (val) => setState(() => _brand = val ?? 'visa'),
+                        onChanged: (val) =>
+                            setState(() => _brand = val ?? 'visa'),
                       ),
                     ],
                   ),
@@ -259,18 +303,28 @@ final class _CardFormSheetState extends State<CardFormSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Dia Fechamento', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Dia Fechamento',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       DropdownButtonFormField<int>(
                         initialValue: _closingDay,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
                         ),
                         items: List.generate(31, (i) => i + 1).map((d) {
-                          return DropdownMenuItem(value: d, child: Text('Dia $d'));
+                          return DropdownMenuItem(
+                            value: d,
+                            child: Text('Dia $d'),
+                          );
                         }).toList(),
-                        onChanged: (val) => setState(() => _closingDay = val ?? 10),
+                        onChanged: (val) =>
+                            setState(() => _closingDay = val ?? 10),
                       ),
                     ],
                   ),
@@ -280,16 +334,25 @@ final class _CardFormSheetState extends State<CardFormSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Dia Vencimento', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Dia Vencimento',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       DropdownButtonFormField<int>(
                         initialValue: _dueDay,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
                         ),
                         items: List.generate(31, (i) => i + 1).map((d) {
-                          return DropdownMenuItem(value: d, child: Text('Dia $d'));
+                          return DropdownMenuItem(
+                            value: d,
+                            child: Text('Dia $d'),
+                          );
                         }).toList(),
                         onChanged: (val) => setState(() => _dueDay = val ?? 17),
                       ),
@@ -307,20 +370,33 @@ final class _CardFormSheetState extends State<CardFormSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Titular', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Titular',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       DropdownButtonFormField<String>(
                         initialValue: _ownerType,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'shared', child: Text('Conjunto (Lar)')),
+                          DropdownMenuItem(
+                            value: 'shared',
+                            child: Text('Conjunto (Lar)'),
+                          ),
                           DropdownMenuItem(value: 'self', child: Text('Eu')),
-                          DropdownMenuItem(value: 'spouse', child: Text('Esposa')),
+                          DropdownMenuItem(
+                            value: 'spouse',
+                            child: Text('Esposa'),
+                          ),
                         ],
-                        onChanged: (val) => setState(() => _ownerType = val ?? 'shared'),
+                        onChanged: (val) =>
+                            setState(() => _ownerType = val ?? 'shared'),
                       ),
                     ],
                   ),
@@ -330,7 +406,10 @@ final class _CardFormSheetState extends State<CardFormSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Últimos 4 Dígitos', style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        'Últimos 4 Dígitos',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: LarSpacing.xs),
                       TextFormField(
                         controller: _lastDigitsCtrl,
@@ -349,7 +428,10 @@ final class _CardFormSheetState extends State<CardFormSheet> {
             const SizedBox(height: LarSpacing.md),
 
             // Color Palette Selector
-            Text('Cor do Cartão', style: Theme.of(context).textTheme.labelMedium),
+            Text(
+              'Cor do Cartão',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
             const SizedBox(height: LarSpacing.xs),
             Wrap(
               spacing: 8,
@@ -368,10 +450,17 @@ final class _CardFormSheetState extends State<CardFormSheet> {
                         width: 2.5,
                       ),
                       boxShadow: isSelected
-                          ? [BoxShadow(color: _parseColor(hex).withAlpha(150), blurRadius: 8)]
+                          ? [
+                              BoxShadow(
+                                color: _parseColor(hex).withAlpha(150),
+                                blurRadius: 8,
+                              ),
+                            ]
                           : null,
                     ),
-                    child: isSelected ? const Icon(Icons.check, size: 18, color: Colors.white) : null,
+                    child: isSelected
+                        ? const Icon(Icons.check, size: 18, color: Colors.white)
+                        : null,
                   ),
                 );
               }).toList(),
@@ -388,11 +477,26 @@ final class _CardFormSheetState extends State<CardFormSheet> {
                 style: FilledButton.styleFrom(
                   backgroundColor: LarColors.mineral,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: _isSubmitting
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text(isEdit ? 'Salvar Alterações' : 'Cadastrar Cartão', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        isEdit ? 'Salvar Alterações' : 'Cadastrar Cartão',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
               ),
             ),
           ],

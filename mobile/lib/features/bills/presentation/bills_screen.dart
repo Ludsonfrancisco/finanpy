@@ -24,13 +24,25 @@ final class BillsScreen extends StatefulWidget {
   State<BillsScreen> createState() => _BillsScreenState();
 }
 
-final class _BillsScreenState extends State<BillsScreen> with SingleTickerProviderStateMixin {
+final class _BillsScreenState extends State<BillsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<AccountItem> _accounts = [];
 
   final List<String> _ptMonths = [
-    '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    '',
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro',
   ];
 
   @override
@@ -62,7 +74,9 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
   Future<void> _loadAccounts() async {
     if (widget.accountsRepository != null) {
       try {
-        final stream = widget.accountsRepository!.watchAccounts(const OwnerScope.household());
+        final stream = widget.accountsRepository!.watchAccounts(
+          const OwnerScope.household(),
+        );
         final first = await stream.first;
         if (mounted) {
           setState(() {
@@ -157,7 +171,9 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                       const Center(
                         child: Padding(
                           padding: EdgeInsets.all(40),
-                          child: CircularProgressIndicator(color: LarColors.mineral),
+                          child: CircularProgressIndicator(
+                            color: LarColors.mineral,
+                          ),
                         ),
                       )
                     else if (state.activeTab == 0)
@@ -175,7 +191,10 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
         backgroundColor: LarColors.mineral,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label: const Text('Nova Conta Fixa', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const Text(
+          'Nova Conta Fixa',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         onPressed: () {
           BillFormSheet.show(
             context,
@@ -208,9 +227,9 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
               const SizedBox(height: 2),
               Text(
                 'Previsibilidade financeira da casa e gestão de compromissos fixos',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white60,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.white60),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -238,7 +257,10 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
               ),
               Text(
                 '$monthName ${state.selectedYear}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
               IconButton(
                 iconSize: 18,
@@ -259,7 +281,11 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _ownerChip('household', 'Lar (Todos)', state.ownerFilter == 'household'),
+          _ownerChip(
+            'household',
+            'Lar (Todos)',
+            state.ownerFilter == 'household',
+          ),
           const SizedBox(width: LarSpacing.xs),
           _ownerChip('self', 'Eu', state.ownerFilter == 'self'),
           const SizedBox(width: LarSpacing.xs),
@@ -290,7 +316,11 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildMetricsGrid(BillsState state, NumberFormat currencyFmt, bool isDesktop) {
+  Widget _buildMetricsGrid(
+    BillsState state,
+    NumberFormat currencyFmt,
+    bool isDesktop,
+  ) {
     final m = state.metrics;
 
     final cards = [
@@ -298,7 +328,9 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
         title: 'Saldo Livre Real',
         value: currencyFmt.format(m.freeCashBalance),
         subtitle: 'Disponível após faturas a vencer',
-        color: m.freeCashBalance >= 0 ? LarColors.mineralOnDark : LarColors.danger,
+        color: m.freeCashBalance >= 0
+            ? LarColors.mineralOnDark
+            : LarColors.danger,
         icon: Icons.shield_outlined,
         isHighlight: true,
       ),
@@ -327,7 +359,16 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
 
     if (isDesktop) {
       return Row(
-        children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: c))).toList(),
+        children: cards
+            .map(
+              (c) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: c,
+                ),
+              ),
+            )
+            .toList(),
       );
     }
 
@@ -376,14 +417,20 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.1,
-                    color: isHighlight ? LarColors.mineralOnDark : Colors.white60,
+                    color: isHighlight
+                        ? LarColors.mineralOnDark
+                        : Colors.white60,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(icon, size: 18, color: isHighlight ? LarColors.mineralOnDark : Colors.white54),
+              Icon(
+                icon,
+                size: 18,
+                color: isHighlight ? LarColors.mineralOnDark : Colors.white54,
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -430,8 +477,8 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
               color: item.isPaid
                   ? LarColors.mineral
                   : isOverdue
-                      ? LarColors.danger
-                      : const Color(0xFF28352E),
+                  ? LarColors.danger
+                  : const Color(0xFF28352E),
             ),
           ),
           child: Row(
@@ -444,8 +491,8 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                   color: item.isPaid
                       ? const Color(0xFF1B3D37)
                       : isOverdue
-                          ? const Color(0xFF4A1E1C)
-                          : const Color(0xFF182622),
+                      ? const Color(0xFF4A1E1C)
+                      : const Color(0xFF182622),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -459,8 +506,8 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                         color: item.isPaid
                             ? LarColors.mineralOnDark
                             : isOverdue
-                                ? LarColors.danger
-                                : Colors.white60,
+                            ? LarColors.danger
+                            : Colors.white60,
                       ),
                     ),
                     Text(
@@ -483,19 +530,32 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                   children: [
                     Text(
                       item.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Row(
                       children: [
                         Text(
                           item.categoryName,
-                          style: const TextStyle(fontSize: 11, color: Colors.white60),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white60,
+                          ),
                         ),
-                        const Text(' • ', style: TextStyle(fontSize: 11, color: Colors.white38)),
+                        const Text(
+                          ' • ',
+                          style: TextStyle(fontSize: 11, color: Colors.white38),
+                        ),
                         Text(
                           item.financialOwnerName,
-                          style: const TextStyle(fontSize: 11, color: Colors.white60),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white60,
+                          ),
                         ),
                       ],
                     ),
@@ -512,14 +572,19 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
-                      color: item.type == 'income' ? LarColors.mineralOnDark : Colors.white,
+                      color: item.type == 'income'
+                          ? LarColors.mineralOnDark
+                          : Colors.white,
                     ),
                   ),
                   const SizedBox(height: 6),
                   if (item.isPaid)
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         side: const BorderSide(color: Color(0xFF28352E)),
@@ -529,11 +594,18 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                           context: context,
                           builder: (c) => AlertDialog(
                             title: const Text('Desfazer Pagamento?'),
-                            content: Text('Deseja estornar o pagamento de "${item.name}"?'),
+                            content: Text(
+                              'Deseja estornar o pagamento de "${item.name}"?',
+                            ),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
+                              TextButton(
+                                onPressed: () => Navigator.pop(c, false),
+                                child: const Text('Cancelar'),
+                              ),
                               FilledButton(
-                                style: FilledButton.styleFrom(backgroundColor: LarColors.danger),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: LarColors.danger,
+                                ),
                                 onPressed: () => Navigator.pop(c, true),
                                 child: const Text('Sim, Desfazer'),
                               ),
@@ -544,30 +616,46 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                           await widget.controller.reopenBill(item.id);
                         }
                       },
-                      child: const Text('Desfazer', style: TextStyle(fontSize: 11, color: Colors.white70)),
+                      child: const Text(
+                        'Desfazer',
+                        style: TextStyle(fontSize: 11, color: Colors.white70),
+                      ),
                     )
                   else
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: LarColors.mineral,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       icon: const Icon(Icons.check, size: 14),
-                      label: const Text('Pagar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      label: const Text(
+                        'Pagar',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       onPressed: () {
                         PayBillSheet.show(
                           context,
                           instance: item,
                           accounts: _accounts,
-                          onPay: ({required accountId, required paidAmount, required paidDate}) =>
-                              widget.controller.payBill(
-                            instanceId: item.id,
-                            accountId: accountId,
-                            paidAmount: paidAmount,
-                            paidDate: paidDate,
-                          ),
+                          onPay:
+                              ({
+                                required accountId,
+                                required paidAmount,
+                                required paidDate,
+                              }) => widget.controller.payBill(
+                                instanceId: item.id,
+                                accountId: accountId,
+                                paidAmount: paidAmount,
+                                paidDate: paidDate,
+                              ),
                         );
                       },
                     ),
@@ -610,24 +698,40 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                       children: [
                         Text(
                           bill.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.white,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         if (!bill.isActive)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white10,
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text('Inativa', style: TextStyle(fontSize: 9, color: Colors.white60)),
+                            child: const Text(
+                              'Inativa',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.white60,
+                              ),
+                            ),
                           ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Vence todo dia ${bill.dueDay} • ${bill.categoryName} • ${bill.financialOwnerName}',
-                      style: const TextStyle(fontSize: 11, color: Colors.white60),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white60,
+                      ),
                     ),
                   ],
                 ),
@@ -637,7 +741,11 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                 children: [
                   Text(
                     currencyFmt.format(bill.amount),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -646,49 +754,68 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                       IconButton(
                         iconSize: 16,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                        icon: const Icon(Icons.edit_outlined, color: Colors.white70),
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          color: Colors.white70,
+                        ),
                         onPressed: () {
                           BillFormSheet.show(
                             context,
                             initialBill: bill,
-                            onSave: ({
-                              required name,
-                              required amount,
-                              required dueDay,
-                              required type,
-                              financialOwnerType,
-                              isActive = true,
-                              notes = '',
-                            }) =>
-                                widget.controller.updateRecurringBill(
-                              bill.id,
-                              name: name,
-                              amount: amount,
-                              dueDay: dueDay,
-                              type: type,
-                              financialOwnerType: financialOwnerType,
-                              isActive: isActive,
-                              notes: notes,
-                            ),
+                            onSave:
+                                ({
+                                  required name,
+                                  required amount,
+                                  required dueDay,
+                                  required type,
+                                  financialOwnerType,
+                                  isActive = true,
+                                  notes = '',
+                                }) => widget.controller.updateRecurringBill(
+                                  bill.id,
+                                  name: name,
+                                  amount: amount,
+                                  dueDay: dueDay,
+                                  type: type,
+                                  financialOwnerType: financialOwnerType,
+                                  isActive: isActive,
+                                  notes: notes,
+                                ),
                           );
                         },
                       ),
                       IconButton(
                         iconSize: 16,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                        icon: const Icon(Icons.delete_outline, color: LarColors.danger),
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: LarColors.danger,
+                        ),
                         onPressed: () async {
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (c) => AlertDialog(
                               title: const Text('Excluir Conta Fixa?'),
-                              content: Text('Deseja excluir a regra "${bill.name}"?'),
+                              content: Text(
+                                'Deseja excluir a regra "${bill.name}"?',
+                              ),
                               actions: [
-                                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(c, false),
+                                  child: const Text('Cancelar'),
+                                ),
                                 FilledButton(
-                                  style: FilledButton.styleFrom(backgroundColor: LarColors.danger),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: LarColors.danger,
+                                  ),
                                   onPressed: () => Navigator.pop(c, true),
                                   child: const Text('Sim, Excluir'),
                                 ),
@@ -696,7 +823,9 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
                             ),
                           );
                           if (confirm == true) {
-                            await widget.controller.deleteRecurringBill(bill.id);
+                            await widget.controller.deleteRecurringBill(
+                              bill.id,
+                            );
                           }
                         },
                       ),
@@ -722,7 +851,11 @@ final class _BillsScreenState extends State<BillsScreen> with SingleTickerProvid
       ),
       child: Column(
         children: [
-          const Icon(Icons.calendar_month_outlined, size: 40, color: Colors.white38),
+          const Icon(
+            Icons.calendar_month_outlined,
+            size: 40,
+            color: Colors.white38,
+          ),
           const SizedBox(height: 12),
           Text(
             message,

@@ -11,7 +11,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() => initializeDateFormatting('pt_BR'));
 
-  testWidgets('BillsScreen renders header, metric cards, tabs and instances', (tester) async {
+  testWidgets('BillsScreen renders header, metric cards, tabs and instances', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 1920);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -74,7 +76,11 @@ void main() {
 
 class _FakeBillsRepository implements BillsRepository {
   @override
-  Future<BillsDataSnapshot> fetchBillsData({int? month, int? year, String? owner}) async {
+  Future<BillsDataSnapshot> fetchBillsData({
+    int? month,
+    int? year,
+    String? owner,
+  }) async {
     return BillsDataSnapshot(
       instances: [
         BillInstanceModel(
@@ -248,7 +254,11 @@ class _FakeBillsRepository implements BillsRepository {
   }
 
   @override
-  Future<BillsMetricsModel> fetchMetrics({int? month, int? year, String? owner}) async {
+  Future<BillsMetricsModel> fetchMetrics({
+    int? month,
+    int? year,
+    String? owner,
+  }) async {
     return BillsMetricsModel.empty;
   }
 }

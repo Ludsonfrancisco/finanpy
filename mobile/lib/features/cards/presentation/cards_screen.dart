@@ -31,14 +31,26 @@ final class CardsScreen extends StatefulWidget {
   State<CardsScreen> createState() => _CardsScreenState();
 }
 
-final class _CardsScreenState extends State<CardsScreen> with SingleTickerProviderStateMixin {
+final class _CardsScreenState extends State<CardsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<AccountItem> _accounts = [];
   List<CategoryItem> _categories = [];
 
   final List<String> _ptMonths = [
-    '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    '',
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro',
   ];
 
   @override
@@ -70,7 +82,9 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
   Future<void> _loadDependencies() async {
     if (widget.accountsRepository != null) {
       try {
-        final stream = widget.accountsRepository!.watchAccounts(const OwnerScope.household());
+        final stream = widget.accountsRepository!.watchAccounts(
+          const OwnerScope.household(),
+        );
         final first = await stream.first;
         if (mounted) setState(() => _accounts = first.accounts);
       } catch (_) {}
@@ -114,13 +128,18 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
       backgroundColor: const Color(0xFF0C1311),
       body: SafeArea(
         child: state.isLoading && state.cards.isEmpty
-            ? const Center(child: CircularProgressIndicator(color: LarColors.mineral))
+            ? const Center(
+                child: CircularProgressIndicator(color: LarColors.mineral),
+              )
             : RefreshIndicator(
                 onRefresh: widget.controller.loadCards,
                 color: LarColors.mineral,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 20,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -206,9 +225,9 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
               const SizedBox(height: 2),
               Text(
                 'Faturas, limites e parcelamentos familiares',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white60,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.white60),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -265,7 +284,11 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _buildOwnerChip('Lar (Todos)', 'household', state.selectedOwner == 'household'),
+          _buildOwnerChip(
+            'Lar (Todos)',
+            'household',
+            state.selectedOwner == 'household',
+          ),
           const SizedBox(width: 8),
           _buildOwnerChip('Eu', 'self', state.selectedOwner == 'self'),
           const SizedBox(width: 8),
@@ -313,22 +336,34 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
           }
           // Add Card Button
           return GestureDetector(
-            onTap: () => CardFormSheet.show(context, controller: widget.controller),
+            onTap: () =>
+                CardFormSheet.show(context, controller: widget.controller),
             child: Container(
               width: 140,
               decoration: BoxDecoration(
                 color: const Color(0xFF101B18),
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFF28352E), style: BorderStyle.solid),
+                border: Border.all(
+                  color: const Color(0xFF28352E),
+                  style: BorderStyle.solid,
+                ),
               ),
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_circle_outline, color: LarColors.mineralOnDark, size: 28),
+                  Icon(
+                    Icons.add_circle_outline,
+                    color: LarColors.mineralOnDark,
+                    size: 28,
+                  ),
                   SizedBox(height: 8),
                   Text(
                     'Novo Cartão',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white70,
+                    ),
                   ),
                 ],
               ),
@@ -366,28 +401,44 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
                   children: [
                     Text(
                       'FATURA ${invoice.month.toString().padLeft(2, '0')}/${invoice.year}',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.1, color: LarColors.champagne),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
+                        color: LarColors.champagne,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       currencyFmt.format(invoice.totalAmount),
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 ),
               ),
               // Status Badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: invoice.isPaid
                       ? LarColors.mineral.withAlpha(40)
-                      : (invoice.isOverdue ? LarColors.danger.withAlpha(40) : LarColors.champagne.withAlpha(40)),
+                      : (invoice.isOverdue
+                            ? LarColors.danger.withAlpha(40)
+                            : LarColors.champagne.withAlpha(40)),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: invoice.isPaid
                         ? LarColors.mineralOnDark
-                        : (invoice.isOverdue ? LarColors.danger : LarColors.champagne),
+                        : (invoice.isOverdue
+                              ? LarColors.danger
+                              : LarColors.champagne),
                   ),
                 ),
                 child: Text(
@@ -397,7 +448,9 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
                     fontWeight: FontWeight.bold,
                     color: invoice.isPaid
                         ? LarColors.mineralOnDark
-                        : (invoice.isOverdue ? LarColors.danger : LarColors.champagne),
+                        : (invoice.isOverdue
+                              ? LarColors.danger
+                              : LarColors.champagne),
                   ),
                 ),
               ),
@@ -408,8 +461,14 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Fecha: ${dateFmt.format(invoice.closingDate)}', style: const TextStyle(fontSize: 11, color: Colors.white60)),
-              Text('Vence: ${dateFmt.format(invoice.dueDate)}', style: const TextStyle(fontSize: 11, color: Colors.white60)),
+              Text(
+                'Fecha: ${dateFmt.format(invoice.closingDate)}',
+                style: const TextStyle(fontSize: 11, color: Colors.white60),
+              ),
+              Text(
+                'Vence: ${dateFmt.format(invoice.dueDate)}',
+                style: const TextStyle(fontSize: 11, color: Colors.white60),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -421,7 +480,9 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white70,
                 side: const BorderSide(color: Color(0xFF28352E)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Estornar Pagamento da Fatura'),
             )
@@ -441,10 +502,15 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
                 style: FilledButton.styleFrom(
                   backgroundColor: LarColors.mineral,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 icon: const Icon(Icons.check_circle_outline, size: 18),
-                label: const Text('Pagar Fatura', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'Pagar Fatura',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ),
         ],
@@ -519,7 +585,11 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
                         Flexible(
                           child: Text(
                             exp.description,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -527,14 +597,21 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
                         if (exp.installmentsCount > 1) ...[
                           const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: LarColors.champagne.withAlpha(30),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               '${exp.installmentNumber}/${exp.installmentsCount}x',
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: LarColors.champagne),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: LarColors.champagne,
+                              ),
                             ),
                           ),
                         ],
@@ -543,7 +620,10 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
                     const SizedBox(height: 4),
                     Text(
                       '${dateFmt.format(exp.date)} • ${exp.categoryName} • ${exp.financialOwnerName}',
-                      style: const TextStyle(fontSize: 11, color: Colors.white54),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white54,
+                      ),
                     ),
                   ],
                 ),
@@ -555,12 +635,19 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
                 children: [
                   Text(
                     currencyFmt.format(exp.amount),
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(width: 4),
                   IconButton(
                     iconSize: 18,
-                    icon: const Icon(Icons.delete_outline, color: Colors.white38),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.white38,
+                    ),
                     onPressed: () => _confirmDeleteExpense(exp),
                   ),
                 ],
@@ -612,18 +699,29 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
                   children: [
                     Text(
                       'Fatura ${fInv.month.toString().padLeft(2, '0')}/${fInv.year}',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Vencimento em ${dateFmt.format(fInv.dueDate)}',
-                      style: const TextStyle(fontSize: 11, color: Colors.white54),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white54,
+                      ),
                     ),
                   ],
                 ),
                 Text(
                   currencyFmt.format(fInv.totalAmount),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: LarColors.champagne),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: LarColors.champagne,
+                  ),
                 ),
               ],
             ),
@@ -638,7 +736,10 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A221E),
-        title: const Text('Excluir Compra', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Excluir Compra',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Deseja remover "${expense.description}" da fatura?',
           style: const TextStyle(color: Colors.white70),
@@ -654,7 +755,10 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
                 Navigator.of(ctx).pop();
                 widget.controller.deleteExpense(expense.id, deleteAll: true);
               },
-              child: const Text('Excluir Todas as Parcelas', style: TextStyle(color: LarColors.danger)),
+              child: const Text(
+                'Excluir Todas as Parcelas',
+                style: TextStyle(color: LarColors.danger),
+              ),
             ),
           FilledButton(
             onPressed: () {
@@ -680,14 +784,30 @@ final class _CardsScreenState extends State<CardsScreen> with SingleTickerProvid
       ),
       child: Column(
         children: [
-          const Icon(Icons.credit_card_outlined, size: 48, color: LarColors.mineralOnDark),
+          const Icon(
+            Icons.credit_card_outlined,
+            size: 48,
+            color: LarColors.mineralOnDark,
+          ),
           const SizedBox(height: 16),
-          const Text('Nenhum cartão cadastrado', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          const Text(
+            'Nenhum cartão cadastrado',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 6),
-          const Text('Cadastre seus cartões de crédito para acompanhar faturas e parcelamentos.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.white60)),
+          const Text(
+            'Cadastre seus cartões de crédito para acompanhar faturas e parcelamentos.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: Colors.white60),
+          ),
           const SizedBox(height: 20),
           FilledButton.icon(
-            onPressed: () => CardFormSheet.show(context, controller: widget.controller),
+            onPressed: () =>
+                CardFormSheet.show(context, controller: widget.controller),
             style: FilledButton.styleFrom(backgroundColor: LarColors.mineral),
             icon: const Icon(Icons.add),
             label: const Text('Cadastrar Primeiro Cartão'),

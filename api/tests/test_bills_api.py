@@ -6,7 +6,7 @@ from django.test import TestCase
 from accounts.models import Account
 from api.models import DeviceSession
 from api.tokens import issue_session
-from bills.models import BillInstance, RecurringBill
+from bills.models import RecurringBill
 from categories.models import Category
 from households.models import FinancialOwner
 from households.services import ensure_household_for_user, get_financial_owner

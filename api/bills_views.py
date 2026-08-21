@@ -179,7 +179,7 @@ class PayBillResourceView(APIView):
         except Exception:
             return Response({'error': 'Valor ou data de pagamento inválido.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        tx = pay_bill_instance(instance, request.user, account, paid_amount, paid_date)
+        pay_bill_instance(instance, request.user, account, paid_amount, paid_date)
         instance.refresh_from_db()
         return Response(serialize_bill_instance(instance))
 

@@ -42,13 +42,12 @@ final class CardItemWidget extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              cardColor,
-              const Color(0xFF0F1714),
-            ],
+            colors: [cardColor, const Color(0xFF0F1714)],
           ),
           border: Border.all(
-            color: isSelected ? LarColors.mineralOnDark : Colors.white.withAlpha(30),
+            color: isSelected
+                ? LarColors.mineralOnDark
+                : Colors.white.withAlpha(30),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [
@@ -76,12 +75,18 @@ final class CardItemWidget extends StatelessWidget {
                     gradient: const LinearGradient(
                       colors: [Color(0xFFFDE68A), Color(0xFFF59E0B)],
                     ),
-                    border: Border.all(color: const Color(0xFFD97706), width: 0.8),
+                    border: Border.all(
+                      color: const Color(0xFFD97706),
+                      width: 0.8,
+                    ),
                   ),
                 ),
                 // Brand pill
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withAlpha(100),
                     borderRadius: BorderRadius.circular(8),
@@ -162,7 +167,9 @@ final class CardItemWidget extends StatelessWidget {
                     value: (card.limitUsagePercent / 100).clamp(0.0, 1.0),
                     minHeight: 4,
                     backgroundColor: Colors.black.withAlpha(80),
-                    valueColor: const AlwaysStoppedAnimation<Color>(LarColors.champagne),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      LarColors.champagne,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -171,11 +178,17 @@ final class CardItemWidget extends StatelessWidget {
                   children: [
                     Text(
                       'Fecha dia ${card.closingDay}',
-                      style: TextStyle(fontSize: 10, color: Colors.white.withAlpha(180)),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.white.withAlpha(180),
+                      ),
                     ),
                     Text(
                       'Vence dia ${card.dueDay}',
-                      style: TextStyle(fontSize: 10, color: Colors.white.withAlpha(180)),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.white.withAlpha(180),
+                      ),
                     ),
                   ],
                 ),

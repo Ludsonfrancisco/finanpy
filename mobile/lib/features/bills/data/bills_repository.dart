@@ -125,8 +125,12 @@ final class HttpBillsRepository implements BillsRepository {
       'notes': notes,
     };
     if (categoryId != null) payload['category_id'] = categoryId;
-    if (defaultAccountId != null) payload['default_account_id'] = defaultAccountId;
-    if (financialOwnerType != null) payload['financial_owner_type'] = financialOwnerType;
+    if (defaultAccountId != null) {
+      payload['default_account_id'] = defaultAccountId;
+    }
+    if (financialOwnerType != null) {
+      payload['financial_owner_type'] = financialOwnerType;
+    }
 
     final data = await _transport.postObject('/api/v1/bills/', data: payload);
     return RecurringBillModel.fromJson(data);
@@ -151,8 +155,12 @@ final class HttpBillsRepository implements BillsRepository {
     if (dueDay != null) payload['due_day'] = dueDay;
     if (type != null) payload['type'] = type;
     if (categoryId != null) payload['category_id'] = categoryId;
-    if (defaultAccountId != null) payload['default_account_id'] = defaultAccountId;
-    if (financialOwnerType != null) payload['financial_owner_type'] = financialOwnerType;
+    if (defaultAccountId != null) {
+      payload['default_account_id'] = defaultAccountId;
+    }
+    if (financialOwnerType != null) {
+      payload['financial_owner_type'] = financialOwnerType;
+    }
     if (isActive != null) payload['is_active'] = isActive;
     if (notes != null) payload['notes'] = notes;
 
@@ -177,13 +185,18 @@ final class HttpBillsRepository implements BillsRepository {
       'paid_amount': paidAmount.toStringAsFixed(2),
       'paid_date': paidDate.toIso8601String().substring(0, 10),
     };
-    final data = await _transport.postObject('/api/v1/bills/instances/$instanceId/pay/', data: payload);
+    final data = await _transport.postObject(
+      '/api/v1/bills/instances/$instanceId/pay/',
+      data: payload,
+    );
     return BillInstanceModel.fromJson(data);
   }
 
   @override
   Future<BillInstanceModel> reopenBillInstance(int instanceId) async {
-    final data = await _transport.postObject('/api/v1/bills/instances/$instanceId/reopen/');
+    final data = await _transport.postObject(
+      '/api/v1/bills/instances/$instanceId/reopen/',
+    );
     return BillInstanceModel.fromJson(data);
   }
 

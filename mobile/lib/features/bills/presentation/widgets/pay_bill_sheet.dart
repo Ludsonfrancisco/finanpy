@@ -20,7 +20,8 @@ final class PayBillSheet extends StatefulWidget {
     required int accountId,
     required double paidAmount,
     required DateTime paidDate,
-  }) onPay;
+  })
+  onPay;
 
   static Future<void> show(
     BuildContext context, {
@@ -30,7 +31,8 @@ final class PayBillSheet extends StatefulWidget {
       required int accountId,
       required double paidAmount,
       required DateTime paidDate,
-    }) onPay,
+    })
+    onPay,
   }) {
     final desktop = MediaQuery.sizeOf(context).width >= 900;
     if (desktop) {
@@ -117,7 +119,9 @@ final class _PayBillSheetState extends State<PayBillSheet> {
       return;
     }
 
-    final amount = double.tryParse(_amountController.text.replaceAll(',', '.')) ?? widget.instance.amount;
+    final amount =
+        double.tryParse(_amountController.text.replaceAll(',', '.')) ??
+        widget.instance.amount;
 
     setState(() => _submitting = true);
     try {
@@ -131,7 +135,9 @@ final class _PayBillSheetState extends State<PayBillSheet> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Conta "${widget.instance.name}" baixada com sucesso!'),
+            content: Text(
+              'Conta "${widget.instance.name}" baixada com sucesso!',
+            ),
             backgroundColor: LarColors.mineral,
           ),
         );
@@ -165,9 +171,9 @@ final class _PayBillSheetState extends State<PayBillSheet> {
             children: [
               Text(
                 'Registrar Pagamento',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -178,21 +184,27 @@ final class _PayBillSheetState extends State<PayBillSheet> {
           const SizedBox(height: LarSpacing.xs),
           Text(
             'Dar baixa em "${widget.instance.name}". A despesa será lançada no extrato da conta.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white70,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: LarSpacing.lg),
 
           // Account selector
           if (widget.accounts.isNotEmpty) ...[
-            Text('Conta Débito', style: Theme.of(context).textTheme.labelMedium),
+            Text(
+              'Conta Débito',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
             const SizedBox(height: LarSpacing.xs),
             DropdownButtonFormField<AccountItem>(
               initialValue: _selectedAccount,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
               ),
               items: widget.accounts.map((acc) {
                 final balance = acc.currentBalanceMinor / 100.0;
@@ -207,25 +219,36 @@ final class _PayBillSheetState extends State<PayBillSheet> {
           ],
 
           // Amount field
-          Text('Valor Pago (R\$)', style: Theme.of(context).textTheme.labelMedium),
+          Text(
+            'Valor Pago (R\$)',
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
           const SizedBox(height: LarSpacing.xs),
           TextFormField(
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 14,
+              ),
             ),
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Informe o valor';
-              if (double.tryParse(v.replaceAll(',', '.')) == null) return 'Valor inválido';
+              if (double.tryParse(v.replaceAll(',', '.')) == null) {
+                return 'Valor inválido';
+              }
               return null;
             },
           ),
           const SizedBox(height: LarSpacing.md),
 
           // Date field
-          Text('Data do Pagamento', style: Theme.of(context).textTheme.labelMedium),
+          Text(
+            'Data do Pagamento',
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
           const SizedBox(height: LarSpacing.xs),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
@@ -253,23 +276,34 @@ final class _PayBillSheetState extends State<PayBillSheet> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+                onPressed: _submitting
+                    ? null
+                    : () => Navigator.of(context).pop(),
                 child: const Text('Cancelar'),
               ),
               const SizedBox(width: LarSpacing.sm),
               FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: LarColors.mineral,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                 ),
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
                     ? const SizedBox(
                         height: 18,
                         width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const Text('Confirmar Pagamento', style: TextStyle(fontWeight: FontWeight.bold)),
+                    : const Text(
+                        'Confirmar Pagamento',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
               ),
             ],
           ),
