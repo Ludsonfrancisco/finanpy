@@ -47,6 +47,15 @@ void main() {
       r'LAR_FINANCE_BUILD_SHA=${{ github.sha }}'.allMatches(workflow),
       hasLength(3),
     );
+    const buildShaDefine =
+        r'--dart-define=LAR_FINANCE_BUILD_SHA=${{ github.sha }}';
+    for (final platform in <String>['windows', 'apk', 'ios']) {
+      final command = workflow
+          .split(RegExp(r'\r?\n'))
+          .singleWhere((line) => line.contains('flutter build $platform '));
+      expect(command, contains(buildShaDefine));
+      expect(buildShaDefine.allMatches(command), hasLength(1));
+    }
     expect(workflow, isNot(contains('https://example.invalid/api/v1')));
     expect(
       'flutter test --exclude-tags=golden'.allMatches(workflow),

@@ -113,6 +113,46 @@ void main() {
     expect(find.text('15/08/2030, 11:45'), findsNothing);
   });
 
+  testWidgets('router injects the safe build identity into More', (
+    tester,
+  ) async {
+    final controller = AuthController(
+      _FakeAuthGateway(
+        restoredSession: _sessionFor(_deviceUuid),
+        selectedOwnerUuid: _selfUuid,
+        syncedDeviceUuid: _deviceUuid,
+      ),
+    );
+    await controller.initialize();
+    expect(controller.state.phase, AuthPhase.authenticated);
+
+    final router = createAppRouter(
+      const AppConfig(
+        apiBaseUrl: 'https://financeiro.palmbook.online/api/v1/',
+        buildSha: '1234567890abcdef1234567890abcdef12345678',
+      ),
+      controller,
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            (ref) => controller,
+            disposeNotifier: false,
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    router.go('/more');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Versão 1234567'), findsOneWidget);
+    expect(find.text('financeiro.palmbook.online'), findsOneWidget);
+  });
+
   test(
     'session expiration hides authenticated UI without deleting cache',
     () async {
