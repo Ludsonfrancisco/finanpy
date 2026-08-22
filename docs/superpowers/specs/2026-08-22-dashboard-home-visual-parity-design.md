@@ -1,8 +1,11 @@
 # R3.2 — Paridade visual Dashboard/Home Web e Flutter
 
-**Data:** 22/08/2026  
-**Status:** aprovado para planejamento  
-**Escopo:** Dashboard Web e Home Flutter  
+**Data:** 22/08/2026
+
+**Status:** aprovado para planejamento
+
+**Escopo:** Dashboard Web e Home Flutter
+
 **Fora do escopo:** backend, contratos de API, sincronização, demais telas e novos indicadores
 
 ## 1. Objetivo
