@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from django.test import SimpleTestCase
@@ -56,3 +57,17 @@ class DashboardVisualParityTest(SimpleTestCase):
             'daily_burn_rate',
         ):
             self.assertIn(value, self.template)
+
+    def test_visible_monetary_values_require_grouped_pt_br_format(self):
+        monetary_values = re.findall(
+            r'R\$&nbsp;{{[^}\r\n]+}}',
+            self.template,
+        )
+
+        self.assertGreater(len(monetary_values), 0)
+        for monetary_value in monetary_values:
+            with self.subTest(monetary_value=monetary_value):
+                self.assertRegex(
+                    monetary_value,
+                    r'\|floatformat:"2g"\s*}}$',
+                )

@@ -183,6 +183,16 @@ class DashboardHouseholdScopeTest(TestCase):
 
         self.assertEqual(response.context['total_balance'], Decimal('1500.00'))
 
+    def test_dashboard_groups_visible_money_in_pt_br_format(self):
+        self.self_account.initial_balance = Decimal('71891.00')
+        self.self_account.save(update_fields=['initial_balance'])
+
+        response = self.client.get('/dashboard/?owner=self')
+
+        self.assertEqual(response.context['total_balance'], Decimal('71891.00'))
+        self.assertContains(response, 'R$&nbsp;71.891,00')
+        self.assertNotContains(response, 'R$&nbsp;71891,00')
+
     def test_dashboard_transactions_are_scoped_by_household(self):
         household_category = Category.objects.create(
             user=self.other_user,
