@@ -733,7 +733,7 @@ void main() {
       zeroAmountColors,
       containsAll(<Color>[
         LarColors.mineral,
-        LarTheme.light.colorScheme.onSurface,
+        LarColors.lightDanger,
       ]),
     );
   });
