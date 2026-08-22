@@ -507,7 +507,7 @@ objeto, restart, idempotência e restauração descartável comprovados.
 
 Pendentes imediatos:
 
-- iniciar R2.1, tokens e contrato visual Casa de Valores 2.0;
+- R2.1 concluída; próximo passo sujeito a autorização: R2.2 — tema e assets;
 - na próxima release, ensaiar o digest R1.4 como imagem anterior em restauração
   descartável;
 - aplicar Casa de Valores 2.0 incrementalmente;

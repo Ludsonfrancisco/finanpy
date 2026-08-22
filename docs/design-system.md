@@ -67,8 +67,9 @@ componentes e estados. Não significa reproduzir a mesma geometria:
 
 ## Tokens oficiais atuais
 
-Fonte canônica enquanto não houver pacote compartilhado:
-`mobile/lib/design_system/`.
+Fonte canônica: `design/tokens.json`. Os artefatos CSS e Dart são gerados por
+`scripts/generate_design_tokens.py` e validados na CI; não devem ser editados
+manualmente.
 
 ### Cores
 

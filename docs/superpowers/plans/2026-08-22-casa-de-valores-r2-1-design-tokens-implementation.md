@@ -1075,7 +1075,7 @@ Expected: branch remota atualizada; comunicar que a Web continua escura e que a 
 - Consumes: gerador, artefatos, testes Flutter e shell Web concluídos nas Tasks 1–3.
 - Produces: gate CI offline, documentação coerente e branch pronta para revisão/merge.
 
-- [ ] **Step 1: provar que a CI ainda não executa o gate de paridade**
+- [x] **Step 1: provar que a CI ainda não executa o gate de paridade**
 
 ```powershell
 Select-String -Path '.github/workflows/ci.yml' -Pattern 'generate_design_tokens.py --check'
@@ -1083,7 +1083,7 @@ Select-String -Path '.github/workflows/ci.yml' -Pattern 'generate_design_tokens.
 
 Expected: nenhum resultado.
 
-- [ ] **Step 2: adicionar o gate após a instalação Python e antes do Ruff**
+- [x] **Step 2: adicionar o gate após a instalação Python e antes do Ruff**
 
 Em `.github/workflows/ci.yml`, no job `django`, adicione:
 
@@ -1094,7 +1094,7 @@ Em `.github/workflows/ci.yml`, no job `django`, adicione:
 
 O passo fica depois de `Generate ephemeral Django secret` e antes de `Lint`, garantindo falha rápida sem rede adicional.
 
-- [ ] **Step 3: atualizar somente a documentação da fonte canônica**
+- [x] **Step 3: atualizar somente a documentação da fonte canônica**
 
 Em `docs/design-system.md`:
 
@@ -1108,7 +1108,7 @@ Substitua a frase provisória que aponta `mobile/lib/design_system/` como fonte
 canônica. Preserve as tabelas de direção visual. Ainda não marque roadmap, PRD
 ou especificação como concluídos.
 
-- [ ] **Step 4: verificar formato dos artefatos antes da suíte completa**
+- [x] **Step 4: verificar formato dos artefatos antes da suíte completa**
 
 ```powershell
 python scripts/generate_design_tokens.py --check
@@ -1123,7 +1123,7 @@ Set-Location ..
 
 Expected: todos os comandos retornam 0; migrations informa `No changes detected`.
 
-- [ ] **Step 5: executar as suítes integrais relevantes**
+- [x] **Step 5: executar as suítes integrais relevantes**
 
 ```powershell
 python manage.py test
@@ -1134,7 +1134,7 @@ Set-Location ..
 
 Expected: zero failures nas duas suítes. Registrar as contagens exatas observadas no relatório final; não reutilizar contagens históricas.
 
-- [ ] **Step 6: registrar conclusão documental baseada nos resultados reais**
+- [x] **Step 6: registrar conclusão documental baseada nos resultados reais**
 
 Somente depois do Step 5 verde:
 
@@ -1149,7 +1149,7 @@ Somente depois do Step 5 verde:
 
 Não marque R2 nem R2.2 como concluídos.
 
-- [ ] **Step 7: executar verificação final do diff e do contrato**
+- [x] **Step 7: executar verificação final do diff e do contrato**
 
 ```powershell
 python scripts/generate_design_tokens.py --check
@@ -1160,7 +1160,7 @@ git diff --stat origin/main...HEAD
 
 Expected: gerador e diff retornam 0; apenas arquivos previstos aparecem; branch é `codex/r2-1-design-tokens`.
 
-- [ ] **Step 8: commitar e publicar a Task 4**
+- [x] **Step 8: commitar e publicar a Task 4**
 
 ```powershell
 git add .github/workflows/ci.yml docs/design-system.md docs/ROADMAP.md PRD.md docs/superpowers/specs/2026-08-22-casa-de-valores-r2-1-design-tokens-design.md docs/superpowers/plans/2026-08-22-casa-de-valores-r2-1-design-tokens-implementation.md
@@ -1170,7 +1170,7 @@ git push origin codex/r2-1-design-tokens
 
 Expected: branch remota contém quatro commits de implementação, workspace limpo e nenhuma mudança em `main`.
 
-- [ ] **Step 9: aguardar CI da branch e entregar para autorização de merge**
+- [x] **Step 9: aguardar CI da branch e entregar para autorização de merge**
 
 ```powershell
 $runId = gh run list --branch codex/r2-1-design-tokens --workflow CI --limit 1 --json databaseId --jq '.[0].databaseId'
