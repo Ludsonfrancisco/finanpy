@@ -364,6 +364,12 @@ git push origin codex/r3-2-dashboard-home-parity
 - Modify: `mobile/lib/features/home/presentation/widgets/commitments_summary.dart`
 - Modify: `mobile/lib/features/home/presentation/widgets/recent_transactions.dart`
 - Modify: `mobile/test/features/home/home_screen_test.dart`
+- Modify: `mobile/test/goldens/home_mobile_light.png`
+- Modify: `mobile/test/goldens/home_mobile_dark.png`
+- Modify: `mobile/test/goldens/home_ios_light.png`
+- Modify: `mobile/test/goldens/home_ios_dark.png`
+- Modify: `mobile/test/goldens/home_windows_light.png`
+- Modify: `mobile/test/goldens/home_windows_dark.png`
 
 **Interfaces:**
 - Consumes: `HomeFinancialSurface`, `HomeSnapshot`, `FinancialAmount`, `LarBreakpoints.desktop`.
@@ -543,11 +549,28 @@ flutter test test/features/home/home_screen_test.dart test/accessibility/home_ac
 
 Expected: todos passam, sem overflow em 320 px/200% e sem regressão de foco.
 
-- [ ] **Step 8: commit e push da Home Flutter**
+- [ ] **Step 8: gerar, inspecionar, verificar e stagear os seis goldens da Home**
+
+```powershell
+flutter test --update-goldens test/features/home/home_goldens_test.dart
+flutter test test/features/home/home_goldens_test.dart
+```
+
+Expected: os seis renders de Android, iOS e Windows passam 6/6 em claro e escuro. Inspecionar cada PNG e confirmar a hierarquia aprovada, ausência de overflow, roxo, glow, gradiente e texto sobreposto. Não aprovar baseline apenas porque o teste foi atualizado.
+
+Somente após a aprovação visual dos seis PNGs:
 
 ```powershell
 Set-Location ..
-git add mobile/lib/features/home/presentation mobile/test/features/home/home_screen_test.dart mobile/test/design_system/lar_theme_test.dart
+git add mobile/test/goldens/home_mobile_light.png mobile/test/goldens/home_mobile_dark.png mobile/test/goldens/home_ios_light.png mobile/test/goldens/home_ios_dark.png mobile/test/goldens/home_windows_light.png mobile/test/goldens/home_windows_dark.png
+```
+
+Expected: somente as seis baselines inspecionadas ficam staged junto da implementação da Task 3.
+
+- [ ] **Step 9: commit e push da Home Flutter**
+
+```powershell
+git add mobile/lib/features/home/presentation mobile/test/features/home/home_screen_test.dart mobile/test/design_system/lar_theme_test.dart mobile/test/goldens/home_*.png
 git diff --cached --check
 git commit -m "feat(mobile): align home with web dashboard"
 git push origin codex/r3-2-dashboard-home-parity
@@ -555,32 +578,31 @@ git push origin codex/r3-2-dashboard-home-parity
 
 ---
 
-### Task 4: Atualizar goldens, validar visual real e fechar R3.2
+### Task 4: Revalidar goldens, validar visual real e fechar R3.2
 
 **Files:**
-- Modify: `mobile/test/goldens/home_mobile_light.png`
-- Modify: `mobile/test/goldens/home_mobile_dark.png`
-- Modify: `mobile/test/goldens/home_ios_light.png`
-- Modify: `mobile/test/goldens/home_ios_dark.png`
-- Modify: `mobile/test/goldens/home_windows_light.png`
-- Modify: `mobile/test/goldens/home_windows_dark.png`
+- Verify; modify only if inspection rejects: `mobile/test/goldens/home_mobile_light.png`
+- Verify; modify only if inspection rejects: `mobile/test/goldens/home_mobile_dark.png`
+- Verify; modify only if inspection rejects: `mobile/test/goldens/home_ios_light.png`
+- Verify; modify only if inspection rejects: `mobile/test/goldens/home_ios_dark.png`
+- Verify; modify only if inspection rejects: `mobile/test/goldens/home_windows_light.png`
+- Verify; modify only if inspection rejects: `mobile/test/goldens/home_windows_dark.png`
 - Modify: `docs/ROADMAP.md`
 - Modify: `docs/superpowers/specs/2026-08-22-dashboard-home-visual-parity-design.md`
 - Modify: `docs/superpowers/plans/2026-08-22-dashboard-home-visual-parity-implementation.md`
 
 **Interfaces:**
 - Consumes: Dashboard/Home implementadas e fixtures determinísticas existentes.
-- Produces: seis referências visuais aprováveis, evidência Web em três larguras e documentação fechada.
+- Produces: gate independente sobre as seis referências visuais aprovadas na Task 3, evidência Web em três larguras e documentação fechada.
 
-- [ ] **Step 1: gerar os seis goldens Flutter**
+- [ ] **Step 1: reexecutar os seis goldens como gate independente**
 
 ```powershell
 Set-Location mobile
-flutter test --update-goldens test/features/home/home_goldens_test.dart
-flutter test --tags=golden test/features/home/home_goldens_test.dart
+flutter test test/features/home/home_goldens_test.dart
 ```
 
-Expected: seis testes passam e somente `home_*.png` muda.
+Expected: os seis testes passam 6/6 sem atualizar baselines.
 
 - [ ] **Step 2: inspecionar cada golden**
 
@@ -593,9 +615,20 @@ Windows 1366x768: posição e métricas em faixa ampla; recentes visível
 nenhum roxo, glow, gradiente ou texto sobreposto
 ```
 
-Se qualquer item falhar, corrigir o componente, executar testes focados e gerar novamente. Não aprovar baseline apenas porque o teste foi atualizado.
+Se qualquer item falhar, e somente nesse caso, corrigir o componente, executar os testes focados, gerar novamente os seis goldens e repetir a inspeção. Não aprovar baseline apenas porque o teste foi atualizado.
 
-- [ ] **Step 3: executar a aplicação Web e capturar três larguras autenticadas**
+- [ ] **Step 3: provar que uma nova geração não altera os goldens aprovados**
+
+```powershell
+$goldenChanges = git status --porcelain -- 'test/goldens/home_*.png'
+if ($goldenChanges) { throw 'Goldens devem estar limpos antes do gate determinístico' }
+flutter test --update-goldens test/features/home/home_goldens_test.dart
+git diff --exit-code HEAD -- 'test/goldens/home_*.png'
+```
+
+Expected: nova geração passa 6/6 e `git diff` retorna zero sem mudança nos seis PNGs aprovados. Se a inspeção do Step 2 tiver reprovado, primeiro corrigir e aprovar visualmente a nova geração; somente então atualizar/stagear as baselines corrigidas e repetir este gate até uma geração subsequente não produzir diff.
+
+- [ ] **Step 4: executar a aplicação Web e capturar três larguras autenticadas**
 
 ```powershell
 Set-Location ..
@@ -612,7 +645,7 @@ gráficos ainda renderizados
 console sem erro novo
 ```
 
-- [ ] **Step 4: executar todos os gates locais**
+- [ ] **Step 5: executar todos os gates locais**
 
 Backend:
 
@@ -637,11 +670,11 @@ flutter test --tags=golden test/features/home/home_goldens_test.dart
 
 Expected: zero falhas; Django deve ter pelo menos 604 testes e Flutter sem golden pelo menos 365.
 
-- [ ] **Step 5: fechar documentos sem iniciar outra task**
+- [ ] **Step 6: fechar documentos sem iniciar outra task**
 
 Em `docs/ROADMAP.md`, marcar apenas `R3.2 Dashboard/Home` como concluída e registrar commits, testes, screenshots e CI. Na especificação e neste plano, alterar `Status` para `concluído` e marcar todos os checkboxes executados.
 
-- [ ] **Step 6: commit e push de fechamento**
+- [ ] **Step 7: commit e push de fechamento**
 
 ```powershell
 Set-Location ..
@@ -651,7 +684,7 @@ git commit -m "docs: close dashboard home visual parity"
 git push origin codex/r3-2-dashboard-home-parity
 ```
 
-- [ ] **Step 7: aguardar CI exata da branch**
+- [ ] **Step 8: aguardar CI exata da branch**
 
 ```powershell
 $sha = git rev-parse HEAD
@@ -662,6 +695,6 @@ gh run watch $run.databaseId --exit-status
 
 Expected: Django, Flutter, Windows/MSIX, Android, iOS e secret scan verdes no HEAD exato.
 
-- [ ] **Step 8: comunicar resultado e parar**
+- [ ] **Step 9: comunicar resultado e parar**
 
 Informar objetivamente: telas alteradas, evidências visuais, contagem de testes, commits, branch e CI. Não mesclar, implantar ou iniciar R3.3 sem autorização explícita.

@@ -66,3 +66,22 @@
 - O runner informa dependências mais recentes incompatíveis com as constraints
   atuais e tag `golden` não declarada em `dart_test.yaml`; são avisos preexistentes
   e não causaram falha.
+
+## Decisão de reclassificação dos goldens
+
+- O usuário aprovou que a atualização dos seis arquivos
+  `mobile/test/goldens/home_*.png` pertence à Task 3, pois as baselines são
+  consequência direta do redesign da Home e foram geradas, inspecionadas,
+  verificadas 6/6 e incluídas no mesmo commit de implementação.
+- O plano versionado agora lista explicitamente os seis PNGs na Task 3 e exige,
+  antes do commit, geração, inspeção, verificação 6/6 e staging das baselines.
+- A Task 4 passou a tratá-los como gate independente: reexecuta 6/6 sem update,
+  inspeciona os seis renders e prova que uma nova geração aprovada não produz
+  diff. Correção de componente ou baseline só é permitida se a inspeção visual
+  reprovar.
+
+## Resultado da formalização
+
+- Alterados somente este relatório e
+  `docs/superpowers/plans/2026-08-22-dashboard-home-visual-parity-implementation.md`.
+- Nenhum arquivo de produto, teste ou binário foi alterado nesta formalização.
