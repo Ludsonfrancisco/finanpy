@@ -198,10 +198,13 @@ Dashboard Web e Home Flutter compartilham esta sequência:
 9. distribuição por categoria;
 10. maiores gastos.
 
-Se um cliente ainda não recebe um indicador pela API, ele não exibe valor
-inventado. A disponibilidade exata de gasto diário, patrimônio, poupança e
-maiores gastos no contrato Flutter deve ser confirmada antes da respectiva task:
-**[INVESTIGAR]**.
+A disponibilidade foi mapeada em
+`docs/audits/2026-08-22-r3-3-1-sync-data-baseline.md`: saldo e movimentações
+existem no `HomeSnapshot`; receitas, despesas, líquido, poupança, fluxo e
+categorias existem no `ReportsSummary`; saldo livre e vencimentos existem no
+`BillsMetricsModel`, porém online; orçamento diário não existe no ledger Flutter
+porque categoria local ainda não possui `budget`. Nenhum campo ausente será
+substituído por outro indicador.
 
 ### 7.2 Contrato visual de card
 

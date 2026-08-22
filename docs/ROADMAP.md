@@ -165,6 +165,10 @@ por shell compartilhado.
 
 Objetivo: convergir tela a tela, sem grande redesign único.
 
+> A especificação R3.3 reorganiza os itens abaixo como um programa incremental
+> de convergência completa. R3.3.1 é somente o gate de sincronização, dados e
+> baseline; nenhuma tela posterior é considerada concluída por essa mudança.
+
 Cada item é uma task independente:
 
 - [ ] R3.1 Login;
