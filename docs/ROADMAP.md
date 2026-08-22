@@ -177,9 +177,9 @@ Cada item é uma task independente:
 - [ ] R3.8 Relatórios e perfil.
 
 Evidência R3.2: Dashboard Web e Home Flutter entregues nos commits `2f340af`,
-`79af9fa`, `77a5e5a` e `baee787`, com formalização documental em `87214a3` e
-fechamento em `docs: close dashboard home visual parity`. Gates locais:
-Django 605 testes; Flutter 369 testes sem golden e 6 goldens; formatter,
+`79af9fa`, `77a5e5a` e `baee787`, com formalização documental em `87214a3`,
+fechamento em `e1c0b11` e agrupamento monetário pt-BR em `b58a647`. Gates locais:
+Django 607 testes; Flutter 369 testes sem golden e 6 goldens; formatter,
 análise estática, tokens, Ruff, system check e migrations check sem falhas. Os
 seis renders golden foram inspecionados e regenerados sem diff. A Dashboard
 autenticada foi validada em 375, 900 e 1280 px, com capturas em
