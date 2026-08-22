@@ -1,6 +1,7 @@
 import argparse
 import colorsys
 import json
+import math
 import re
 import sys
 from collections.abc import Callable
@@ -25,6 +26,32 @@ REQUIRED_SEMANTIC = {
     'state.success', 'state.info', 'state.warning', 'state.danger',
     'focus.ring', 'shadow.color',
 }
+FIXED_INTEGER_GROUPS = {
+    'spacing': {
+        'xxs': 4, 'xs': 8, 'sm': 12, 'md': 16, 'lg': 24, 'xl': 32, 'xxl': 48,
+    },
+    'radius': {'sm': 8, 'md': 12, 'lg': 16, 'xl': 24, 'pill': 9999},
+    'border': {'default': 1, 'focus': 2},
+    'motion.duration': {'fast': 160, 'standard': 200, 'slow': 240},
+    'breakpoint': {'desktop': 900},
+}
+REQUIRED_ELEVATIONS = {'flat', 'raised', 'modal'}
+ELEVATION_FIELDS = {'offsetY', 'blur', 'lightOpacity', 'darkOpacity'}
+REQUIRED_TYPOGRAPHY_STYLES = {
+    'caption', 'label', 'body', 'title', 'headline', 'financial',
+}
+TYPOGRAPHY_STYLE_FIELDS = {'fontSize', 'lineHeight', 'fontWeight'}
+MAPPING_RULES = (
+    ('color', {'primitive', 'semantic'}, True),
+    ('color.primitive', set(), False),
+    ('color.semantic', {'light', 'dark'}, True),
+    ('color.semantic.light', set(), False),
+    ('color.semantic.dark', set(), False),
+    ('elevation', REQUIRED_ELEVATIONS, False),
+    ('motion', {'duration', 'standardCurve'}, True),
+    ('typography', {'webFontFamily', 'weights', 'styles'}, True),
+    ('typography.styles', REQUIRED_TYPOGRAPHY_STYLES, False),
+)
 DART_RESERVED_WORDS = {
     'abstract', 'as', 'assert', 'async', 'await', 'base', 'break', 'case',
     'catch', 'class', 'const', 'continue', 'covariant', 'default', 'deferred',
@@ -131,6 +158,120 @@ def _contrast(foreground: str, background: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
+def _schema_value(contract: dict[str, Any], dotted_path: str) -> Any:
+    value: Any = contract
+    for segment in dotted_path.split('.'):
+        if not isinstance(value, dict) or segment not in value:
+            raise ContractError(f'missing required field: {dotted_path}')
+        value = value[segment]
+    return value
+
+
+def _require_mapping(
+    value: Any,
+    path: str,
+    required: set[str],
+    exact: bool,
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ContractError(f'{path} must be an object')
+    missing = required - value.keys()
+    if missing:
+        raise ContractError(f'{path} missing required fields: {sorted(missing)}')
+    unexpected = value.keys() - required if exact else set()
+    if unexpected:
+        raise ContractError(f'{path} has unexpected fields: {sorted(unexpected)}')
+    return value
+
+
+def _require_number(
+    value: Any,
+    path: str,
+    *,
+    integer: bool = False,
+    minimum: float | None = None,
+    maximum: float | None = None,
+) -> int | float:
+    expected_type = int if integer else (int, float)
+    if isinstance(value, bool) or not isinstance(value, expected_type):
+        kind = 'an integer' if integer else 'a number'
+        raise ContractError(f'{path} must be {kind}')
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ContractError(f'{path} must be finite')
+    if minimum is not None and value < minimum:
+        raise ContractError(f'{path} must be at least {minimum}')
+    if maximum is not None and value > maximum:
+        raise ContractError(f'{path} must be at most {maximum}')
+    return value
+
+
+def _validate_schema(contract: dict[str, Any]) -> None:
+    _require_mapping(contract, 'contract', REQUIRED_TOP_LEVEL, False)
+    if type(contract['schemaVersion']) is not int or contract['schemaVersion'] != 1:
+        raise ContractError('schemaVersion must be the integer 1')
+
+    for path, required, exact in MAPPING_RULES:
+        _require_mapping(_schema_value(contract, path), path, required, exact)
+    if not contract['color']['primitive']:
+        raise ContractError('color.primitive must not be empty')
+
+    for path, expected in FIXED_INTEGER_GROUPS.items():
+        values = _require_mapping(_schema_value(contract, path), path, set(expected), True)
+        for name, expected_value in expected.items():
+            value = _require_number(values[name], f'{path}.{name}', integer=True)
+            if value != expected_value:
+                raise ContractError(f'{path}.{name} must be {expected_value}')
+
+    curve = contract['motion']['standardCurve']
+    if not isinstance(curve, list) or len(curve) != 4:
+        raise ContractError('motion.standardCurve must contain four numbers')
+    for index, value in enumerate(curve):
+        _require_number(value, f'motion.standardCurve[{index}]')
+    if curve != [0.2, 0, 0, 1]:
+        raise ContractError('motion.standardCurve must be [0.2, 0, 0, 1]')
+
+    for name, elevation in contract['elevation'].items():
+        path = f'elevation.{name}'
+        values = _require_mapping(elevation, path, ELEVATION_FIELDS, True)
+        _require_number(values['offsetY'], f'{path}.offsetY', minimum=0)
+        _require_number(values['blur'], f'{path}.blur', minimum=0)
+        _require_number(
+            values['lightOpacity'], f'{path}.lightOpacity', minimum=0, maximum=1,
+        )
+        _require_number(
+            values['darkOpacity'], f'{path}.darkOpacity', minimum=0, maximum=1,
+        )
+
+    families = contract['typography']['webFontFamily']
+    if not isinstance(families, list) or not families:
+        raise ContractError('typography.webFontFamily must be a non-empty list')
+    if any(not isinstance(family, str) or not family.strip() for family in families):
+        raise ContractError('typography.webFontFamily entries must be non-empty strings')
+
+    weights = contract['typography']['weights']
+    if not isinstance(weights, list):
+        raise ContractError('typography.weights must be a list')
+    for index, weight in enumerate(weights):
+        _require_number(weight, f'typography.weights[{index}]', integer=True, minimum=1)
+    if weights != [400, 500, 600, 700]:
+        raise ContractError('typography.weights must be 400, 500, 600, 700')
+
+    for name, style in contract['typography']['styles'].items():
+        path = f'typography.styles.{name}'
+        values = _require_mapping(style, path, TYPOGRAPHY_STYLE_FIELDS, True)
+        font_size = _require_number(values['fontSize'], f'{path}.fontSize')
+        line_height = _require_number(values['lineHeight'], f'{path}.lineHeight')
+        font_weight = _require_number(
+            values['fontWeight'], f'{path}.fontWeight', integer=True,
+        )
+        if font_size <= 0:
+            raise ContractError(f'{path}.fontSize must be greater than zero')
+        if line_height <= 0:
+            raise ContractError(f'{path}.lineHeight must be greater than zero')
+        if font_weight not in weights:
+            raise ContractError(f'{path}.fontWeight must use typography.weights')
+
+
 def _reject_identifier_collisions(
     names: list[str],
     normalize: Callable[[str], str],
@@ -199,11 +340,7 @@ def _validate_identifier_collisions(contract: dict[str, Any]) -> None:
 
 
 def _validate_contract(contract: dict[str, Any]) -> None:
-    missing = REQUIRED_TOP_LEVEL - contract.keys()
-    if missing:
-        raise ContractError(f'missing top-level tokens: {sorted(missing)}')
-    if contract['schemaVersion'] != 1:
-        raise ContractError('schemaVersion must be 1')
+    _validate_schema(contract)
 
     primitives = contract['color']['primitive']
     for name, color in primitives.items():
@@ -233,23 +370,6 @@ def _validate_contract(contract: dict[str, Any]) -> None:
                 raise ContractError(
                     f'{mode}.{name} contrast {ratio:.2f}:1 is below 4.5:1'
                 )
-
-    if list(contract['spacing'].values()) != [4, 8, 12, 16, 24, 32, 48]:
-        raise ContractError('spacing scale must be 4, 8, 12, 16, 24, 32, 48')
-    if [contract['radius'][name] for name in ('sm', 'md', 'lg', 'xl')] != [8, 12, 16, 24]:
-        raise ContractError('radius scale must be 8, 12, 16, 24')
-    if contract['radius']['pill'] != 9999:
-        raise ContractError('radius.pill must be 9999')
-    if contract['border'] != {'default': 1, 'focus': 2}:
-        raise ContractError('border scale must be default=1 and focus=2')
-    if list(contract['motion']['duration'].values()) != [160, 200, 240]:
-        raise ContractError('motion durations must be 160, 200, 240')
-    if contract['motion']['standardCurve'] != [0.2, 0, 0, 1]:
-        raise ContractError('motion.standardCurve must be [0.2, 0, 0, 1]')
-    if contract['breakpoint']['desktop'] != 900:
-        raise ContractError('breakpoint.desktop must be 900')
-    if contract['typography']['weights'] != [400, 500, 600, 700]:
-        raise ContractError('typography.weights must be 400, 500, 600, 700')
 
     _validate_identifier_collisions(contract)
 

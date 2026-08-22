@@ -8,6 +8,7 @@ from django.test import SimpleTestCase
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = PROJECT_ROOT / 'design' / 'tokens.json'
 GENERATOR_PATH = PROJECT_ROOT / 'scripts' / 'generate_design_tokens.py'
+DELETE = object()
 
 
 def load_generator(test_case):
@@ -21,6 +22,17 @@ def load_generator(test_case):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def mutate_contract(contract, dotted_path, value):
+    segments = dotted_path.split('.')
+    parent = contract
+    for segment in segments[:-1]:
+        parent = parent[segment]
+    if value is DELETE:
+        del parent[segments[-1]]
+    else:
+        parent[segments[-1]] = value
 
 
 class DesignTokenGeneratorTest(SimpleTestCase):
@@ -104,6 +116,87 @@ class DesignTokenGeneratorTest(SimpleTestCase):
 
         with self.assertRaisesRegex(generator.ContractError, 'purple family'):
             generator.validate_contract(invalid)
+
+    def test_contract_rejects_missing_renderer_consumed_fields(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        missing_paths = (
+            'color.semantic.dark.shadow.color',
+            'spacing.md',
+            'radius.md',
+            'border.focus',
+            'elevation.modal',
+            'elevation.flat.offsetY',
+            'elevation.raised.blur',
+            'elevation.modal.lightOpacity',
+            'elevation.modal.darkOpacity',
+            'motion.standardCurve',
+            'typography.webFontFamily',
+            'typography.weights',
+            'typography.styles.financial',
+            'typography.styles.caption.fontSize',
+            'typography.styles.label.lineHeight',
+            'typography.styles.body.fontWeight',
+            'breakpoint.desktop',
+        )
+
+        for dotted_path in missing_paths:
+            with self.subTest(dotted_path=dotted_path):
+                invalid = copy.deepcopy(contract)
+                mutate_contract(invalid, dotted_path, DELETE)
+
+                try:
+                    generator.validate_contract(invalid)
+                except generator.ContractError:
+                    pass
+                except Exception as error:  # noqa: BLE001 - proves contract boundary
+                    self.fail(f'{dotted_path} leaked {type(error).__name__}: {error}')
+                else:
+                    self.fail(f'{dotted_path} was accepted')
+
+    def test_contract_rejects_incompatible_renderer_values(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        invalid_values = (
+            ('schemaVersion', True),
+            ('color.primitive', []),
+            ('color.semantic.dark.accent.selection', 16),
+            ('spacing.md', 16.0),
+            ('spacing.md', 10**1000),
+            ('radius.pill', 9999.0),
+            ('radius.giant', '24'),
+            ('border.default', True),
+            ('elevation.flat.offsetY', '0'),
+            ('elevation.raised.blur', -1),
+            ('elevation.raised.lightOpacity', 1.1),
+            ('elevation.decorative', {}),
+            ('motion.duration.standard', 200.0),
+            ('motion.standardCurve', [0.2, 0, 0, True]),
+            ('typography.webFontFamily', 'Segoe UI'),
+            ('typography.webFontFamily', ['Segoe UI', '']),
+            ('typography.weights', [400, 500, 600, 700.0]),
+            ('typography.styles.caption', 12),
+            ('typography.styles.caption.fontSize', '12'),
+            ('typography.styles.caption.lineHeight', 0),
+            ('typography.styles.caption.fontWeight', 450),
+            ('typography.styles.decorative', {}),
+            ('breakpoint.desktop', 900.0),
+            ('breakpoint.mobile', '600'),
+        )
+
+        for dotted_path, value in invalid_values:
+            with self.subTest(dotted_path=dotted_path, value=value):
+                invalid = copy.deepcopy(contract)
+                mutate_contract(invalid, dotted_path, value)
+
+                try:
+                    generator.validate_contract(invalid)
+                except generator.ContractError:
+                    pass
+                except Exception as error:  # noqa: BLE001 - proves contract boundary
+                    self.fail(f'{dotted_path} leaked {type(error).__name__}: {error}')
+                else:
+                    self.fail(f'{dotted_path} was accepted')
 
     def test_contract_rejects_indirect_reference_cycle(self):
         generator = load_generator(self)
