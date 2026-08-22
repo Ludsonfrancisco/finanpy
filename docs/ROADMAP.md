@@ -100,13 +100,15 @@ Objetivo: congelar expansão e recuperar uma base liberável antes do redesenho.
 - [x] expor versão/SHA sem segredo no health, com os campos exatos `status`,
   `api_version` e `version`;
 - [x] comprovar na CI `32529705321` a imagem, o health com SHA e os três processos;
-- [ ] Task 7: publicar a tag GHCR versionada `sha-<40-char-sha>`, resolver o
-  digest OCI, executar os ensaios literais da imagem candidata e da restauração
-  R2/imagem anterior e validar no EasyPanel uma réplica, um worker e os dois
-  schedulers.
+- [x] Task 7: publicar `v1.4.0` e a tag por SHA, resolver o digest OCI, implantar
+  por digest, restaurar o R2 em cópia descartável e validar no EasyPanel uma
+  réplica, um worker, os dois schedulers, smoke autenticado e restart;
+- [x] preservar `rollback/pre-r1.4` no SHA anterior e documentar que a primeira
+  release GHCR não possui digest anterior para ensaio literal.
 
-R1.4 permanece **em andamento**. A prova local e a CI não autorizam declarar
-publicação GHCR ou deploy EasyPanel concluídos. Evidência:
+R1.4 está **concluída com a limitação de primeira release registrada**. A imagem
+ativa é o SHA `5e62f84d` pelo digest `sha256:0d1621…5b5e3`; a próxima release
+deve ensaiar o digest R1.4 como imagem anterior. Evidência:
 `docs/audits/2026-08-21-fail-fast-deploy-rehearsal.md`.
 
 Aceite R1: CI verde, dinheiro recente exato, deploy não inicia com schema inválido

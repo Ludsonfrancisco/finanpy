@@ -4,8 +4,9 @@
 > no `main` em `4810af4`, a CI, a produção pública e as interfaces Web/Flutter.
 > Evidência detalhada:
 > [auditoria de estado e paridade](docs/audits/2026-08-20-product-state-and-design-parity.md).
-> O incremento R1.4 foi revalidado separadamente em 21/08/2026; a prova local e
-> de CI não deve ser confundida com publicação GHCR ou deploy no EasyPanel.
+> O incremento R1.4 foi concluído em 21/08/2026 na tag `v1.4.0`, SHA
+> `5e62f84d`, com CI, publicação GHCR por digest, deploy EasyPanel, smoke
+> autenticado, restart e restauração R2 descartável comprovados.
 
 ## Status e convenções
 
@@ -326,9 +327,9 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 
 | Severidade | Evidência | Impacto | Tratamento |
 |---|---|---|---|
-| Mitigado no código; validação operacional aberta | o entrypoint executa `prepare_deploy` antes do Supervisor | falha de configuração, backup, migration, auditoria ou static não inicia processos | publicar a tag versionada, registrar o digest OCI e validar no EasyPanel na Task 7 |
+| Mitigado e validado | o entrypoint executa `prepare_deploy` antes do Supervisor; R1.4 foi implantada por digest | falha de configuração, backup, migration, auditoria ou static não inicia processos | repetir os mesmos gates em cada release |
 | Alto | sync central cobre só Account/Category/Transaction | cartões/contas fixas não têm a mesma garantia offline | servidor canônico, escrita online e cache de leitura vinculado à sessão |
-| Alto | o health e a tag GHCR têm contrato por SHA, mas a tag não foi publicada nem seu digest resolvido/selecionado no EasyPanel | produção/rollback ainda não foram validados para o candidato | publicar `sha-<40-char-sha>`, registrar o digest OCI e ensaiar rollback manual na Task 7 |
+| Médio | a primeira release GHCR não possui digest anterior | o rollback R1.4 depende da branch `rollback/pre-r1.4`, não de imagem anterior ensaiada | na próxima release, preservar e ensaiar o digest R1.4 contra restauração descartável |
 | Médio | PRD, roadmap, README e instruções descreviam estado anterior | decisões e novas tasks podem duplicar trabalho pronto | auditoria datada e atualização documental |
 | Médio | Web hardcoded dark e 821 cores hex espalhadas | paridade/tema/manutenção frágeis | tokens Casa de Valores 2.0 e migração incremental |
 | Médio | Tailwind, Alpine, Chart.js e fonte vêm de CDN | supply chain, CSP e indisponibilidade | fixar e servir assets locais, sem trocar framework |
@@ -353,9 +354,9 @@ Detalhes: [importação e sincronização](docs/imports-and-sync.md).
 Na branch candidata em 21/08/2026, 581 testes Django e 374 testes Flutter
 passaram localmente; Ruff, formato após resolução de dependências, análise,
 checks, migrations e cobertura de 95% também passaram. Os builds Windows e APK
-release foram produzidos. A CI `32529705321` ficou verde no SHA
-`2584fa7db5e9ee9fa158cdfce54d3b2b24ef4a9d`, inclusive nos jobs Windows/MSIX,
-Android e iOS. Há testes de isolamento
+release foram produzidos. As CIs `32540824725` e `32541360049` ficaram verdes no
+SHA `5e62f84dddb8e618d55b4b2a74f8eab9c17ebba9`, inclusive nos jobs
+Windows/MSIX, Android, iOS e publicação GHCR. Há testes de isolamento
 por Lar, tokens/dispositivos, reutilização de
 refresh, idempotência, conflitos, tombstones, cursors, contrato OpenAPI,
 observabilidade, migrations fresh/legadas/rollback/replay, backup consistente,
@@ -363,12 +364,14 @@ gateway R2, retenção, scheduler, concorrência e logs sanitizados.
 
 Sem cobertura comprovada:
 
-- tag GHCR publicada, associação tag→digest registrada e rollback por digest no EasyPanel real;
+- rollback literal por digest anterior; R1.4 é a primeira imagem GHCR e preserva
+  somente a branch `rollback/pre-r1.4` como retorno legado;
 - concorrência além da topologia suportada de uma réplica/um worker;
 - CSV/outros bancos e escrita offline de cartões/contas fixas;
 - instalação em iPhone físico, assinatura e distribuição iOS;
-- testes end-to-end autenticados no EasyPanel; a prova atual cobre health e login
-  público, processos, integridade e backup, sem navegar nos dados financeiros;
+- jornada end-to-end completa de escrita no EasyPanel; a prova atual cobre
+  health, sessão autenticada, leitura de movimentações, processos, integridade,
+  backup e restart sem mutação financeira;
 - rate limit persistente de `POST /login/` e alertas externos de backup.
 
 Novos recursos seguirão TDD: teste falha, implementação mínima, refatoração e suíte completa.
@@ -461,11 +464,12 @@ Offline por capacidade:
 ## 16. CI/CD e publicação
 
 - GitHub Actions para lint, testes Django, migrations, segurança de dependências, testes Flutter e builds por plataforma.
-- Imagens do backend usam a tag versionada/controlada
-  `ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`; a identidade
-  imutável é o digest OCI que a Task 7 deve resolver e registrar. O entrypoint
-  faz preflight, backup opcional, migration, auditoria e `collectstatic` antes
-  de iniciar o Supervisor; a publicação e o deploy reais aguardam a Task 7.
+- Imagens do backend usam `v<semver>` e
+  `ghcr.io/ludsonfrancisco/finanpy:sha-<sha Git de 40 caracteres>`. A identidade
+  implantada é o digest OCI. R1.4 usa
+  `sha256:0d16218642cbf21c457152a625277c0f21894610547da49e78e83b295153b5e3`.
+  O entrypoint faz preflight, backup opcional, migration, auditoria e
+  `collectstatic` antes de iniciar o Supervisor.
 - Windows: MSIX piloto gerado com certificado de teste; distribuição ainda exige
   certificado privado compatível com `CN=Lar Finance Private`.
 - Android: distribuição privada primeiro; Play Store depois se fizer sentido `[INVESTIGAR conta e política]`.
@@ -479,9 +483,9 @@ Sprints 0–5 e seus incrementos posteriores entregaram operação, Lar, API/syn
 OFX, fundação Flutter, contas/transações, cartões/faturas, contas fixas,
 orçamento e relatórios. O fechamento foi reorganizado em:
 
-- [~] **R1 — Verdade e estabilização:** documentação, CI, dinheiro exato, código
-  fail-fast e versão observável estão entregues; publicação GHCR, ensaio de
-  rollback da imagem anterior e validação EasyPanel permanecem na Task 7.
+- [x] **R1 — Verdade e estabilização:** documentação, CI, dinheiro exato,
+  fail-fast, versão observável, GHCR, EasyPanel e R2 estão comprovados; a
+  ausência de digest anterior na primeira release está registrada.
 - [ ] **R2 — Fundação Web Casa de Valores 2.0:** tokens, tema, assets e shell.
 - [ ] **R3 — Paridade visual incremental:** uma tela por task.
 - [ ] **R4 — Consistência entre dispositivos:** contrato de maturidade, cache de
@@ -503,11 +507,9 @@ objeto, restart, idempotência e restauração descartável comprovados.
 
 Pendentes imediatos:
 
-- publicar a tag GHCR versionada do SHA candidato, resolver o digest OCI e
-  selecionar por digest quando suportado;
-- materializar e ensaiar o rollback manual para a imagem anterior;
-- validar preflight, topologia e health no EasyPanel sem sobrescrever o
-  entrypoint;
+- iniciar R2.1, tokens e contrato visual Casa de Valores 2.0;
+- na próxima release, ensaiar o digest R1.4 como imagem anterior em restauração
+  descartável;
 - aplicar Casa de Valores 2.0 incrementalmente;
 - exibir “não informado” em vez de `R$ 0,00` para dado realmente ausente.
 
@@ -576,10 +578,11 @@ Pendentes imediatos:
 - Cadastro público e landing foram removidos; login e fallback web privado permanecem.
 - O servidor EasyPanel foi atualizado de forma controlada em 2026-08-13. O ensaio
   de restauração nunca apontou para a base real; a base permaneceu íntegra.
-- Em 21/08/2026, a CI `32529705321` comprovou no SHA
-  `2584fa7db5e9ee9fa158cdfce54d3b2b24ef4a9d` o build da imagem, o health com o
-  mesmo SHA e os três processos do Supervisor. O job de publicação GHCR foi
-  pulado, porque o evento foi push de branch; nenhuma tag foi publicada.
-- A matriz e os ensaios locais sanitizados estão em
-  `docs/audits/2026-08-21-fail-fast-deploy-rehearsal.md`. Eles não comprovam
-  download R2 atual, imagem anterior ou configuração do EasyPanel.
+- Em 21/08/2026, as CIs `32540824725` e `32541360049` comprovaram no SHA
+  `5e62f84dddb8e618d55b4b2a74f8eab9c17ebba9` todos os gates, a tag `v1.4.0` e
+  a publicação GHCR. O EasyPanel executa o digest
+  `sha256:0d16218642cbf21c457152a625277c0f21894610547da49e78e83b295153b5e3`.
+- A matriz local, o deploy, o smoke autenticado, o restart e a restauração R2
+  descartável estão em
+  `docs/audits/2026-08-21-fail-fast-deploy-rehearsal.md`. A primeira release não
+  possui digest anterior; `rollback/pre-r1.4` preserva o retorno legado.

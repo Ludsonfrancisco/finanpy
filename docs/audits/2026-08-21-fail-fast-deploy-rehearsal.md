@@ -2,13 +2,15 @@
 
 Data: 2026-08-21
 
-Escopo: R1.4 Task 6
+Escopo: R1.4 Tasks 6 e 7
 
-Resultado: **DONE_WITH_CONCERNS**
+Resultado: **CONCLUÍDO COM LIMITAÇÃO DE ROLLBACK ACEITA**
 
-Esta auditoria separa prova local, prova da CI/GHCR e prova do EasyPanel. Nenhum
-comando usou o banco de produção, nenhuma configuração externa foi alterada,
-nenhuma tag foi criada e nenhum objeto R2 foi excluído ou substituído.
+Esta auditoria separa prova local, prova da CI/GHCR e prova do EasyPanel. A
+Task 6 não usou o banco de produção nem alterou configuração externa. A Task 7,
+executada após autorização explícita, publicou a release e implantou a imagem
+por digest. Nenhum objeto R2 foi excluído ou substituído e nenhuma credencial
+foi lida ou registrada.
 
 ## Preflight
 
@@ -152,25 +154,81 @@ locais em prova de container ou R2.
 - nunca executar migration manual em paralelo nem sobrescrever o command da
   imagem.
 
-## Gates abertos para a Task 7
+## Fechamento da Task 7 em produção
 
-R1.4 permanece em andamento. Com autorização explícita, a Task 7 ainda precisa:
+### Identidade Git, CI e GHCR
 
-1. criar a tag versionada/controlada que aciona a publicação GHCR e confirmar a
-   imagem `sha-<40-char-sha>`;
-2. resolver e registrar o digest OCI `sha256:<64 hex>` da tag. Se o EasyPanel
-   aceitar referência por digest, selecionar
-   `ghcr.io/ludsonfrancisco/finanpy@sha256:<digest>`; se não aceitar, registrar
-   a associação tag→digest e verificá-la imediatamente antes e depois do deploy;
-3. executar a imagem candidata com SQLite antigo descartável e credenciais R2
-   ausentes, comprovando todos os asserts literais do brief;
-4. executar `HeadObject`, baixar o objeto R2 selecionado sem alterá-lo e verificar
-   `ContentLength`, metadata SHA, hash local e `PRAGMA integrity_check`;
-5. iniciar a imagem anterior somente contra a restauração descartável e provar
-   health/auditoria;
-6. selecionar a imagem candidata no EasyPanel sem sobrescrever o entrypoint;
-7. confirmar uma réplica, um worker, dois schedulers, health com o SHA exato e
-   executar o rollback manual seguro do runbook.
+- o código candidato foi mesclado e publicado a partir do SHA
+  `5e62f84dddb8e618d55b4b2a74f8eab9c17ebba9`; o commit documental posterior
+  não altera a identidade da release;
+- a branch remota `rollback/pre-r1.4` preservou o estado anterior no SHA
+  `74e4506a79ef11a9912d98c77f658d4952af0e98` antes do merge;
+- a CI de `main` `32540824725` terminou com `success` nos seis gates; a
+  publicação foi corretamente pulada por não ser uma tag;
+- a tag anotada `v1.4.0` aponta para o SHA candidato;
+- a CI da tag `32541360049` terminou com `success` nos seis gates e no job
+  `Publish immutable GHCR image`;
+- o pacote público aceitou pull anônimo HTTP 200. `v1.4.0` e
+  `sha-5e62f84dddb8e618d55b4b2a74f8eab9c17ebba9` resolveram para o mesmo digest:
+  `sha256:0d16218642cbf21c457152a625277c0f21894610547da49e78e83b295153b5e3`.
 
-Até esses gates passarem, não há prova de publicação GHCR nem de deploy R1.4 no
-EasyPanel.
+### EasyPanel e smoke autenticado
+
+O EasyPanel `2.33.1` foi mantido com uma réplica, mount persistente em
+`/app/data`, `SQLITE_PATH`, `DEBUG` e as sete variáveis R2 presentes, sem ler
+valores secretos. O campo de command permaneceu vazio. A fonte foi alterada para
+a referência imutável:
+
+```text
+ghcr.io/ludsonfrancisco/finanpy@sha256:0d16218642cbf21c457152a625277c0f21894610547da49e78e83b295153b5e3
+```
+
+O deploy terminou em 45 segundos. Durante a substituição houve uma janela 502;
+depois dela o health público respondeu HTTP 200 com exatamente:
+
+```json
+{"status":"ok","api_version":"v1","version":"5e62f84dddb8e618d55b4b2a74f8eab9c17ebba9"}
+```
+
+`migrate --check` confirmou zero migrations pendentes. As 12 verificações de
+`audit_household_integrity` ficaram em zero e `integrity_status=ok`. A leitura
+de `/proc` confirmou Supervisor como PID 1, um master e um worker Gunicorn, o
+scheduler R2 e o scheduler de purge de prévias. A sessão existente abriu o
+Dashboard e `Movimentações — Lar Finance` sem erro ou nova autenticação.
+
+Um restart controlado produziu a janela 502 esperada e voltou com o mesmo SHA,
+o mesmo digest salvo no EasyPanel e a tela autenticada operacional.
+
+### R2 e restauração descartável
+
+`python manage.py backup_to_r2` confirmou `status=already_exists`, sem exclusão,
+para:
+
+- chave `production/backups/2026/08/lar-finance-2026-08-21.sqlite3`;
+- tamanho `729088` bytes;
+- SHA-256
+  `949c2212883947f88b1309e2410894d5aa87f52a10ad81346cd3cbc210bc6d37`.
+
+O objeto foi listado, validado por metadata, baixado para diretório temporário
+`lf-r2-restore-*` fora de `/app/data` e comparado com a metadata remota. Tamanho
+e SHA-256 coincidiram; `PRAGMA quick_check=ok`, `PRAGMA integrity_check=ok`,
+`migrate --check` e a auditoria do Lar passaram usando somente a restauração.
+As cópias temporárias e seus diretórios foram removidos. O banco ativo e o
+objeto R2 não foram alterados.
+
+### Rollback preservado e limitação aceita
+
+Antes desta release não existia uma imagem GHCR anterior; portanto não há digest
+anterior que possa ser iniciado contra a restauração descartável. O rollback
+preservado é a fonte GitHub `Ludsonfrancisco/finanpy`, branch
+`rollback/pre-r1.4`, SHA `74e4506a79ef11a9912d98c77f658d4952af0e98`.
+Esse caminho foi preenchido no formulário do EasyPanel sem salvar nem executar;
+a fonte ativa permaneceu no digest R1.4. Um rollback real não foi disparado para
+evitar downgrade do banco de produção. A partir de R1.4, releases futuras devem
+preservar o digest anterior e ensaiá-lo em restauração descartável antes do
+deploy.
+
+Com essa limitação explicitamente aceita para a primeira imagem versionada,
+R1.4 está concluída. O rollback de emergência desta versão exige selecionar a
+branch preservada e seguir o runbook, com backup e validação de compatibilidade
+antes de qualquer troca.
