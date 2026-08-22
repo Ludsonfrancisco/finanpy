@@ -83,6 +83,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'api.middleware.RequestIdMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'api.middleware.ApiObservabilityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

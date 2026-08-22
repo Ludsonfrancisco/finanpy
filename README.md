@@ -6,7 +6,7 @@ modernização incremental.
 
 ## Estado atual
 
-- Python 3.12, Django 5.2.13 e Gunicorn 23.0.0;
+- Python 3.12, Django 5.2.13, Gunicorn 23.0.0 e WhiteNoise 6.12.0;
 - contas, categorias, movimentações e dashboard web;
 - um Lar compartilhado, com membros autorizados e responsáveis financeiros
   `Eu`, `Esposa` e `Conjunto`;

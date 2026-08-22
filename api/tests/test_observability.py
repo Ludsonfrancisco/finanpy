@@ -134,17 +134,21 @@ class ApiObservabilityTest(TestCase):
         request_id = response.headers['X-Request-ID']
         self.assertEqual(str(UUID(request_id)), request_id)
 
-    def test_request_id_and_observability_middleware_order(self):
+    def test_request_id_static_and_observability_middleware_order(self):
         request_id_position = settings.MIDDLEWARE.index('api.middleware.RequestIdMiddleware')
         security_position = settings.MIDDLEWARE.index(
             'django.middleware.security.SecurityMiddleware'
+        )
+        static_position = settings.MIDDLEWARE.index(
+            'whitenoise.middleware.WhiteNoiseMiddleware'
         )
         observability_position = settings.MIDDLEWARE.index(
             'api.middleware.ApiObservabilityMiddleware'
         )
 
         self.assertLess(request_id_position, security_position)
-        self.assertEqual(observability_position, security_position + 1)
+        self.assertEqual(static_position, security_position + 1)
+        self.assertEqual(observability_position, static_position + 1)
 
     def test_login_privacy(self):
         response, event, output = self.capture_request(

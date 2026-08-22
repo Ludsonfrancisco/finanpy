@@ -104,7 +104,7 @@ flowchart LR
 | Linguagem | Python 3.12, imagem `python:3.12-slim` | `Dockerfile` |
 | Framework | Django 5.2.13 | `requirements.txt` |
 | API | Django REST Framework 3.17.1; OpenAPI 3.1.0, contrato 1.0.0 | `requirements.txt`, `docs/openapi-v1.yaml` |
-| WSGI | Gunicorn 23.0.0, 1 worker | requirements, Docker e Compose |
+| WSGI e estáticos | Gunicorn 23.0.0, 1 worker; WhiteNoise 6.12.0 | `requirements.txt`, `core/settings.py`, Docker e Compose |
 | Imagens | Pillow 12.2.0 | `requirements.txt` |
 | Ambiente | python-dotenv 1.2.2 | `requirements.txt` |
 | Runtime indireto | asgiref 3.11.1, sqlparse 0.5.5, tzdata 2026.1 | `requirements.txt` |

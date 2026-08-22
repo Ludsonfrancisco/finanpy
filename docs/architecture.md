@@ -38,7 +38,7 @@ flowchart TB
 | Camada | Tecnologia |
 |---|---|
 | Backend | Python 3.12, Django 5.2.13 e DRF 3.17.1 |
-| Servidor | Gunicorn 23.0.0, um worker |
+| Servidor | Gunicorn 23.0.0, um worker; WhiteNoise 6.12.0 para arquivos estáticos coletados |
 | Banco canônico | SQLite por `SQLITE_PATH` |
 | Web | Django Templates, Tailwind CDN, Alpine CDN e Chart.js CDN |
 | Flutter | Flutter 3.47.0 / Dart 3.13.0 |
