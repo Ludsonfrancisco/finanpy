@@ -1,87 +1,35 @@
-# Task 3 — Home Flutter compacta e desktop
+# Task 3 — Casa de Valores design system and adaptive shell
 
-## Implementação
+## Commit chain
 
-- A posição financeira passou a usar `HomeFinancialSurface` com a key
-  `home-position-card`, acento mineral e hierarquia iniciada diretamente por
-  `Saldo consolidado`, conforme a decisão Impeccable v4.
-- Compromissos e gasto mensal passaram a cards de apoio com keys próprias,
-  acentos champanhe/danger e valores tabulares. Eles empilham abaixo de 560 px
-  ou com texto ampliado e usam linha quando há largura suficiente.
-- Movimentações recentes passaram a painel financeiro com texto contextual,
-  preservando linhas, semântica, valores assinados, divisores e adaptação a
-  texto ampliado.
-- No compacto, a ordem é posição, compromissos, gasto e movimentações. No
-  desktop, posição (5/9) e métricas (4/9) compartilham o topo; atenção/retry e
-  movimentações ocupam a largura completa abaixo.
-- O bloco de atenção/retry foi extraído para `_AttentionSection` e é reutilizado
-  pelos dois layouts. Sync, offline, erro, cache, privacidade, owner selector,
-  foco de teclado e pull-to-refresh não tiveram seus fluxos alterados.
-- Os seis goldens da Home foram atualizados após inspeção dos renders em
-  Android, iOS e Windows, claro e escuro.
+- `b19adae` — initial design-system and adaptive-shell foundation.
+- `c44b8b7` — clean golden baselines.
+- `b7b3335` — system theme, accessibility, contrast, scrolling, and representative structural golden corrections.
 
-## Arquivos
+## Delivered
 
-- `mobile/lib/features/home/presentation/home_screen.dart`
-- `mobile/lib/features/home/presentation/widgets/balance_header.dart`
-- `mobile/lib/features/home/presentation/widgets/commitments_summary.dart`
-- `mobile/lib/features/home/presentation/widgets/recent_transactions.dart`
-- `mobile/test/features/home/home_screen_test.dart`
-- `mobile/test/goldens/home_{mobile,ios,windows}_{light,dark}.png`
+- Explicit Material 3 Casa de Valores light/dark tokens; `ThemeMode.system` follows platform preference.
+- Adaptive rail (desktop) and bottom navigation (mobile), only with implemented destinations.
+- Private, data-safe Home shell with `SingleChildScrollView`; financial amount hiding and tabular figures; owner selection; sync-state semantics including freshness.
+- Dark error/on-error pair corrected for AA contrast.
+- Desktop Home/shell golden fixture now contains rail, navigation/status icons, and structural content shapes without test-font artifacts. Labels remain tested in real widgets.
 
-## RED / GREEN
+## TDD, accessibility, and visual evidence
 
-- RED: os testes `compact home preserves shared financial order without
-  overflow` e `desktop home keeps metrics beside position and recent activity
-  visible` falharam individualmente porque `home-position-card` não existia.
-- GREEN: após a implementação mínima, ambos passaram individualmente; a suíte
-  focada terminou com 30/30 testes e a suíte de goldens com 6/6.
+- RED recorded for missing Task 3 APIs; green widget coverage for tokens, amount privacy, owner labels, sync state, and 390×844/1366×768 shell breakpoints.
+- Golden-artifact regression proved the first fixture contained three text widgets; it now asserts no text/Ahem artifacts, required icon geometry, clean debug flags, and no pending exception.
+- Both regenerated dark and light PNGs were independently inspected: no red/yellow overlays or Ahem glyphs.
+- Dual independent Impeccable v4 verdicts are ready.
 
-## Comandos e resultados
+## Fresh verification
 
-- `flutter test ... --plain-name <novo teste>` — RED esperado nos dois casos;
-  depois GREEN, 1/1 em cada execução.
-- `flutter test test/features/home/home_screen_test.dart test/accessibility/home_accessibility_test.dart test/design_system/lar_theme_test.dart` — 30/30.
-- `dart format --output=none --set-exit-if-changed lib/features/home test/features/home test/design_system/lar_theme_test.dart` — 13 arquivos, 0 alterados.
-- `flutter analyze` — sem issues.
-- `flutter test --update-goldens test/features/home/home_goldens_test.dart` e
-  nova execução sem update — 6/6.
-- `flutter test` — 381/381.
-- `git diff --check` — limpo; apenas avisos informativos de conversão LF/CRLF.
+- `flutter test --update-goldens test/app/adaptive_shell_test.dart` — 6 passed.
+- `flutter test test/app/adaptive_shell_test.dart` — 6 passed.
+- `dart format --set-exit-if-changed lib test` — clean.
+- `flutter analyze` — no issues.
+- `flutter test` — 17 passed.
+- `flutter build windows --debug` — succeeded.
 
-## Self-review
+## Residual P2 / next task
 
-- O diff fica restrito à Home, aos dois novos testes e às baselines visuais
-  diretamente afetadas.
-- Não há roxo, gradiente, glow ou `IntrinsicHeight` na composição alterada.
-- A semântica de privacidade continua sem expor dígitos; os testes de 320 px a
-  200%, foco Windows, alvos Android/iOS e refresh Cupertino seguem verdes.
-- Os renders claro/escuro foram inspecionados antes da atualização das
-  baselines e correspondem à hierarquia Casa de Valores 2.0 aprovada.
-
-## Concerns
-
-- Não há concern funcional conhecido. A validação foi feita por widget/golden
-  tests no host Windows; não houve execução manual em aparelho físico.
-- O runner informa dependências mais recentes incompatíveis com as constraints
-  atuais e tag `golden` não declarada em `dart_test.yaml`; são avisos preexistentes
-  e não causaram falha.
-
-## Decisão de reclassificação dos goldens
-
-- O usuário aprovou que a atualização dos seis arquivos
-  `mobile/test/goldens/home_*.png` pertence à Task 3, pois as baselines são
-  consequência direta do redesign da Home e foram geradas, inspecionadas,
-  verificadas 6/6 e incluídas no mesmo commit de implementação.
-- O plano versionado agora lista explicitamente os seis PNGs na Task 3 e exige,
-  antes do commit, geração, inspeção, verificação 6/6 e staging das baselines.
-- A Task 4 passou a tratá-los como gate independente: reexecuta 6/6 sem update,
-  inspeciona os seis renders e prova que uma nova geração aprovada não produz
-  diff. Correção de componente ou baseline só é permitida se a inspeção visual
-  reprovar.
-
-## Resultado da formalização
-
-- Alterados somente este relatório e
-  `docs/superpowers/plans/2026-08-22-dashboard-home-visual-parity-implementation.md`.
-- Nenhum arquivo de produto, teste ou binário foi alterado nesta formalização.
+Task 4 should broaden automated text-scale, keyboard-focus and owner-selector interaction coverage. Cupertino-specific platform adaptation remains a next-task concern; Task 3 intentionally provides the shared Material adaptive foundation. Strings should move to the localization layer when it is introduced.
