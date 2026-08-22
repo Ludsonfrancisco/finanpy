@@ -439,6 +439,9 @@ Expected: FAIL por ausência das keys e composição antiga.
 
 - [x] **Step 3: transformar `BalanceHeader` no card dominante**
 
+O eyebrow redundante `Posição financeira` foi removido na revisão visual
+aprovada; `Saldo consolidado` inicia diretamente a hierarquia do card.
+
 Envolver o conteúdo atual em:
 
 ```dart
@@ -451,8 +454,6 @@ HomeFinancialSurface(
   child: Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: <Widget>[
-      Text('Posição financeira', style: textTheme.labelLarge),
-      const SizedBox(height: LarSpacing.xs),
       Text('Saldo consolidado', style: textTheme.titleMedium),
       const SizedBox(height: LarSpacing.md),
       financialAmount,

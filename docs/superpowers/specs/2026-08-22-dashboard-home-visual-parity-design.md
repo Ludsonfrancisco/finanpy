@@ -103,7 +103,9 @@ fornece todos os dados necessários.
 
 - Conteúdo central limitado a `1120 px`.
 - Card de saldo e cards de apoio formam a primeira faixa.
-- Movimentações recentes aparecem em coluna lateral quando houver largura e dados.
+- Movimentações recentes aparecem em uma faixa de largura total abaixo da primeira
+  faixa, preservando a mesma hierarquia aprovada na Web e mais espaço para descrição,
+  conta e valor.
 - O shell adaptativo existente continua responsável pela navegação.
 
 ### Componentes
