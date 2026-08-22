@@ -64,7 +64,7 @@
 - Produces: `load_contract(path: Path) -> dict`, `validate_contract(contract: dict) -> None`, `render_css(contract: dict) -> str`, `render_dart(contract: dict) -> str` e `generate(root: Path, check: bool) -> int`.
 - Produces: classes Dart `LarGeneratedColors`, `LarGeneratedLightColors`, `LarGeneratedDarkColors`, `LarGeneratedSpacing`, `LarGeneratedRadius`, `LarGeneratedBorders`, `LarGeneratedMotion`, `LarGeneratedTypography`, `LarGeneratedElevation` e `LarGeneratedBreakpoints`.
 
-- [ ] **Step 1: criar a branch isolada para não publicar implementação parcial**
+- [x] **Step 1: criar a branch isolada para não publicar implementação parcial**
 
 Use `using-git-worktrees` antes deste passo para criar o worktree já associado à
 branch `codex/r2-1-design-tokens`. Dentro do worktree, apenas confirme e publique
@@ -78,7 +78,7 @@ git push -u origin HEAD
 
 Expected: branch local acompanha `origin/codex/r2-1-design-tokens`; `main` permanece no último documento aprovado.
 
-- [ ] **Step 2: escrever os testes vermelhos do contrato e do gerador**
+- [x] **Step 2: escrever os testes vermelhos do contrato e do gerador**
 
 Crie `core/tests_design_tokens.py`:
 
@@ -161,7 +161,7 @@ class DesignTokenGeneratorTest(SimpleTestCase):
             self.assertEqual(css_path.read_text(encoding='utf-8'), 'stale\n')
 ```
 
-- [ ] **Step 3: executar o teste para comprovar o estado vermelho**
+- [x] **Step 3: executar o teste para comprovar o estado vermelho**
 
 Run:
 
@@ -174,7 +174,7 @@ Expected: quatro `FAIL` com a mensagem
 ocorre porque a funcionalidade ainda não existe, não por erro de import ou
 sintaxe.
 
-- [ ] **Step 4: criar o contrato JSON aprovado**
+- [x] **Step 4: criar o contrato JSON aprovado**
 
 Crie `design/tokens.json` exatamente com esta estrutura:
 
@@ -332,7 +332,7 @@ Crie `design/tokens.json` exatamente com esta estrutura:
 }
 ```
 
-- [ ] **Step 5: implementar o gerador sem dependências externas**
+- [x] **Step 5: implementar o gerador sem dependências externas**
 
 Crie `scripts/__init__.py` vazio e implemente `scripts/generate_design_tokens.py` com estas responsabilidades e assinaturas completas:
 
@@ -660,7 +660,7 @@ if __name__ == '__main__':
     raise SystemExit(main())
 ```
 
-- [ ] **Step 6: gerar os dois artefatos versionados**
+- [x] **Step 6: gerar os dois artefatos versionados**
 
 Run:
 
@@ -671,7 +671,7 @@ python scripts/generate_design_tokens.py --check
 
 Expected: ambos terminam com exit code 0; o segundo não altera o workspace.
 
-- [ ] **Step 7: executar testes e lint da task**
+- [x] **Step 7: executar testes e lint da task**
 
 Run:
 
@@ -683,7 +683,7 @@ git diff --check
 
 Expected: 4 testes passam; Ruff e `git diff --check` retornam 0.
 
-- [ ] **Step 8: commitar e publicar a Task 1**
+- [x] **Step 8: commitar e publicar a Task 1**
 
 ```powershell
 git add design/tokens.json scripts/__init__.py scripts/generate_design_tokens.py core/tests_design_tokens.py static/css/design-tokens.css mobile/lib/design_system/lar_tokens.g.dart
@@ -708,7 +708,7 @@ Expected: branch remota contém o commit; comunicar ao proprietário o que foi f
 - Consumes: classes `LarGenerated*` produzidas pela Task 1.
 - Produces: as mesmas APIs públicas `LarColors`, `LarSpacing`, `LarTypography` e `LarTheme`, agora sem valores estruturais duplicados.
 
-- [ ] **Step 1: ampliar o teste Flutter para exigir as fachadas geradas**
+- [x] **Step 1: ampliar o teste Flutter para exigir as fachadas geradas**
 
 Adicione os imports e casos abaixo a `mobile/test/design_system/lar_theme_test.dart`:
 
@@ -750,7 +750,7 @@ test('generated token file is imported only inside design_system', () {
 });
 ```
 
-- [ ] **Step 2: executar o teste para comprovar o estado vermelho**
+- [x] **Step 2: executar o teste para comprovar o estado vermelho**
 
 Run:
 
@@ -762,7 +762,7 @@ Set-Location ..
 
 Expected: falha de compilação porque `LarColors.lightTextSecondary` e `LarColors.darkDanger` ainda não existem e as fachadas ainda não usam o arquivo gerado.
 
-- [ ] **Step 3: substituir literais das fachadas por referências geradas**
+- [x] **Step 3: substituir literais das fachadas por referências geradas**
 
 Reescreva `mobile/lib/design_system/lar_colors.dart` preservando nomes atuais e adicionando papéis semânticos:
 
@@ -881,7 +881,7 @@ dividerColor: LarColors.darkBorder,
 
 Mantenha os demais campos, Material 3, canvases, superfícies e navigation themes existentes. Não introduza seleção automática de tema nesta task.
 
-- [ ] **Step 4: formatar e executar a verificação Flutter focada**
+- [x] **Step 4: formatar e executar a verificação Flutter focada**
 
 ```powershell
 Set-Location mobile
@@ -895,7 +895,7 @@ git diff --check
 
 Expected: analyze sem issues, todos os testes do arquivo passam e o gerador permanece sincronizado.
 
-- [ ] **Step 5: commitar e publicar a Task 2**
+- [x] **Step 5: commitar e publicar a Task 2**
 
 ```powershell
 git add mobile/lib/design_system mobile/test/design_system/lar_theme_test.dart
@@ -917,7 +917,7 @@ Expected: branch remota atualizada; comunicar ao proprietário que Flutter prese
 - Consumes: `static/css/design-tokens.css` e variáveis `--lar-*` da Task 1.
 - Produces: shell Web escuro sem cores estruturais hexadecimais e com fonte nativa/tabular.
 
-- [ ] **Step 1: escrever o teste vermelho do shell Web**
+- [x] **Step 1: escrever o teste vermelho do shell Web**
 
 Adicione a `core/tests_design_tokens.py`:
 
@@ -934,7 +934,7 @@ class WebTokenIntegrationTest(SimpleTestCase):
         self.assertNotIn('radial-gradient', template)
 ```
 
-- [ ] **Step 2: executar o teste para comprovar o estado vermelho**
+- [x] **Step 2: executar o teste para comprovar o estado vermelho**
 
 ```powershell
 python manage.py test core.tests_design_tokens.WebTokenIntegrationTest -v 2
@@ -942,7 +942,7 @@ python manage.py test core.tests_design_tokens.WebTokenIntegrationTest -v 2
 
 Expected: falha porque `base.html` ainda não carrega o CSS gerado e contém cores hexadecimais e gradientes.
 
-- [ ] **Step 3: carregar tokens e mapear o Tailwind CDN para variáveis**
+- [x] **Step 3: carregar tokens e mapear o Tailwind CDN para variáveis**
 
 No início de `templates/base.html`, adicione `{% load static %}` antes do `<!DOCTYPE html>`. No `<head>`, antes do script Tailwind, adicione:
 
@@ -997,7 +997,7 @@ boxShadow: {
 
 Os nomes `glow-*` ficam temporariamente como aliases de compatibilidade, mas deixam de produzir glow. A remoção dos nomes antigos acontecerá tela a tela na R3.
 
-- [ ] **Step 4: substituir o CSS estrutural inline por tokens**
+- [x] **Step 4: substituir o CSS estrutural inline por tokens**
 
 Mantenha os seletores existentes, com estes valores:
 
@@ -1037,7 +1037,7 @@ Mantenha os seletores existentes, com estes valores:
 
 No `<body>`, substitua `text-[#E8ECE9]` por `text-lar-textPrimary`. Preserve `class="dark"` no `<html>`; o tema automático é R2.2.
 
-- [ ] **Step 5: executar a verificação Web focada**
+- [x] **Step 5: executar a verificação Web focada**
 
 ```powershell
 python manage.py test core.tests_design_tokens -v 2
@@ -1049,7 +1049,7 @@ git diff --check
 
 Expected: 5 testes passam; check, gerador, Ruff e diff retornam 0.
 
-- [ ] **Step 6: commitar e publicar a Task 3**
+- [x] **Step 6: commitar e publicar a Task 3**
 
 ```powershell
 git add core/tests_design_tokens.py templates/base.html
