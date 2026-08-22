@@ -731,10 +731,7 @@ void main() {
         .toList();
     expect(
       zeroAmountColors,
-      containsAll(<Color>[
-        LarColors.mineral,
-        LarColors.lightDanger,
-      ]),
+      containsAll(<Color>[LarColors.mineral, LarColors.lightDanger]),
     );
   });
 }
