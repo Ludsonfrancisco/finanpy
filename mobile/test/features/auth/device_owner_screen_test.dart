@@ -68,11 +68,22 @@ void main() {
     final gateway = _FakeAuthGateway(logoutThrows: true);
     final controller = AuthController(gateway);
     await controller.login(email: 'ana@example.com', password: 'secret');
-    await tester.pumpWidget(_screenApp(controller, const MoreScreen()));
+    await tester.pumpWidget(
+      _screenApp(
+        controller,
+        const MoreScreen(
+          buildLabel: '1234567',
+          serverHost: 'financeiro.palmbook.online',
+        ),
+      ),
+    );
 
     expect(find.text('Lar Finance no Windows'), findsOneWidget);
+    expect(find.text('Versão 1234567'), findsOneWidget);
+    expect(find.text('financeiro.palmbook.online'), findsOneWidget);
     expect(find.textContaining('14/08/2030'), findsOneWidget);
 
+    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Sair'));
     await tester.tap(find.widgetWithText(OutlinedButton, 'Sair'));
     await tester.pumpAndSettle();
 

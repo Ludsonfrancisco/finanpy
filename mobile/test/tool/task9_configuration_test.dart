@@ -43,6 +43,10 @@ void main() {
       'https://financeiro.palmbook.online/api/v1'.allMatches(workflow),
       hasLength(3),
     );
+    expect(
+      r'LAR_FINANCE_BUILD_SHA=${{ github.sha }}'.allMatches(workflow),
+      hasLength(3),
+    );
     expect(workflow, isNot(contains('https://example.invalid/api/v1')));
     expect(
       'flutter test --exclude-tags=golden'.allMatches(workflow),

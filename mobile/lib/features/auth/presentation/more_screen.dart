@@ -9,6 +9,8 @@ import '../application/auth_controller.dart';
 final class MoreScreen extends ConsumerWidget {
   const MoreScreen({
     this.syncState,
+    this.buildLabel = 'development',
+    this.serverHost = 'não configurado',
     this.onOpenBills,
     this.onOpenCards,
     this.onOpenImport,
@@ -19,6 +21,8 @@ final class MoreScreen extends ConsumerWidget {
 
   /// Navigation is injected: this screen never builds its own transport.
   final SyncState? syncState;
+  final String buildLabel;
+  final String serverHost;
   final VoidCallback? onOpenBills;
   final VoidCallback? onOpenCards;
   final VoidCallback? onOpenImport;
@@ -56,6 +60,10 @@ final class MoreScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: LarSpacing.sm),
                   Text(state.deviceName),
+                  const SizedBox(height: LarSpacing.sm),
+                  Text('Versão $buildLabel'),
+                  const SizedBox(height: LarSpacing.xs),
+                  Text(serverHost),
                   const SizedBox(height: LarSpacing.lg),
                   Text(
                     'Última sincronização',

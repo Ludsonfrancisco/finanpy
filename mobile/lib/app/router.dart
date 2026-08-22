@@ -184,6 +184,8 @@ GoRouter createAppRouter(
             path: '/more',
             builder: (context, state) => MoreScreen(
               syncState: syncCoordinator?.state,
+              buildLabel: config.buildLabel,
+              serverHost: config.serverHost,
               onOpenBills: () => context.go('/bills'),
               onOpenCards: () => context.go('/cards'),
               onOpenImport: importRepository == null
