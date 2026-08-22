@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lar_finance/app/app_config.dart';
 import 'package:lar_finance/app/router.dart';
 import 'package:lar_finance/core/network/api_error.dart';
+import 'package:lar_finance/core/sync/sync_models.dart';
+import 'package:lar_finance/core/sync/sync_state.dart';
 import 'package:lar_finance/features/auth/application/auth_controller.dart';
 import 'package:lar_finance/features/auth/data/auth_repository.dart';
 import 'package:lar_finance/features/auth/domain/session.dart';
@@ -76,6 +78,28 @@ void main() {
 
     expect(gateway.logoutCalls, 1);
     expect(controller.state.phase, AuthPhase.signedOut);
+  });
+
+  testWidgets('More follows the live sync timestamp after authentication', (
+    tester,
+  ) async {
+    final controller = AuthController(_FakeAuthGateway());
+    await controller.login(email: 'ana@example.com', password: 'secret');
+    final syncState = SyncState(retry: () async => SyncResult.current)
+      ..markCurrent(DateTime(2030, 8, 15, 11, 45));
+
+    await tester.pumpWidget(
+      _screenApp(controller, MoreScreen(syncState: syncState)),
+    );
+
+    expect(find.text('15/08/2030, 11:45'), findsOneWidget);
+    expect(find.text('14/08/2030, 10:30'), findsNothing);
+
+    syncState.markCurrent(DateTime(2030, 8, 15, 12, 5));
+    await tester.pump();
+
+    expect(find.text('15/08/2030, 12:05'), findsOneWidget);
+    expect(find.text('15/08/2030, 11:45'), findsNothing);
   });
 
   test(

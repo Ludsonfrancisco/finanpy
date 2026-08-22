@@ -183,6 +183,7 @@ GoRouter createAppRouter(
           GoRoute(
             path: '/more',
             builder: (context, state) => MoreScreen(
+              syncState: syncCoordinator?.state,
               onOpenBills: () => context.go('/bills'),
               onOpenCards: () => context.go('/cards'),
               onOpenImport: importRepository == null
