@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lar_finance/design_system/lar_colors.dart';
+import 'package:lar_finance/design_system/lar_radius.dart';
 import 'package:lar_finance/design_system/lar_spacing.dart';
 import 'package:lar_finance/design_system/lar_theme.dart';
 import 'package:lar_finance/design_system/lar_tokens.g.dart';
@@ -57,6 +58,12 @@ void main() {
       LarTypography.financial.height,
       LarGeneratedTypography.financialLineHeight,
     );
+  });
+
+  test('public radius facade consumes generated tokens', () {
+    expect(LarRadius.md, LarGeneratedRadius.md);
+    expect(LarRadius.lg, LarGeneratedRadius.lg);
+    expect(LarRadius.pill, LarGeneratedRadius.pill);
   });
 
   test('generated token file is imported only inside design_system', () {

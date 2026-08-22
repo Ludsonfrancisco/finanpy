@@ -14,15 +14,51 @@ import 'package:lar_finance/core/sync/sync_state.dart';
 import 'package:lar_finance/design_system/components/financial_amount.dart';
 import 'package:lar_finance/design_system/components/owner_selector.dart';
 import 'package:lar_finance/design_system/lar_colors.dart';
+import 'package:lar_finance/design_system/lar_radius.dart';
+import 'package:lar_finance/design_system/lar_spacing.dart';
 import 'package:lar_finance/design_system/lar_theme.dart';
 import 'package:lar_finance/features/home/application/home_controller.dart';
 import 'package:lar_finance/features/home/data/home_repository.dart';
 import 'package:lar_finance/features/home/domain/home_snapshot.dart';
 import 'package:lar_finance/features/home/presentation/home_screen.dart';
+import 'package:lar_finance/features/home/presentation/widgets/home_financial_surface.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() => initializeDateFormatting('pt_BR'));
+
+  testWidgets('financial surface applies Casa de Valores tokens', (
+    tester,
+  ) async {
+    const accent = Color(0xFF2F756A);
+    const childKey = Key('financial-surface-child');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: LarTheme.light,
+        home: const HomeFinancialSurface(
+          accentColor: accent,
+          child: SizedBox(key: childKey),
+        ),
+      ),
+    );
+
+    final surface = find.byType(HomeFinancialSurface);
+    final decoratedBox = tester.widget<DecoratedBox>(
+      find.descendant(of: surface, matching: find.byType(DecoratedBox)),
+    );
+    final decoration = decoratedBox.decoration as BoxDecoration;
+    final border = decoration.border! as Border;
+    final padding = tester.widget<Padding>(
+      find.descendant(of: surface, matching: find.byType(Padding)),
+    );
+
+    expect(decoration.color, LarTheme.light.colorScheme.surface);
+    expect(decoration.borderRadius, BorderRadius.circular(LarRadius.lg));
+    expect(border.top.color, accent.withValues(alpha: 0.55));
+    expect(padding.padding, const EdgeInsets.all(LarSpacing.lg));
+    expect(find.byKey(childKey), findsOneWidget);
+  });
 
   testWidgets('loading sem cache não presume nenhum valor financeiro', (
     tester,
