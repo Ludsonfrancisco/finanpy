@@ -1,6 +1,6 @@
 # Dashboard/Home Visual Parity Implementation Plan
 
-**Status:** planejado
+**Status:** concluído
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -52,7 +52,7 @@
 - Consumes: contexto atual de `core.views.DashboardView` sem novos campos.
 - Produces: seções ordenadas por `data-dashboard-section` e Dashboard sem hex estrutural, gradiente ou glow.
 
-- [ ] **Step 1: escrever os testes vermelhos do contrato visual Web**
+- [x] **Step 1: escrever os testes vermelhos do contrato visual Web**
 
 ```python
 from pathlib import Path
@@ -107,7 +107,7 @@ class DashboardVisualParityTest(SimpleTestCase):
             self.assertIn(value, self.template)
 ```
 
-- [ ] **Step 2: executar os testes e confirmar a falha correta**
+- [x] **Step 2: executar os testes e confirmar a falha correta**
 
 Run:
 
@@ -117,7 +117,7 @@ $env:SECRET_KEY='dashboard-design-test-secret'; python manage.py test core.tests
 
 Expected: FAIL porque `data-dashboard-section` não existe e o template ainda contém hex, gradiente e glow.
 
-- [ ] **Step 3: substituir a primeira hierarquia da Dashboard**
+- [x] **Step 3: substituir a primeira hierarquia da Dashboard**
 
 Aplicar em `templates/dashboard/index.html` esta estrutura antes dos blocos analíticos atuais:
 
@@ -180,7 +180,7 @@ Aplicar em `templates/dashboard/index.html` esta estrutura antes dos blocos anal
 
 Não inserir comentários HTML substituindo conteúdo. Manter os links `Lar (Geral)`, `Eu` e `Esposa` completos no `nav`.
 
-- [ ] **Step 4: tokenizar e reordenar os blocos existentes**
+- [x] **Step 4: tokenizar e reordenar os blocos existentes**
 
 Aplicar as seguintes regras em todo o template:
 
@@ -207,7 +207,7 @@ const chartColors = {
 };
 ```
 
-- [ ] **Step 5: executar testes Web focados e Django completo**
+- [x] **Step 5: executar testes Web focados e Django completo**
 
 Run:
 
@@ -218,7 +218,7 @@ ruff check core/tests_dashboard_design.py --config pyproject.toml
 
 Expected: todos passam; nenhum campo de contexto ou comportamento muda.
 
-- [ ] **Step 6: commit e push da Dashboard Web**
+- [x] **Step 6: commit e push da Dashboard Web**
 
 ```powershell
 git add core/tests_dashboard_design.py templates/dashboard/index.html
@@ -241,7 +241,7 @@ git push origin codex/r3-2-dashboard-home-parity
 - Consumes: `LarGeneratedRadius`, `LarSpacing` e `ThemeData.colorScheme`.
 - Produces: `LarRadius` e `HomeFinancialSurface({required Widget child, Color? accentColor, EdgeInsetsGeometry padding, Key? key})`.
 
-- [ ] **Step 1: escrever os testes vermelhos da fachada e da superfície**
+- [x] **Step 1: escrever os testes vermelhos da fachada e da superfície**
 
 Adicionar a `mobile/test/design_system/lar_theme_test.dart`:
 
@@ -277,7 +277,7 @@ testWidgets('financial hierarchy uses one dominant and two supporting surfaces',
 });
 ```
 
-- [ ] **Step 2: executar e confirmar falha por símbolos/keys ausentes**
+- [x] **Step 2: executar e confirmar falha por símbolos/keys ausentes**
 
 ```powershell
 Set-Location mobile
@@ -286,7 +286,7 @@ flutter test test/design_system/lar_theme_test.dart test/features/home/home_scre
 
 Expected: FAIL porque `lar_radius.dart` e as três keys ainda não existem.
 
-- [ ] **Step 3: implementar `LarRadius`**
+- [x] **Step 3: implementar `LarRadius`**
 
 ```dart
 import 'lar_tokens.g.dart';
@@ -299,7 +299,7 @@ abstract final class LarRadius {
 }
 ```
 
-- [ ] **Step 4: implementar `HomeFinancialSurface`**
+- [x] **Step 4: implementar `HomeFinancialSurface`**
 
 ```dart
 import 'package:flutter/material.dart';
@@ -335,7 +335,7 @@ final class HomeFinancialSurface extends StatelessWidget {
 }
 ```
 
-- [ ] **Step 5: executar testes da fachada e formatação**
+- [x] **Step 5: executar testes da fachada e formatação**
 
 ```powershell
 dart format --output=none --set-exit-if-changed lib/design_system/lar_radius.dart lib/features/home/presentation/widgets/home_financial_surface.dart test/design_system/lar_theme_test.dart test/features/home/home_screen_test.dart
@@ -344,7 +344,7 @@ flutter test test/design_system/lar_theme_test.dart
 
 Expected: fachada passa; teste de hierarquia continua vermelho até Task 3.
 
-- [ ] **Step 6: commit e push dos primitivos Flutter**
+- [x] **Step 6: commit e push dos primitivos Flutter**
 
 ```powershell
 Set-Location ..
@@ -375,7 +375,7 @@ git push origin codex/r3-2-dashboard-home-parity
 - Consumes: `HomeFinancialSurface`, `HomeSnapshot`, `FinancialAmount`, `LarBreakpoints.desktop`.
 - Produces: primeira hierarquia com keys `home-position-card`, `home-commitment-card`, `home-expense-card` e `home-recent-card`.
 
-- [ ] **Step 1: completar testes vermelhos de ordem e responsividade**
+- [x] **Step 1: completar testes vermelhos de ordem e responsividade**
 
 Adicionar a `home_screen_test.dart`:
 
@@ -428,7 +428,7 @@ testWidgets('desktop home keeps metrics beside position and recent activity visi
 });
 ```
 
-- [ ] **Step 2: executar os testes focados e confirmar falha**
+- [x] **Step 2: executar os testes focados e confirmar falha**
 
 ```powershell
 Set-Location mobile
@@ -437,7 +437,7 @@ flutter test test/features/home/home_screen_test.dart
 
 Expected: FAIL por ausência das keys e composição antiga.
 
-- [ ] **Step 3: transformar `BalanceHeader` no card dominante**
+- [x] **Step 3: transformar `BalanceHeader` no card dominante**
 
 Envolver o conteúdo atual em:
 
@@ -465,7 +465,7 @@ HomeFinancialSurface(
 
 `financialAmount` é o `LayoutBuilder`/`FinancialAmount` atual, sem alterar valor, privacidade ou semântica.
 
-- [ ] **Step 4: transformar compromissos e gasto em cards de apoio**
+- [x] **Step 4: transformar compromissos e gasto em cards de apoio**
 
 Em `_SummaryValue`, adicionar `required Key cardKey` e `required Color accentColor`; retornar:
 
@@ -493,7 +493,7 @@ HomeFinancialSurface(
 
 Instanciar `home-commitment-card` com champanhe e `home-expense-card` com danger. Em texto ampliado ou largura menor que `560`, empilhar; caso contrário, manter `Row`.
 
-- [ ] **Step 5: transformar movimentações em painel financeiro**
+- [x] **Step 5: transformar movimentações em painel financeiro**
 
 Envolver a coluna de `RecentTransactions` em:
 
@@ -522,7 +522,7 @@ HomeFinancialSurface(
 
 Preservar integralmente `_TransactionRow`, inclusive semântica, valor assinado, quebra em texto ampliado e divisores.
 
-- [ ] **Step 6: reorganizar `_SnapshotContent` para compacto e desktop**
+- [x] **Step 6: reorganizar `_SnapshotContent` para compacto e desktop**
 
 Compacto:
 
@@ -539,7 +539,7 @@ Column(
 
 Desktop: retornar uma `Column` com uma `Row` no topo. Nessa `Row`, posicionar o `BalanceHeader` atual em `Expanded(flex: 5)` e o `CommitmentsSummary` atual em `Expanded(flex: 4)`, separados por `LarSpacing.lg`. Abaixo da `Row`, renderizar o mesmo bloco atual de `AttentionList` e `sync-retry` quando `messages` não estiver vazio; depois de `LarSpacing.lg`, renderizar `RecentTransactions(transactions: recent, hidden: hidden)` ocupando toda a largura. Extrair o bloco de atenção para um widget privado `_AttentionSection` com parâmetros `messages`, `showRetry`, `onRetry` e `retryFocusNode`, de modo que compacto e desktop usem a mesma implementação. Não usar `IntrinsicHeight`; cards de apoio devem se ajustar naturalmente.
 
-- [ ] **Step 7: executar testes Flutter focados e acessibilidade**
+- [x] **Step 7: executar testes Flutter focados e acessibilidade**
 
 ```powershell
 dart format --output=none --set-exit-if-changed lib/features/home test/features/home test/design_system/lar_theme_test.dart
@@ -549,7 +549,7 @@ flutter test test/features/home/home_screen_test.dart test/accessibility/home_ac
 
 Expected: todos passam, sem overflow em 320 px/200% e sem regressão de foco.
 
-- [ ] **Step 8: gerar, inspecionar, verificar e stagear os seis goldens da Home**
+- [x] **Step 8: gerar, inspecionar, verificar e stagear os seis goldens da Home**
 
 ```powershell
 flutter test --update-goldens test/features/home/home_goldens_test.dart
@@ -567,7 +567,7 @@ git add mobile/test/goldens/home_mobile_light.png mobile/test/goldens/home_mobil
 
 Expected: somente as seis baselines inspecionadas ficam staged junto da implementação da Task 3.
 
-- [ ] **Step 9: commit e push da Home Flutter**
+- [x] **Step 9: commit e push da Home Flutter**
 
 ```powershell
 git add mobile/lib/features/home/presentation mobile/test/features/home/home_screen_test.dart mobile/test/design_system/lar_theme_test.dart mobile/test/goldens/home_*.png
@@ -595,7 +595,7 @@ git push origin codex/r3-2-dashboard-home-parity
 - Consumes: Dashboard/Home implementadas e fixtures determinísticas existentes.
 - Produces: gate independente sobre as seis referências visuais aprovadas na Task 3, evidência Web em três larguras e documentação fechada.
 
-- [ ] **Step 1: reexecutar os seis goldens como gate independente**
+- [x] **Step 1: reexecutar os seis goldens como gate independente**
 
 ```powershell
 Set-Location mobile
@@ -604,7 +604,7 @@ flutter test test/features/home/home_goldens_test.dart
 
 Expected: os seis testes passam 6/6 sem atualizar baselines.
 
-- [ ] **Step 2: inspecionar cada golden**
+- [x] **Step 2: inspecionar cada golden**
 
 Verificar em claro/escuro:
 
@@ -617,7 +617,7 @@ nenhum roxo, glow, gradiente ou texto sobreposto
 
 Se qualquer item falhar, e somente nesse caso, corrigir o componente, executar os testes focados, gerar novamente os seis goldens e repetir a inspeção. Não aprovar baseline apenas porque o teste foi atualizado.
 
-- [ ] **Step 3: provar que uma nova geração não altera os goldens aprovados**
+- [x] **Step 3: provar que uma nova geração não altera os goldens aprovados**
 
 ```powershell
 $goldenChanges = git status --porcelain -- 'test/goldens/home_*.png'
@@ -628,7 +628,7 @@ git diff --exit-code HEAD -- 'test/goldens/home_*.png'
 
 Expected: nova geração passa 6/6 e `git diff` retorna zero sem mudança nos seis PNGs aprovados. Se a inspeção do Step 2 tiver reprovado, primeiro corrigir e aprovar visualmente a nova geração; somente então atualizar/stagear as baselines corrigidas e repetir este gate até uma geração subsequente não produzir diff.
 
-- [ ] **Step 4: executar a aplicação Web e capturar três larguras autenticadas**
+- [x] **Step 4: executar a aplicação Web e capturar três larguras autenticadas**
 
 ```powershell
 Set-Location ..
@@ -645,7 +645,7 @@ gráficos ainda renderizados
 console sem erro novo
 ```
 
-- [ ] **Step 5: executar todos os gates locais**
+- [x] **Step 5: executar todos os gates locais**
 
 Backend:
 
@@ -670,11 +670,11 @@ flutter test --tags=golden test/features/home/home_goldens_test.dart
 
 Expected: zero falhas; Django deve ter pelo menos 604 testes e Flutter sem golden pelo menos 365.
 
-- [ ] **Step 6: fechar documentos sem iniciar outra task**
+- [x] **Step 6: fechar documentos sem iniciar outra task**
 
 Em `docs/ROADMAP.md`, marcar apenas `R3.2 Dashboard/Home` como concluída e registrar commits, testes, screenshots e CI. Na especificação e neste plano, alterar `Status` para `concluído` e marcar todos os checkboxes executados.
 
-- [ ] **Step 7: commit e push de fechamento**
+- [x] **Step 7: commit e push de fechamento**
 
 ```powershell
 Set-Location ..
@@ -684,7 +684,7 @@ git commit -m "docs: close dashboard home visual parity"
 git push origin codex/r3-2-dashboard-home-parity
 ```
 
-- [ ] **Step 8: aguardar CI exata da branch**
+- [x] **Step 8: aguardar CI exata da branch**
 
 ```powershell
 $sha = git rev-parse HEAD
@@ -695,6 +695,6 @@ gh run watch $run.databaseId --exit-status
 
 Expected: Django, Flutter, Windows/MSIX, Android, iOS e secret scan verdes no HEAD exato.
 
-- [ ] **Step 9: comunicar resultado e parar**
+- [x] **Step 9: comunicar resultado e parar**
 
 Informar objetivamente: telas alteradas, evidências visuais, contagem de testes, commits, branch e CI. Não mesclar, implantar ou iniciar R3.3 sem autorização explícita.

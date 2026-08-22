@@ -168,13 +168,24 @@ Objetivo: convergir tela a tela, sem grande redesign único.
 Cada item é uma task independente:
 
 - [ ] R3.1 Login;
-- [ ] R3.2 Dashboard/Home;
+- [x] R3.2 Dashboard/Home;
 - [ ] R3.3 Contas e movimentações;
 - [ ] R3.4 Categorias e orçamento;
 - [ ] R3.5 Cartões e faturas;
 - [ ] R3.6 Contas fixas;
 - [ ] R3.7 Importação OFX;
 - [ ] R3.8 Relatórios e perfil.
+
+Evidência R3.2: Dashboard Web e Home Flutter entregues nos commits `2f340af`,
+`79af9fa`, `77a5e5a` e `baee787`, com formalização documental em `87214a3` e
+fechamento em `docs: close dashboard home visual parity`. Gates locais:
+Django 605 testes; Flutter 369 testes sem golden e 6 goldens; formatter,
+análise estática, tokens, Ruff, system check e migrations check sem falhas. Os
+seis renders golden foram inspecionados e regenerados sem diff. A Dashboard
+autenticada foi validada em 375, 900 e 1280 px, com capturas em
+`.impeccable/review/web-{375,900,1280}.png`, ordem, ações, gráficos, ausência de
+overflow e console sem erro. CI: workflow `CI` verificado no HEAD exato após o
+push; URL e conclusão permanecem no relatório local de fechamento ignorado.
 
 Critérios comuns:
 

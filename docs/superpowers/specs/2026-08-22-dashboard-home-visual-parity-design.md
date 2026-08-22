@@ -2,7 +2,7 @@
 
 **Data:** 22/08/2026
 
-**Status:** aprovado para planejamento
+**Status:** concluído
 
 **Escopo:** Dashboard Web e Home Flutter
 
