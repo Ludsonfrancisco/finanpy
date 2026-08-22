@@ -873,7 +873,7 @@ shadow: LarColors.lightShadow,
 dividerColor: LarColors.lightBorder,
 
 // Tema escuro
-error: LarColors.darkDanger,
+error: LarColors.danger,
 outline: LarColors.darkOutline,
 shadow: LarColors.darkShadow,
 dividerColor: LarColors.darkBorder,
@@ -955,14 +955,14 @@ Preserve o link remoto de Inter até a R2.2, mas faça a aplicação deixar de u
 ```javascript
 colors: {
   mineral: {
-    DEFAULT: 'var(--lar-color-accent-mineral)',
+    DEFAULT: 'rgb(from var(--lar-color-mineral) r g b / <alpha-value>)',
     light: 'var(--lar-color-mineral-on-dark)',
     dark: 'var(--lar-color-mineral-dark)',
     hover: 'var(--lar-color-mineral-hover)',
     muted: 'color-mix(in srgb, var(--lar-color-accent-mineral) 15%, transparent)',
   },
   danger: {
-    DEFAULT: 'var(--lar-color-state-danger)',
+    DEFAULT: 'rgb(from var(--lar-color-danger) r g b / <alpha-value>)',
     light: 'var(--lar-color-danger-light)',
     dark: 'var(--lar-color-danger-dark)',
     muted: 'color-mix(in srgb, var(--lar-color-state-danger) 15%, transparent)',

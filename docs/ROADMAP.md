@@ -135,7 +135,8 @@ Evidência R2.1: commits de implementação `e001fc5`, `2c436c7`, `4278b6e` e
 `62f63dd`; suíte Django: 591 testes, suíte Flutter (golden excluído): 364
 testes.
 
-Correção pós-revisão R2.1: `6a53c5744a32117f73586fbe4beb744720d7389b`.
+Correções pós-revisão R2.1: `6a53c5744a32117f73586fbe4beb744720d7389b` e
+`b2dd2f84a6d0e8244e99fc747a3e0e8197e46c2f`.
 
 ### R2.2 — Tema e assets
 
