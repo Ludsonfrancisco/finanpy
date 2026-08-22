@@ -63,7 +63,9 @@ final class _TransactionRow extends StatelessWidget {
         ? Theme.of(context).brightness == Brightness.dark
               ? LarColors.mineralOnDark
               : LarColors.mineral
-        : Theme.of(context).colorScheme.error;
+        : Theme.of(context).brightness == Brightness.dark
+        ? LarColors.darkDanger
+        : LarColors.lightDanger;
     final date = DateFormat('dd MMM', 'pt_BR').format(transaction.date);
     final details =
         '${transaction.categoryName} · ${transaction.ownerName} · $date';

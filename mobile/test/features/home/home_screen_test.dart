@@ -680,36 +680,35 @@ void main() {
   testWidgets('tipo explícito distingue receita e despesa de valor zero', (
     tester,
   ) async {
-    final repository = _FakeHomeRepository(
+    final transactions = <HomeTransaction>[
+      HomeTransaction(
+        uuid: '50000000-0000-4000-8000-000000000010',
+        description: 'Ajuste positivo',
+        categoryName: 'Receita',
+        ownerName: 'Eu',
+        date: DateTime(2026, 8, 14),
+        type: HomeTransactionType.income,
+        signedAmountMinor: 0,
+      ),
+      HomeTransaction(
+        uuid: '50000000-0000-4000-8000-000000000011',
+        description: 'Ajuste negativo',
+        categoryName: 'Casa',
+        ownerName: 'Eu',
+        date: DateTime(2026, 8, 14),
+        type: HomeTransactionType.expense,
+        signedAmountMinor: 0,
+      ),
+    ];
+    _FakeHomeRepository repository() => _FakeHomeRepository(
       streams: {
         OwnerScopeKind.household: Stream.value(
-          _snapshot(
-            transactions: <HomeTransaction>[
-              HomeTransaction(
-                uuid: '50000000-0000-4000-8000-000000000010',
-                description: 'Ajuste positivo',
-                categoryName: 'Receita',
-                ownerName: 'Eu',
-                date: DateTime(2026, 8, 14),
-                type: HomeTransactionType.income,
-                signedAmountMinor: 0,
-              ),
-              HomeTransaction(
-                uuid: '50000000-0000-4000-8000-000000000011',
-                description: 'Ajuste negativo',
-                categoryName: 'Casa',
-                ownerName: 'Eu',
-                date: DateTime(2026, 8, 14),
-                type: HomeTransactionType.expense,
-                signedAmountMinor: 0,
-              ),
-            ],
-          ),
+          _snapshot(transactions: transactions),
         ),
       },
     );
     final controller = _controller(
-      repository,
+      repository(),
       syncState: _syncState()..markCurrent(_syncedAt),
     );
     addTearDown(controller.dispose);
@@ -732,6 +731,25 @@ void main() {
     expect(
       zeroAmountColors,
       containsAll(<Color>[LarColors.mineral, LarColors.lightDanger]),
+    );
+
+    final darkController = _controller(
+      repository(),
+      syncState: _syncState()..markCurrent(_syncedAt),
+    );
+    addTearDown(darkController.dispose);
+
+    await _pumpHome(tester, darkController, theme: LarTheme.dark);
+    await tester.pumpAndSettle();
+
+    final darkZeroAmountColors = tester
+        .widgetList<FinancialAmount>(find.byType(FinancialAmount))
+        .where((amount) => amount.minorUnits == 0)
+        .map((amount) => amount.style?.color)
+        .toList();
+    expect(
+      darkZeroAmountColors,
+      containsAll(<Color>[LarColors.mineralOnDark, LarColors.darkDanger]),
     );
   });
 }
@@ -761,6 +779,7 @@ Future<void> _pumpHome(
   bool withAdaptiveShell = false,
   bool disableAnimations = false,
   ValueChanged<int>? onNavigate,
+  ThemeData? theme,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = viewportSize;
@@ -790,6 +809,10 @@ Future<void> _pumpHome(
   await tester.pumpWidget(
     MaterialApp(
       theme: LarTheme.light.copyWith(platform: platform),
+      darkTheme: (theme ?? LarTheme.dark).copyWith(platform: platform),
+      themeMode: theme?.brightness == Brightness.dark
+          ? ThemeMode.dark
+          : ThemeMode.light,
       home: home,
     ),
   );
