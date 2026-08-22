@@ -3,6 +3,7 @@ import colorsys
 import json
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -41,9 +42,21 @@ class ContractError(ValueError):
     pass
 
 
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ContractError(f'duplicate JSON key: {key}')
+        result[key] = value
+    return result
+
+
 def load_contract(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding='utf-8'))
+        value = json.loads(
+            path.read_text(encoding='utf-8'),
+            object_pairs_hook=_reject_duplicate_keys,
+        )
     except (OSError, json.JSONDecodeError) as error:
         raise ContractError(f'cannot read design token contract: {error}') from error
     if not isinstance(value, dict):
@@ -118,7 +131,74 @@ def _contrast(foreground: str, background: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
-def validate_contract(contract: dict[str, Any]) -> None:
+def _reject_identifier_collisions(
+    names: list[str],
+    normalize: Callable[[str], str],
+    target: str,
+) -> None:
+    identifiers: dict[str, str] = {}
+    for name in names:
+        identifier = normalize(name)
+        previous = identifiers.get(identifier)
+        if previous is not None and previous != name:
+            raise ContractError(
+                f'{target} identifier collision: {previous!r} and {name!r} '
+                f'both normalize to {identifier!r}'
+            )
+        identifiers[identifier] = name
+
+
+def _validate_identifier_collisions(contract: dict[str, Any]) -> None:
+    primitives = list(contract['color']['primitive'])
+    _reject_identifier_collisions(primitives, _kebab, 'CSS')
+    _reject_identifier_collisions(
+        primitives,
+        lambda name: _dart_identifier(name),
+        'Dart',
+    )
+
+    for mode in ('light', 'dark'):
+        semantic = list(_flatten(contract['color']['semantic'][mode]))
+        _reject_identifier_collisions([*primitives, *semantic], _kebab, 'CSS')
+        _reject_identifier_collisions(
+            semantic,
+            lambda name: _dart_identifier(_camel(name)),
+            'Dart',
+        )
+
+    for group in ('spacing', 'radius', 'border', 'breakpoint'):
+        names = list(contract[group])
+        _reject_identifier_collisions(names, _kebab, 'CSS')
+        _reject_identifier_collisions(
+            names,
+            lambda name: _dart_identifier(name),
+            'Dart',
+        )
+
+    for group in ('elevation',):
+        names = list(contract[group])
+        _reject_identifier_collisions(names, _kebab, 'CSS')
+        _reject_identifier_collisions(names, lambda name: name, 'Dart')
+
+    duration_names = list(contract['motion']['duration'])
+    _reject_identifier_collisions(duration_names, _kebab, 'CSS')
+    _reject_identifier_collisions(
+        duration_names,
+        lambda name: _dart_identifier(f'{name}Milliseconds'),
+        'Dart',
+    )
+
+    style_names = list(contract['typography']['styles'])
+    _reject_identifier_collisions(style_names, _kebab, 'CSS')
+    for suffix in ('FontSize', 'LineHeight', 'FontWeight'):
+        _reject_identifier_collisions(
+            style_names,
+            lambda name, suffix=suffix: _dart_identifier(f'{name}{suffix}'),
+            'Dart',
+        )
+
+
+def _validate_contract(contract: dict[str, Any]) -> None:
     missing = REQUIRED_TOP_LEVEL - contract.keys()
     if missing:
         raise ContractError(f'missing top-level tokens: {sorted(missing)}')
@@ -138,6 +218,11 @@ def validate_contract(contract: dict[str, Any]) -> None:
         if missing_semantic:
             raise ContractError(f'{mode} semantic tokens missing: {sorted(missing_semantic)}')
         resolved = {name: _resolve(contract, value) for name, value in semantic.items()}
+        for name, color in resolved.items():
+            if not isinstance(color, str) or not HEX_COLOR.fullmatch(color):
+                raise ContractError(f'{mode}.{name} must resolve to a valid color')
+            if _is_purple(color):
+                raise ContractError(f'purple family is forbidden: {mode}.{name}')
         surface = resolved['surface.base']
         for name in (
             'text.primary', 'text.secondary', 'text.muted',
@@ -166,6 +251,17 @@ def validate_contract(contract: dict[str, Any]) -> None:
     if contract['typography']['weights'] != [400, 500, 600, 700]:
         raise ContractError('typography.weights must be 400, 500, 600, 700')
 
+    _validate_identifier_collisions(contract)
+
+
+def validate_contract(contract: dict[str, Any]) -> None:
+    try:
+        _validate_contract(contract)
+    except ContractError:
+        raise
+    except (AttributeError, KeyError, TypeError, ValueError) as error:
+        raise ContractError(f'invalid design token contract: {error}') from error
+
 
 def _kebab(value: str) -> str:
     return re.sub(r'(?<!^)(?=[A-Z])', '-', value).replace('.', '-').lower()
@@ -186,7 +282,11 @@ def _css_font_family(families: list[str]) -> str:
 
 def _rgba(hex_color: str, opacity: float) -> str:
     red, green, blue = _rgb(hex_color)
-    return f'rgba({red}, {green}, {blue}, {opacity:g})'
+    return f'rgba({red}, {green}, {blue}, {_number(opacity)})'
+
+
+def _number(value: int | float) -> str:
+    return str(value)
 
 
 def render_css(contract: dict[str, Any]) -> str:
@@ -205,7 +305,7 @@ def render_css(contract: dict[str, Any]) -> str:
         lines.append(f'  --lar-border-{_kebab(name)}: {value}px;')
     for name, value in contract['motion']['duration'].items():
         lines.append(f'  --lar-motion-{_kebab(name)}: {value}ms;')
-    curve = ', '.join(f'{value:g}' for value in contract['motion']['standardCurve'])
+    curve = ', '.join(_number(value) for value in contract['motion']['standardCurve'])
     lines.append(f'  --lar-motion-curve-standard: cubic-bezier({curve});')
     lines.append(
         f'  --lar-font-family-sans: {_css_font_family(contract["typography"]["webFontFamily"])};'
@@ -213,7 +313,7 @@ def render_css(contract: dict[str, Any]) -> str:
     for name, style in contract['typography']['styles'].items():
         key = _kebab(name)
         lines.append(f'  --lar-font-size-{key}: {style["fontSize"]}px;')
-        lines.append(f'  --lar-line-height-{key}: {style["lineHeight"]:g};')
+        lines.append(f'  --lar-line-height-{key}: {_number(style["lineHeight"])};')
         lines.append(f'  --lar-font-weight-{key}: {style["fontWeight"]};')
     lines.append(f'  --lar-breakpoint-desktop: {contract["breakpoint"]["desktop"]}px;')
     lines.append('}')
@@ -248,7 +348,7 @@ def _dart_color(hex_color: str) -> str:
 
 
 def _dart_double(value: int | float) -> str:
-    return f'{value}.0' if isinstance(value, int) else f'{value:g}'
+    return f'{value}.0' if isinstance(value, int) else _number(value)
 
 
 def render_dart(contract: dict[str, Any]) -> str:
@@ -287,14 +387,14 @@ def render_dart(contract: dict[str, Any]) -> str:
     for name, value in contract['motion']['duration'].items():
         identifier = _dart_identifier(f'{name}Milliseconds')
         lines.append(f'  static const {identifier} = {value};')
-    curve = ', '.join(f'{value:g}' for value in contract['motion']['standardCurve'])
+    curve = ', '.join(_number(value) for value in contract['motion']['standardCurve'])
     lines.append(f'  static const standardCurve = Cubic({curve});')
     lines.append('}')
 
     lines.extend(['', 'abstract final class LarGeneratedTypography {'])
     for name, style in contract['typography']['styles'].items():
         lines.append(f'  static const {_dart_identifier(f"{name}FontSize")} = {_dart_double(style["fontSize"])};')
-        lines.append(f'  static const {_dart_identifier(f"{name}LineHeight")} = {style["lineHeight"]:g};')
+        lines.append(f'  static const {_dart_identifier(f"{name}LineHeight")} = {_number(style["lineHeight"])};')
         lines.append(f'  static const {_dart_identifier(f"{name}FontWeight")} = FontWeight.w{style["fontWeight"]};')
     lines.append('}')
 
@@ -302,8 +402,8 @@ def render_dart(contract: dict[str, Any]) -> str:
     for name, value in contract['elevation'].items():
         lines.append(f'  static const {_dart_identifier(f"{name}OffsetY")} = {_dart_double(value["offsetY"])};')
         lines.append(f'  static const {_dart_identifier(f"{name}Blur")} = {_dart_double(value["blur"])};')
-        lines.append(f'  static const {_dart_identifier(f"light{name.title()}Opacity")} = {value["lightOpacity"]:g};')
-        lines.append(f'  static const {_dart_identifier(f"dark{name.title()}Opacity")} = {value["darkOpacity"]:g};')
+        lines.append(f'  static const {_dart_identifier(f"light{name.title()}Opacity")} = {_number(value["lightOpacity"])};')
+        lines.append(f'  static const {_dart_identifier(f"dark{name.title()}Opacity")} = {_number(value["darkOpacity"])};')
     lines.extend(['}', ''])
     return '\n'.join(lines)
 

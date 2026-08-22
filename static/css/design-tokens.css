@@ -52,10 +52,10 @@
   --lar-motion-curve-standard: cubic-bezier(0.2, 0, 0, 1);
   --lar-font-family-sans: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, system-ui, sans-serif;
   --lar-font-size-caption: 12px;
-  --lar-line-height-caption: 1.33333;
+  --lar-line-height-caption: 1.333333;
   --lar-font-weight-caption: 400;
   --lar-font-size-label: 14px;
-  --lar-line-height-label: 1.42857;
+  --lar-line-height-label: 1.428571;
   --lar-font-weight-label: 500;
   --lar-font-size-body: 16px;
   --lar-line-height-body: 1.5;
@@ -64,7 +64,7 @@
   --lar-line-height-title: 1.4;
   --lar-font-weight-title: 600;
   --lar-font-size-headline: 24px;
-  --lar-line-height-headline: 1.33333;
+  --lar-line-height-headline: 1.333333;
   --lar-font-weight-headline: 600;
   --lar-font-size-financial: 32px;
   --lar-line-height-financial: 1.15;

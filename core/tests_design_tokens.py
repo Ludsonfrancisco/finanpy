@@ -24,6 +24,18 @@ def load_generator(test_case):
 
 
 class DesignTokenGeneratorTest(SimpleTestCase):
+    def test_load_contract_rejects_duplicate_json_keys(self):
+        generator = load_generator(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            contract_path = Path(temporary_directory) / 'tokens.json'
+            contract_path.write_text(
+                '{"schemaVersion": 1, "schemaVersion": 2}',
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(generator.ContractError, 'duplicate JSON key'):
+                generator.load_contract(contract_path)
+
     def test_contract_is_valid_and_renders_both_platforms(self):
         generator = load_generator(self)
         contract = generator.load_contract(CONTRACT_PATH)
@@ -75,6 +87,24 @@ class DesignTokenGeneratorTest(SimpleTestCase):
         with self.assertRaisesRegex(generator.ContractError, 'contrast'):
             generator.validate_contract(invalid)
 
+    def test_contract_rejects_semantic_color_reference_to_spacing(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        invalid = copy.deepcopy(contract)
+        invalid['color']['semantic']['dark']['accent']['selection'] = '{spacing.md}'
+
+        with self.assertRaisesRegex(generator.ContractError, 'valid color'):
+            generator.validate_contract(invalid)
+
+    def test_contract_rejects_semantic_literal_purple(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        invalid = copy.deepcopy(contract)
+        invalid['color']['semantic']['dark']['accent']['selection'] = '#7C3AED'
+
+        with self.assertRaisesRegex(generator.ContractError, 'purple family'):
+            generator.validate_contract(invalid)
+
     def test_contract_rejects_indirect_reference_cycle(self):
         generator = load_generator(self)
         contract = generator.load_contract(CONTRACT_PATH)
@@ -103,6 +133,47 @@ class DesignTokenGeneratorTest(SimpleTestCase):
 
         self.assertIn('static const defaultValue = 1.0;', dart)
         self.assertNotIn('static const default =', dart)
+
+    def test_contract_rejects_normalized_css_identifier_collisions(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        invalid = copy.deepcopy(contract)
+        invalid['color']['primitive']['mineralTone'] = '#112211'
+        invalid['color']['primitive']['mineral-tone'] = '#223322'
+
+        with self.assertRaisesRegex(generator.ContractError, 'CSS identifier collision'):
+            generator.validate_contract(invalid)
+
+    def test_contract_rejects_cross_layer_css_identifier_collisions(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        invalid = copy.deepcopy(contract)
+        invalid['color']['primitive']['accentMineral'] = '#112211'
+
+        with self.assertRaisesRegex(generator.ContractError, 'CSS identifier collision'):
+            generator.validate_contract(invalid)
+
+    def test_contract_rejects_normalized_dart_identifier_collisions(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        invalid = copy.deepcopy(contract)
+        invalid['color']['primitive']['default'] = '#112211'
+        invalid['color']['primitive']['defaultValue'] = '#223322'
+
+        with self.assertRaisesRegex(generator.ContractError, 'Dart identifier collision'):
+            generator.validate_contract(invalid)
+
+    def test_numeric_rendering_preserves_contract_precision(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+
+        css = generator.render_css(contract)
+        dart = generator.render_dart(contract)
+
+        self.assertIn('--lar-line-height-caption: 1.333333;', css)
+        self.assertIn('--lar-line-height-label: 1.428571;', css)
+        self.assertIn('static const captionLineHeight = 1.333333;', dart)
+        self.assertIn('static const labelLineHeight = 1.428571;', dart)
 
     def test_check_detects_stale_generated_output_without_writing(self):
         generator = load_generator(self)
@@ -134,7 +205,7 @@ class WebTokenIntegrationTest(SimpleTestCase):
         self.assertNotRegex(template, r'#[0-9A-Fa-f]{3,8}\b')
         self.assertNotIn('radial-gradient', template)
 
-    def test_tailwind_palette_supports_opacity_utilities(self):
+    def test_tailwind_palette_supports_opacity_and_accessible_solid_fills(self):
         template = (PROJECT_ROOT / 'templates' / 'base.html').read_text(encoding='utf-8')
         template_sources = '\n'.join(
             path.read_text(encoding='utf-8')
@@ -144,12 +215,19 @@ class WebTokenIntegrationTest(SimpleTestCase):
         for utility in ('bg-mineral/20', 'border-danger/30', 'shadow-champagne/20'):
             self.assertIn(utility, template_sources)
 
-        for token in (
-            '--lar-color-accent-mineral',
-            '--lar-color-state-danger',
-            '--lar-color-accent-champagne',
-        ):
+        for token in ('--lar-color-mineral', '--lar-color-danger'):
             self.assertIn(
                 f"rgb(from var({token}) r g b / <alpha-value>)",
                 template,
+            )
+
+        self.assertIn('var(--lar-color-accent-mineral)', template)
+        self.assertIn('var(--lar-color-state-danger)', template)
+
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        for token in ('mineral', 'danger'):
+            self.assertGreaterEqual(
+                generator._contrast('#FFFFFF', contract['color']['primitive'][token]),
+                4.5,
             )

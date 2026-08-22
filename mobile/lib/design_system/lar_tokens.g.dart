@@ -112,10 +112,10 @@ abstract final class LarGeneratedMotion {
 
 abstract final class LarGeneratedTypography {
   static const captionFontSize = 12.0;
-  static const captionLineHeight = 1.33333;
+  static const captionLineHeight = 1.333333;
   static const captionFontWeight = FontWeight.w400;
   static const labelFontSize = 14.0;
-  static const labelLineHeight = 1.42857;
+  static const labelLineHeight = 1.428571;
   static const labelFontWeight = FontWeight.w500;
   static const bodyFontSize = 16.0;
   static const bodyLineHeight = 1.5;
@@ -124,7 +124,7 @@ abstract final class LarGeneratedTypography {
   static const titleLineHeight = 1.4;
   static const titleFontWeight = FontWeight.w600;
   static const headlineFontSize = 24.0;
-  static const headlineLineHeight = 1.33333;
+  static const headlineLineHeight = 1.333333;
   static const headlineFontWeight = FontWeight.w600;
   static const financialFontSize = 32.0;
   static const financialLineHeight = 1.15;

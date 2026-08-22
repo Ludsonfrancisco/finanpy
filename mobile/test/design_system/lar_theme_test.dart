@@ -33,6 +33,17 @@ void main() {
     );
   });
 
+  test('dark error fill keeps AA contrast with its onError color', () {
+    final colorScheme = LarTheme.dark.colorScheme;
+
+    expect(colorScheme.error, LarColors.danger);
+    expect(LarColors.darkDanger, LarGeneratedDarkColors.stateDanger);
+    expect(
+      _contrastRatio(colorScheme.error, colorScheme.onError),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
   test('public design-system facades consume generated tokens', () {
     expect(LarColors.darkCanvas, LarGeneratedColors.darkCanvas);
     expect(LarColors.lightTextSecondary, LarGeneratedLightColors.textSecondary);

@@ -39,7 +39,7 @@ abstract final class LarTheme {
       onPrimary: LarColors.lightText,
       secondary: LarColors.mineral,
       onSecondary: LarColors.darkText,
-      error: LarColors.darkDanger,
+      error: LarColors.danger,
       onError: LarColors.lightSurface,
       surface: LarColors.darkSurface,
       onSurface: LarColors.darkText,
