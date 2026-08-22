@@ -64,7 +64,7 @@
 - Produces: `load_contract(path: Path) -> dict`, `validate_contract(contract: dict) -> None`, `render_css(contract: dict) -> str`, `render_dart(contract: dict) -> str` e `generate(root: Path, check: bool) -> int`.
 - Produces: classes Dart `LarGeneratedColors`, `LarGeneratedLightColors`, `LarGeneratedDarkColors`, `LarGeneratedSpacing`, `LarGeneratedRadius`, `LarGeneratedBorders`, `LarGeneratedMotion`, `LarGeneratedTypography`, `LarGeneratedElevation` e `LarGeneratedBreakpoints`.
 
-- [ ] **Step 1: criar a branch isolada para não publicar implementação parcial**
+- [x] **Step 1: criar a branch isolada para não publicar implementação parcial**
 
 Use `using-git-worktrees` antes deste passo para criar o worktree já associado à
 branch `codex/r2-1-design-tokens`. Dentro do worktree, apenas confirme e publique
@@ -78,38 +78,44 @@ git push -u origin HEAD
 
 Expected: branch local acompanha `origin/codex/r2-1-design-tokens`; `main` permanece no último documento aprovado.
 
-- [ ] **Step 2: escrever os testes vermelhos do contrato e do gerador**
+- [x] **Step 2: escrever os testes vermelhos do contrato e do gerador**
 
 Crie `core/tests_design_tokens.py`:
 
 ```python
 import copy
+import importlib.util
 import tempfile
 from pathlib import Path
 
 from django.test import SimpleTestCase
 
-from scripts.generate_design_tokens import (
-    ContractError,
-    generate,
-    load_contract,
-    render_css,
-    render_dart,
-    validate_contract,
-)
-
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = PROJECT_ROOT / 'design' / 'tokens.json'
+GENERATOR_PATH = PROJECT_ROOT / 'scripts' / 'generate_design_tokens.py'
+
+
+def load_generator(test_case):
+    test_case.assertTrue(
+        GENERATOR_PATH.exists(),
+        'the shared design-token generator must exist',
+    )
+    spec = importlib.util.spec_from_file_location('design_token_generator', GENERATOR_PATH)
+    test_case.assertIsNotNone(spec)
+    test_case.assertIsNotNone(spec.loader)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class DesignTokenGeneratorTest(SimpleTestCase):
     def test_contract_is_valid_and_renders_both_platforms(self):
-        contract = load_contract(CONTRACT_PATH)
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
 
-        validate_contract(contract)
-        css = render_css(contract)
-        dart = render_dart(contract)
+        generator.validate_contract(contract)
+        css = generator.render_css(contract)
+        dart = generator.render_dart(contract)
 
         self.assertIn('--lar-color-surface-canvas: #091311;', css)
         self.assertIn('[data-lar-theme="light"]', css)
@@ -119,22 +125,25 @@ class DesignTokenGeneratorTest(SimpleTestCase):
         self.assertIn('static const desktop = 900.0;', dart)
 
     def test_contract_rejects_purple(self):
-        contract = load_contract(CONTRACT_PATH)
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
         invalid = copy.deepcopy(contract)
         invalid['color']['primitive']['forbiddenPurple'] = '#7C3AED'
 
-        with self.assertRaisesRegex(ContractError, 'purple family'):
-            validate_contract(invalid)
+        with self.assertRaisesRegex(generator.ContractError, 'purple family'):
+            generator.validate_contract(invalid)
 
     def test_contract_rejects_inaccessible_semantic_text(self):
-        contract = load_contract(CONTRACT_PATH)
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
         invalid = copy.deepcopy(contract)
         invalid['color']['semantic']['dark']['text']['muted'] = '#31403A'
 
-        with self.assertRaisesRegex(ContractError, 'contrast'):
-            validate_contract(invalid)
+        with self.assertRaisesRegex(generator.ContractError, 'contrast'):
+            generator.validate_contract(invalid)
 
     def test_check_detects_stale_generated_output_without_writing(self):
+        generator = load_generator(self)
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             contract_target = root / 'design' / 'tokens.json'
@@ -144,15 +153,15 @@ class DesignTokenGeneratorTest(SimpleTestCase):
                 encoding='utf-8',
             )
 
-            self.assertEqual(generate(root=root, check=False), 0)
+            self.assertEqual(generator.generate(root=root, check=False), 0)
             css_path = root / 'static' / 'css' / 'design-tokens.css'
             css_path.write_text('stale\n', encoding='utf-8')
 
-            self.assertEqual(generate(root=root, check=True), 1)
+            self.assertEqual(generator.generate(root=root, check=True), 1)
             self.assertEqual(css_path.read_text(encoding='utf-8'), 'stale\n')
 ```
 
-- [ ] **Step 3: executar o teste para comprovar o estado vermelho**
+- [x] **Step 3: executar o teste para comprovar o estado vermelho**
 
 Run:
 
@@ -160,9 +169,12 @@ Run:
 python manage.py test core.tests_design_tokens -v 2
 ```
 
-Expected: `ERROR` durante import com `ModuleNotFoundError: No module named 'scripts.generate_design_tokens'`.
+Expected: quatro `FAIL` com a mensagem
+`the shared design-token generator must exist`. A falha é comportamental e
+ocorre porque a funcionalidade ainda não existe, não por erro de import ou
+sintaxe.
 
-- [ ] **Step 4: criar o contrato JSON aprovado**
+- [x] **Step 4: criar o contrato JSON aprovado**
 
 Crie `design/tokens.json` exatamente com esta estrutura:
 
@@ -320,7 +332,7 @@ Crie `design/tokens.json` exatamente com esta estrutura:
 }
 ```
 
-- [ ] **Step 5: implementar o gerador sem dependências externas**
+- [x] **Step 5: implementar o gerador sem dependências externas**
 
 Crie `scripts/__init__.py` vazio e implemente `scripts/generate_design_tokens.py` com estas responsabilidades e assinaturas completas:
 
@@ -648,7 +660,7 @@ if __name__ == '__main__':
     raise SystemExit(main())
 ```
 
-- [ ] **Step 6: gerar os dois artefatos versionados**
+- [x] **Step 6: gerar os dois artefatos versionados**
 
 Run:
 
@@ -659,7 +671,7 @@ python scripts/generate_design_tokens.py --check
 
 Expected: ambos terminam com exit code 0; o segundo não altera o workspace.
 
-- [ ] **Step 7: executar testes e lint da task**
+- [x] **Step 7: executar testes e lint da task**
 
 Run:
 
@@ -671,7 +683,7 @@ git diff --check
 
 Expected: 4 testes passam; Ruff e `git diff --check` retornam 0.
 
-- [ ] **Step 8: commitar e publicar a Task 1**
+- [x] **Step 8: commitar e publicar a Task 1**
 
 ```powershell
 git add design/tokens.json scripts/__init__.py scripts/generate_design_tokens.py core/tests_design_tokens.py static/css/design-tokens.css mobile/lib/design_system/lar_tokens.g.dart
@@ -696,7 +708,7 @@ Expected: branch remota contém o commit; comunicar ao proprietário o que foi f
 - Consumes: classes `LarGenerated*` produzidas pela Task 1.
 - Produces: as mesmas APIs públicas `LarColors`, `LarSpacing`, `LarTypography` e `LarTheme`, agora sem valores estruturais duplicados.
 
-- [ ] **Step 1: ampliar o teste Flutter para exigir as fachadas geradas**
+- [x] **Step 1: ampliar o teste Flutter para exigir as fachadas geradas**
 
 Adicione os imports e casos abaixo a `mobile/test/design_system/lar_theme_test.dart`:
 
@@ -738,7 +750,7 @@ test('generated token file is imported only inside design_system', () {
 });
 ```
 
-- [ ] **Step 2: executar o teste para comprovar o estado vermelho**
+- [x] **Step 2: executar o teste para comprovar o estado vermelho**
 
 Run:
 
@@ -750,7 +762,7 @@ Set-Location ..
 
 Expected: falha de compilação porque `LarColors.lightTextSecondary` e `LarColors.darkDanger` ainda não existem e as fachadas ainda não usam o arquivo gerado.
 
-- [ ] **Step 3: substituir literais das fachadas por referências geradas**
+- [x] **Step 3: substituir literais das fachadas por referências geradas**
 
 Reescreva `mobile/lib/design_system/lar_colors.dart` preservando nomes atuais e adicionando papéis semânticos:
 
@@ -861,7 +873,7 @@ shadow: LarColors.lightShadow,
 dividerColor: LarColors.lightBorder,
 
 // Tema escuro
-error: LarColors.darkDanger,
+error: LarColors.danger,
 outline: LarColors.darkOutline,
 shadow: LarColors.darkShadow,
 dividerColor: LarColors.darkBorder,
@@ -869,7 +881,7 @@ dividerColor: LarColors.darkBorder,
 
 Mantenha os demais campos, Material 3, canvases, superfícies e navigation themes existentes. Não introduza seleção automática de tema nesta task.
 
-- [ ] **Step 4: formatar e executar a verificação Flutter focada**
+- [x] **Step 4: formatar e executar a verificação Flutter focada**
 
 ```powershell
 Set-Location mobile
@@ -883,7 +895,7 @@ git diff --check
 
 Expected: analyze sem issues, todos os testes do arquivo passam e o gerador permanece sincronizado.
 
-- [ ] **Step 5: commitar e publicar a Task 2**
+- [x] **Step 5: commitar e publicar a Task 2**
 
 ```powershell
 git add mobile/lib/design_system mobile/test/design_system/lar_theme_test.dart
@@ -905,7 +917,7 @@ Expected: branch remota atualizada; comunicar ao proprietário que Flutter prese
 - Consumes: `static/css/design-tokens.css` e variáveis `--lar-*` da Task 1.
 - Produces: shell Web escuro sem cores estruturais hexadecimais e com fonte nativa/tabular.
 
-- [ ] **Step 1: escrever o teste vermelho do shell Web**
+- [x] **Step 1: escrever o teste vermelho do shell Web**
 
 Adicione a `core/tests_design_tokens.py`:
 
@@ -922,7 +934,7 @@ class WebTokenIntegrationTest(SimpleTestCase):
         self.assertNotIn('radial-gradient', template)
 ```
 
-- [ ] **Step 2: executar o teste para comprovar o estado vermelho**
+- [x] **Step 2: executar o teste para comprovar o estado vermelho**
 
 ```powershell
 python manage.py test core.tests_design_tokens.WebTokenIntegrationTest -v 2
@@ -930,7 +942,7 @@ python manage.py test core.tests_design_tokens.WebTokenIntegrationTest -v 2
 
 Expected: falha porque `base.html` ainda não carrega o CSS gerado e contém cores hexadecimais e gradientes.
 
-- [ ] **Step 3: carregar tokens e mapear o Tailwind CDN para variáveis**
+- [x] **Step 3: carregar tokens e mapear o Tailwind CDN para variáveis**
 
 No início de `templates/base.html`, adicione `{% load static %}` antes do `<!DOCTYPE html>`. No `<head>`, antes do script Tailwind, adicione:
 
@@ -943,14 +955,14 @@ Preserve o link remoto de Inter até a R2.2, mas faça a aplicação deixar de u
 ```javascript
 colors: {
   mineral: {
-    DEFAULT: 'var(--lar-color-accent-mineral)',
+    DEFAULT: 'rgb(from var(--lar-color-mineral) r g b / <alpha-value>)',
     light: 'var(--lar-color-mineral-on-dark)',
     dark: 'var(--lar-color-mineral-dark)',
     hover: 'var(--lar-color-mineral-hover)',
     muted: 'color-mix(in srgb, var(--lar-color-accent-mineral) 15%, transparent)',
   },
   danger: {
-    DEFAULT: 'var(--lar-color-state-danger)',
+    DEFAULT: 'rgb(from var(--lar-color-danger) r g b / <alpha-value>)',
     light: 'var(--lar-color-danger-light)',
     dark: 'var(--lar-color-danger-dark)',
     muted: 'color-mix(in srgb, var(--lar-color-state-danger) 15%, transparent)',
@@ -985,7 +997,7 @@ boxShadow: {
 
 Os nomes `glow-*` ficam temporariamente como aliases de compatibilidade, mas deixam de produzir glow. A remoção dos nomes antigos acontecerá tela a tela na R3.
 
-- [ ] **Step 4: substituir o CSS estrutural inline por tokens**
+- [x] **Step 4: substituir o CSS estrutural inline por tokens**
 
 Mantenha os seletores existentes, com estes valores:
 
@@ -1025,7 +1037,7 @@ Mantenha os seletores existentes, com estes valores:
 
 No `<body>`, substitua `text-[#E8ECE9]` por `text-lar-textPrimary`. Preserve `class="dark"` no `<html>`; o tema automático é R2.2.
 
-- [ ] **Step 5: executar a verificação Web focada**
+- [x] **Step 5: executar a verificação Web focada**
 
 ```powershell
 python manage.py test core.tests_design_tokens -v 2
@@ -1037,7 +1049,7 @@ git diff --check
 
 Expected: 5 testes passam; check, gerador, Ruff e diff retornam 0.
 
-- [ ] **Step 6: commitar e publicar a Task 3**
+- [x] **Step 6: commitar e publicar a Task 3**
 
 ```powershell
 git add core/tests_design_tokens.py templates/base.html
@@ -1063,7 +1075,7 @@ Expected: branch remota atualizada; comunicar que a Web continua escura e que a 
 - Consumes: gerador, artefatos, testes Flutter e shell Web concluídos nas Tasks 1–3.
 - Produces: gate CI offline, documentação coerente e branch pronta para revisão/merge.
 
-- [ ] **Step 1: provar que a CI ainda não executa o gate de paridade**
+- [x] **Step 1: provar que a CI ainda não executa o gate de paridade**
 
 ```powershell
 Select-String -Path '.github/workflows/ci.yml' -Pattern 'generate_design_tokens.py --check'
@@ -1071,7 +1083,7 @@ Select-String -Path '.github/workflows/ci.yml' -Pattern 'generate_design_tokens.
 
 Expected: nenhum resultado.
 
-- [ ] **Step 2: adicionar o gate após a instalação Python e antes do Ruff**
+- [x] **Step 2: adicionar o gate após a instalação Python e antes do Ruff**
 
 Em `.github/workflows/ci.yml`, no job `django`, adicione:
 
@@ -1082,7 +1094,7 @@ Em `.github/workflows/ci.yml`, no job `django`, adicione:
 
 O passo fica depois de `Generate ephemeral Django secret` e antes de `Lint`, garantindo falha rápida sem rede adicional.
 
-- [ ] **Step 3: atualizar somente a documentação da fonte canônica**
+- [x] **Step 3: atualizar somente a documentação da fonte canônica**
 
 Em `docs/design-system.md`:
 
@@ -1096,7 +1108,7 @@ Substitua a frase provisória que aponta `mobile/lib/design_system/` como fonte
 canônica. Preserve as tabelas de direção visual. Ainda não marque roadmap, PRD
 ou especificação como concluídos.
 
-- [ ] **Step 4: verificar formato dos artefatos antes da suíte completa**
+- [x] **Step 4: verificar formato dos artefatos antes da suíte completa**
 
 ```powershell
 python scripts/generate_design_tokens.py --check
@@ -1111,7 +1123,7 @@ Set-Location ..
 
 Expected: todos os comandos retornam 0; migrations informa `No changes detected`.
 
-- [ ] **Step 5: executar as suítes integrais relevantes**
+- [x] **Step 5: executar as suítes integrais relevantes**
 
 ```powershell
 python manage.py test
@@ -1122,7 +1134,7 @@ Set-Location ..
 
 Expected: zero failures nas duas suítes. Registrar as contagens exatas observadas no relatório final; não reutilizar contagens históricas.
 
-- [ ] **Step 6: registrar conclusão documental baseada nos resultados reais**
+- [x] **Step 6: registrar conclusão documental baseada nos resultados reais**
 
 Somente depois do Step 5 verde:
 
@@ -1137,7 +1149,7 @@ Somente depois do Step 5 verde:
 
 Não marque R2 nem R2.2 como concluídos.
 
-- [ ] **Step 7: executar verificação final do diff e do contrato**
+- [x] **Step 7: executar verificação final do diff e do contrato**
 
 ```powershell
 python scripts/generate_design_tokens.py --check
@@ -1148,7 +1160,7 @@ git diff --stat origin/main...HEAD
 
 Expected: gerador e diff retornam 0; apenas arquivos previstos aparecem; branch é `codex/r2-1-design-tokens`.
 
-- [ ] **Step 8: commitar e publicar a Task 4**
+- [x] **Step 8: commitar e publicar a Task 4**
 
 ```powershell
 git add .github/workflows/ci.yml docs/design-system.md docs/ROADMAP.md PRD.md docs/superpowers/specs/2026-08-22-casa-de-valores-r2-1-design-tokens-design.md docs/superpowers/plans/2026-08-22-casa-de-valores-r2-1-design-tokens-implementation.md
@@ -1158,7 +1170,7 @@ git push origin codex/r2-1-design-tokens
 
 Expected: branch remota contém quatro commits de implementação, workspace limpo e nenhuma mudança em `main`.
 
-- [ ] **Step 9: aguardar CI da branch e entregar para autorização de merge**
+- [x] **Step 9: aguardar CI da branch e entregar para autorização de merge**
 
 ```powershell
 $runId = gh run list --branch codex/r2-1-design-tokens --workflow CI --limit 1 --json databaseId --jq '.[0].databaseId'

@@ -40,6 +40,9 @@ jobs:
       - name: Generate ephemeral Django secret
         run: echo "SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(64))')" >> "$GITHUB_ENV" # gitleaks:allow
 
+      - name: Verify generated design tokens
+        run: python scripts/generate_design_tokens.py --check
+
       - name: Lint
         run: ruff check . --config pyproject.toml
 

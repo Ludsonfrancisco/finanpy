@@ -1,9 +1,11 @@
+import 'lar_tokens.g.dart';
+
 abstract final class LarSpacing {
-  static const double xxs = 4,
-      xs = 8,
-      sm = 12,
-      md = 16,
-      lg = 24,
-      xl = 32,
-      xxl = 48;
+  static const double xxs = LarGeneratedSpacing.xxs,
+      xs = LarGeneratedSpacing.xs,
+      sm = LarGeneratedSpacing.sm,
+      md = LarGeneratedSpacing.md,
+      lg = LarGeneratedSpacing.lg,
+      xl = LarGeneratedSpacing.xl,
+      xxl = LarGeneratedSpacing.xxl;
 }

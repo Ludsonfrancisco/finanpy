@@ -1,0 +1,123 @@
+/* Generated from design/tokens.json. Do not edit manually. */
+:root {
+  --lar-color-amber: #B9782D;
+  --lar-color-black: #000000;
+  --lar-color-champagne: #C7A35A;
+  --lar-color-champagne-dark: #A6843D;
+  --lar-color-champagne-light: #DBB86F;
+  --lar-color-champagne-selected-dark: #4B4027;
+  --lar-color-champagne-selected-light: #E9D9B8;
+  --lar-color-danger: #B8534F;
+  --lar-color-danger-dark: #963E3B;
+  --lar-color-danger-light: #D66D69;
+  --lar-color-dark-border: #31403A;
+  --lar-color-dark-canvas: #091311;
+  --lar-color-dark-elevated: #171F1B;
+  --lar-color-dark-outline: #8D958D;
+  --lar-color-dark-surface: #101B18;
+  --lar-color-dark-text: #E8E3D8;
+  --lar-color-dark-text-muted: #8D958D;
+  --lar-color-dark-text-secondary: #A7AEA8;
+  --lar-color-light-border: #CBC5B9;
+  --lar-color-light-canvas: #F3EFE6;
+  --lar-color-light-elevated: #FFFCF5;
+  --lar-color-light-outline: #8B8A80;
+  --lar-color-light-surface: #FFFCF5;
+  --lar-color-light-text: #17201D;
+  --lar-color-light-text-muted: #6B716C;
+  --lar-color-light-text-secondary: #59635D;
+  --lar-color-mineral: #2F756A;
+  --lar-color-mineral-dark: #23584F;
+  --lar-color-mineral-hover: #28635A;
+  --lar-color-mineral-on-dark: #72B8AC;
+  --lar-color-warning-dark: #8E571F;
+  --lar-color-warning-light: #DBB86F;
+  --lar-space-xxs: 4px;
+  --lar-space-xs: 8px;
+  --lar-space-sm: 12px;
+  --lar-space-md: 16px;
+  --lar-space-lg: 24px;
+  --lar-space-xl: 32px;
+  --lar-space-xxl: 48px;
+  --lar-radius-sm: 8px;
+  --lar-radius-md: 12px;
+  --lar-radius-lg: 16px;
+  --lar-radius-xl: 24px;
+  --lar-radius-pill: 9999px;
+  --lar-border-default: 1px;
+  --lar-border-focus: 2px;
+  --lar-motion-fast: 160ms;
+  --lar-motion-standard: 200ms;
+  --lar-motion-slow: 240ms;
+  --lar-motion-curve-standard: cubic-bezier(0.2, 0, 0, 1);
+  --lar-font-family-sans: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, system-ui, sans-serif;
+  --lar-font-size-caption: 12px;
+  --lar-line-height-caption: 1.333333;
+  --lar-font-weight-caption: 400;
+  --lar-font-size-label: 14px;
+  --lar-line-height-label: 1.428571;
+  --lar-font-weight-label: 500;
+  --lar-font-size-body: 16px;
+  --lar-line-height-body: 1.5;
+  --lar-font-weight-body: 400;
+  --lar-font-size-title: 20px;
+  --lar-line-height-title: 1.4;
+  --lar-font-weight-title: 600;
+  --lar-font-size-headline: 24px;
+  --lar-line-height-headline: 1.333333;
+  --lar-font-weight-headline: 600;
+  --lar-font-size-financial: 32px;
+  --lar-line-height-financial: 1.15;
+  --lar-font-weight-financial: 600;
+  --lar-breakpoint-desktop: 900px;
+}
+
+:root, [data-lar-theme="dark"] {
+  --lar-color-accent-champagne: #C7A35A;
+  --lar-color-accent-mineral: #72B8AC;
+  --lar-color-accent-selection: #4B4027;
+  --lar-color-border-default: #31403A;
+  --lar-color-border-strong: #8D958D;
+  --lar-color-focus-ring: #72B8AC;
+  --lar-color-shadow-color: #000000;
+  --lar-color-state-danger: #D66D69;
+  --lar-color-state-info: #72B8AC;
+  --lar-color-state-success: #72B8AC;
+  --lar-color-state-warning: #DBB86F;
+  --lar-color-surface-base: #101B18;
+  --lar-color-surface-canvas: #091311;
+  --lar-color-surface-elevated: #171F1B;
+  --lar-color-text-muted: #8D958D;
+  --lar-color-text-primary: #E8E3D8;
+  --lar-color-text-secondary: #A7AEA8;
+  --lar-elevation-flat: 0 0px 0px rgba(0, 0, 0, 0);
+  --lar-elevation-raised: 0 4px 16px rgba(0, 0, 0, 0.24);
+  --lar-elevation-modal: 0 12px 32px rgba(0, 0, 0, 0.36);
+}
+
+[data-lar-theme="light"] {
+  --lar-color-accent-champagne: #C7A35A;
+  --lar-color-accent-mineral: #2F756A;
+  --lar-color-accent-selection: #E9D9B8;
+  --lar-color-border-default: #CBC5B9;
+  --lar-color-border-strong: #8B8A80;
+  --lar-color-focus-ring: #2F756A;
+  --lar-color-shadow-color: #091311;
+  --lar-color-state-danger: #B8534F;
+  --lar-color-state-info: #2F756A;
+  --lar-color-state-success: #2F756A;
+  --lar-color-state-warning: #8E571F;
+  --lar-color-surface-base: #FFFCF5;
+  --lar-color-surface-canvas: #F3EFE6;
+  --lar-color-surface-elevated: #FFFCF5;
+  --lar-color-text-muted: #6B716C;
+  --lar-color-text-primary: #17201D;
+  --lar-color-text-secondary: #59635D;
+  --lar-elevation-flat: 0 0px 0px rgba(9, 19, 17, 0);
+  --lar-elevation-raised: 0 4px 16px rgba(9, 19, 17, 0.1);
+  --lar-elevation-modal: 0 12px 32px rgba(9, 19, 17, 0.16);
+}
+
+:where(.tabular-nums, .financial-amount, [data-financial-value]) {
+  font-variant-numeric: tabular-nums;
+}

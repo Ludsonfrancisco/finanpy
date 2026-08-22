@@ -1,6 +1,6 @@
 # R2.1 — Tokens e contrato visual Casa de Valores 2.0
 
-**Status:** aprovado pelo proprietário em 22/08/2026
+**Status:** implementado e verificado em 22/08/2026
 
 **Escopo:** fundação compartilhada de design tokens para Web e Flutter
 

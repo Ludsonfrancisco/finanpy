@@ -125,11 +125,18 @@ aprovados.
 
 ### R2.1 — Tokens e contrato visual
 
-- [ ] criar variáveis CSS para os tokens oficiais claro/escuro;
-- [ ] adicionar teste de paridade token Flutter ↔ Web;
-- [ ] usar stack tipográfica nativa e números tabulares;
-- [ ] centralizar spacing, radius, bordas, elevação e motion;
-- [ ] remover cores estruturais hardcoded do shell.
+- [x] criar variáveis CSS para os tokens oficiais claro/escuro;
+- [x] adicionar teste de paridade token Flutter ↔ Web;
+- [x] usar stack tipográfica nativa e números tabulares;
+- [x] centralizar spacing, radius, bordas, elevação e motion;
+- [x] remover cores estruturais hardcoded do shell.
+
+Evidência R2.1: commits de implementação `e001fc5`, `2c436c7`, `4278b6e` e
+`62f63dd`; suíte Django: 591 testes, suíte Flutter (golden excluído): 364
+testes.
+
+Correções pós-revisão R2.1: `6a53c5744a32117f73586fbe4beb744720d7389b` e
+`b2dd2f84a6d0e8244e99fc747a3e0e8197e46c2f`.
 
 ### R2.2 — Tema e assets
 
