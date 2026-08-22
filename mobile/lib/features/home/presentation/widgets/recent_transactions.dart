@@ -5,6 +5,7 @@ import '../../../../design_system/components/financial_amount.dart';
 import '../../../../design_system/lar_colors.dart';
 import '../../../../design_system/lar_spacing.dart';
 import '../../domain/home_snapshot.dart';
+import 'home_financial_surface.dart';
 
 final class RecentTransactions extends StatelessWidget {
   const RecentTransactions({
@@ -19,22 +20,31 @@ final class RecentTransactions extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     container: true,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'Movimentações recentes',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: LarSpacing.md),
-        if (transactions.isEmpty)
-          const Text('Nenhuma movimentação neste período')
-        else
-          for (var index = 0; index < transactions.length; index++) ...[
-            _TransactionRow(transaction: transactions[index], hidden: hidden),
-            if (index < transactions.length - 1) const Divider(height: 1),
-          ],
-      ],
+    child: HomeFinancialSurface(
+      key: const Key('home-recent-card'),
+      padding: const EdgeInsets.all(LarSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Movimentações recentes',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: LarSpacing.xs),
+          Text(
+            'Últimas atividades do responsável selecionado',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: LarSpacing.md),
+          if (transactions.isEmpty)
+            const Text('Nenhuma movimentação neste período')
+          else
+            for (var index = 0; index < transactions.length; index++) ...[
+              _TransactionRow(transaction: transactions[index], hidden: hidden),
+              if (index < transactions.length - 1) const Divider(height: 1),
+            ],
+        ],
+      ),
     ),
   );
 }

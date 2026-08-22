@@ -296,54 +296,55 @@ final class _SnapshotContent extends StatelessWidget {
     final recent = available
         ? data!.recentTransactions
         : const <HomeTransaction>[];
+    final balance = BalanceHeader(
+      balanceMinor: financialData?.hasAccountData == true
+          ? financialData!.balanceMinor
+          : null,
+      hidden: hidden,
+    );
+    final commitments = CommitmentsSummary(
+      commitmentMinor: financialData?.upcomingCommitmentMinor,
+      monthExpenseMinor: financialData?.monthExpenseMinor,
+      monthLabel: monthLabel,
+      hidden: hidden,
+    );
+    final attention = _AttentionSection(
+      messages: messages,
+      showRetry:
+          syncPhase == SyncPhase.offline || syncPhase == SyncPhase.failed,
+      onRetry: onRetry,
+      retryFocusNode: retryFocusNode,
+    );
     final main = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        BalanceHeader(
-          balanceMinor: financialData?.hasAccountData == true
-              ? financialData!.balanceMinor
-              : null,
-          hidden: hidden,
-        ),
-        const SizedBox(height: LarSpacing.xxl),
-        CommitmentsSummary(
-          commitmentMinor: financialData?.upcomingCommitmentMinor,
-          monthExpenseMinor: financialData?.monthExpenseMinor,
-          monthLabel: monthLabel,
-          hidden: hidden,
-        ),
+        balance,
+        const SizedBox(height: LarSpacing.lg),
+        commitments,
         if (messages.isNotEmpty) ...[
-          const SizedBox(height: LarSpacing.xxl),
-          AttentionList(messages: messages),
-          if (syncPhase == SyncPhase.offline || syncPhase == SyncPhase.failed)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FocusTraversalOrder(
-                order: const NumericFocusOrder(3),
-                child: TextButton.icon(
-                  key: const Key('sync-retry'),
-                  focusNode: retryFocusNode,
-                  onPressed: onRetry,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Tentar novamente'),
-                ),
-              ),
-            ),
+          const SizedBox(height: LarSpacing.lg),
+          attention,
         ],
       ],
     );
-    if (desktop && recent.isNotEmpty) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    if (desktop) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Expanded(flex: 5, child: main),
-          const SizedBox(width: LarSpacing.xxl),
-          const SizedBox(height: 420, child: VerticalDivider(width: 1)),
-          const SizedBox(width: LarSpacing.xxl),
-          Expanded(
-            flex: 3,
-            child: RecentTransactions(transactions: recent, hidden: hidden),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(flex: 5, child: balance),
+              const SizedBox(width: LarSpacing.lg),
+              Expanded(flex: 4, child: commitments),
+            ],
           ),
+          if (messages.isNotEmpty) ...[
+            const SizedBox(height: LarSpacing.lg),
+            attention,
+          ],
+          const SizedBox(height: LarSpacing.lg),
+          RecentTransactions(transactions: recent, hidden: hidden),
         ],
       );
     }
@@ -351,11 +352,47 @@ final class _SnapshotContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         main,
-        const SizedBox(height: LarSpacing.xxl),
+        const SizedBox(height: LarSpacing.lg),
         RecentTransactions(transactions: recent, hidden: hidden),
       ],
     );
   }
+}
+
+final class _AttentionSection extends StatelessWidget {
+  const _AttentionSection({
+    required this.messages,
+    required this.showRetry,
+    required this.onRetry,
+    required this.retryFocusNode,
+  });
+
+  final List<String> messages;
+  final bool showRetry;
+  final Future<void> Function() onRetry;
+  final FocusNode retryFocusNode;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: <Widget>[
+      AttentionList(messages: messages),
+      if (showRetry)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FocusTraversalOrder(
+            order: const NumericFocusOrder(3),
+            child: TextButton.icon(
+              key: const Key('sync-retry'),
+              focusNode: retryFocusNode,
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tentar novamente'),
+            ),
+          ),
+        ),
+    ],
+  );
 }
 
 int _scopeIndex(OwnerScopeKind kind) => switch (kind) {

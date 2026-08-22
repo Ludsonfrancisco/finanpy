@@ -312,6 +312,61 @@ void main() {
     },
   );
 
+  testWidgets(
+    'compact home preserves shared financial order without overflow',
+    (tester) async {
+      final controller = _controller(
+        _FakeHomeRepository(
+          streams: {OwnerScopeKind.household: Stream.value(_snapshot())},
+        ),
+      );
+      addTearDown(controller.dispose);
+
+      await _pumpHome(tester, controller, viewportSize: const Size(390, 1200));
+
+      final keys = <Key>[
+        const Key('home-position-card'),
+        const Key('home-commitment-card'),
+        const Key('home-expense-card'),
+        const Key('home-recent-card'),
+      ];
+      final tops = keys
+          .map((key) => tester.getTopLeft(find.byKey(key)).dy)
+          .toList();
+      expect(tops, orderedEquals(tops.toList()..sort()));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'desktop home keeps metrics beside position and recent activity visible',
+    (tester) async {
+      final controller = _controller(
+        _FakeHomeRepository(
+          streams: {OwnerScopeKind.household: Stream.value(_snapshot())},
+        ),
+      );
+      addTearDown(controller.dispose);
+
+      await _pumpHome(
+        tester,
+        controller,
+        platform: TargetPlatform.windows,
+        viewportSize: const Size(1366, 900),
+      );
+
+      final position = tester.getRect(
+        find.byKey(const Key('home-position-card')),
+      );
+      final commitment = tester.getRect(
+        find.byKey(const Key('home-commitment-card')),
+      );
+      expect(commitment.left, greaterThan(position.left));
+      expect(find.byKey(const Key('home-recent-card')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('200% de texto em 320px mantém ordem, sem overflow ou exceção', (
     tester,
   ) async {
