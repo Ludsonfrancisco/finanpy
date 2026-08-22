@@ -121,3 +121,35 @@ class DesignTokenGeneratorTest(SimpleTestCase):
 
             self.assertEqual(generator.generate(root=root, check=True), 1)
             self.assertEqual(css_path.read_text(encoding='utf-8'), 'stale\n')
+
+
+class WebTokenIntegrationTest(SimpleTestCase):
+    def test_base_template_loads_tokens_without_structural_hex_colors(self):
+        template = (PROJECT_ROOT / 'templates' / 'base.html').read_text(encoding='utf-8')
+
+        self.assertIn("{% load static %}", template)
+        self.assertIn("{% static 'css/design-tokens.css' %}", template)
+        self.assertIn('var(--lar-font-family-sans)', template)
+        self.assertIn('var(--lar-color-surface-canvas)', template)
+        self.assertNotRegex(template, r'#[0-9A-Fa-f]{3,8}\b')
+        self.assertNotIn('radial-gradient', template)
+
+    def test_tailwind_palette_supports_opacity_utilities(self):
+        template = (PROJECT_ROOT / 'templates' / 'base.html').read_text(encoding='utf-8')
+        template_sources = '\n'.join(
+            path.read_text(encoding='utf-8')
+            for path in (PROJECT_ROOT / 'templates').rglob('*.html')
+        )
+
+        for utility in ('bg-mineral/20', 'border-danger/30', 'shadow-champagne/20'):
+            self.assertIn(utility, template_sources)
+
+        for token in (
+            '--lar-color-accent-mineral',
+            '--lar-color-state-danger',
+            '--lar-color-accent-champagne',
+        ):
+            self.assertIn(
+                f"rgb(from var({token}) r g b / <alpha-value>)",
+                template,
+            )

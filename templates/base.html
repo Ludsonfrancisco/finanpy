@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR" class="dark">
 <head>
@@ -10,6 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="{% static 'css/design-tokens.css' %}">
 
   <!-- TailwindCSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -27,43 +30,43 @@
         extend: {
           colors: {
             mineral: {
-              DEFAULT: '#2F756A',
-              light: '#3D9285',
-              dark: '#23584F',
-              hover: '#28635A',
-              muted: 'rgba(47, 117, 106, 0.15)',
+              DEFAULT: 'rgb(from var(--lar-color-accent-mineral) r g b / <alpha-value>)',
+              light: 'rgb(from var(--lar-color-mineral-on-dark) r g b / <alpha-value>)',
+              dark: 'rgb(from var(--lar-color-mineral-dark) r g b / <alpha-value>)',
+              hover: 'rgb(from var(--lar-color-mineral-hover) r g b / <alpha-value>)',
+              muted: 'color-mix(in srgb, var(--lar-color-accent-mineral) 15%, transparent)',
             },
             danger: {
-              DEFAULT: '#B8534F',
-              light: '#D66D69',
-              dark: '#963E3B',
-              muted: 'rgba(184, 83, 79, 0.15)',
+              DEFAULT: 'rgb(from var(--lar-color-state-danger) r g b / <alpha-value>)',
+              light: 'rgb(from var(--lar-color-danger-light) r g b / <alpha-value>)',
+              dark: 'rgb(from var(--lar-color-danger-dark) r g b / <alpha-value>)',
+              muted: 'color-mix(in srgb, var(--lar-color-state-danger) 15%, transparent)',
             },
             champagne: {
-              DEFAULT: '#C7A35A',
-              light: '#DBB86F',
-              dark: '#A6843D',
-              muted: 'rgba(199, 163, 90, 0.15)',
+              DEFAULT: 'rgb(from var(--lar-color-accent-champagne) r g b / <alpha-value>)',
+              light: 'rgb(from var(--lar-color-champagne-light) r g b / <alpha-value>)',
+              dark: 'rgb(from var(--lar-color-champagne-dark) r g b / <alpha-value>)',
+              muted: 'color-mix(in srgb, var(--lar-color-accent-champagne) 15%, transparent)',
             },
             lar: {
-              bg: '#101512',
-              surface: '#171F1B',
-              card: '#1B2420',
-              border: '#24302A',
-              borderHover: '#32423A',
-              textPrimary: '#E8ECE9',
-              textSecondary: '#8D958D',
-              textMuted: '#5C665F',
+              bg: 'var(--lar-color-surface-canvas)',
+              surface: 'var(--lar-color-surface-base)',
+              card: 'var(--lar-color-surface-elevated)',
+              border: 'var(--lar-color-border-default)',
+              borderHover: 'var(--lar-color-border-strong)',
+              textPrimary: 'var(--lar-color-text-primary)',
+              textSecondary: 'var(--lar-color-text-secondary)',
+              textMuted: 'var(--lar-color-text-muted)',
             },
           },
           fontFamily: {
-            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            sans: ['var(--lar-font-family-sans)'],
           },
           boxShadow: {
-            'glow-mineral': '0 0 25px -5px rgba(47, 117, 106, 0.25)',
-            'glow-danger': '0 0 25px -5px rgba(184, 83, 79, 0.25)',
-            'glow-champagne': '0 0 25px -5px rgba(199, 163, 90, 0.25)',
-            'card': '0 4px 20px -2px rgba(0, 0, 0, 0.5)',
+            'glow-mineral': 'var(--lar-elevation-raised)',
+            'glow-danger': 'var(--lar-elevation-raised)',
+            'glow-champagne': 'var(--lar-elevation-raised)',
+            'card': 'var(--lar-elevation-raised)',
           },
         },
       },
@@ -77,31 +80,31 @@
       height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: #101512;
+      background: var(--lar-color-surface-canvas);
     }
     ::-webkit-scrollbar-thumb {
-      background: #24302A;
-      border-radius: 4px;
+      background: var(--lar-color-border-default);
+      border-radius: var(--lar-radius-sm);
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #2F756A;
+      background: var(--lar-color-accent-mineral);
     }
 
-    /* Ambient Background Lighting */
+    /* Ambient Background */
     .ambient-bg {
-      background-color: #101512;
-      background-image: 
-        radial-gradient(at 15% 15%, rgba(47, 117, 106, 0.08) 0px, transparent 50%),
-        radial-gradient(at 85% 85%, rgba(199, 163, 90, 0.04) 0px, transparent 50%);
+      background: var(--lar-color-surface-canvas);
     }
 
     .lar-card {
-      background: #171F1B;
-      border: 1px solid #24302A;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      background: var(--lar-color-surface-elevated);
+      border: var(--lar-border-default) solid var(--lar-color-border-default);
+      box-shadow: var(--lar-elevation-flat);
+      transition:
+        border-color var(--lar-motion-standard) var(--lar-motion-curve-standard),
+        box-shadow var(--lar-motion-standard) var(--lar-motion-curve-standard);
     }
     .lar-card:hover {
-      border-color: #32423A;
+      border-color: var(--lar-color-border-strong);
     }
 
     .tabular-nums {
@@ -111,7 +114,7 @@
 
   {% block extra_head %}{% endblock %}
 </head>
-<body class="ambient-bg text-[#E8ECE9] font-sans antialiased min-h-screen selection:bg-mineral selection:text-white">
+<body class="ambient-bg text-lar-textPrimary font-sans antialiased min-h-screen selection:bg-mineral selection:text-white">
 
   <!-- Skip to main content -->
   <a href="#main-content"
