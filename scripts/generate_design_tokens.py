@@ -24,6 +24,17 @@ REQUIRED_SEMANTIC = {
     'state.success', 'state.info', 'state.warning', 'state.danger',
     'focus.ring', 'shadow.color',
 }
+DART_RESERVED_WORDS = {
+    'abstract', 'as', 'assert', 'async', 'await', 'base', 'break', 'case',
+    'catch', 'class', 'const', 'continue', 'covariant', 'default', 'deferred',
+    'do', 'dynamic', 'else', 'enum', 'export', 'extends', 'extension',
+    'external', 'factory', 'false', 'final', 'finally', 'for', 'Function',
+    'get', 'hide', 'if', 'implements', 'import', 'in', 'interface', 'is',
+    'late', 'library', 'macros', 'mixin', 'new', 'null', 'of', 'on',
+    'operator', 'part', 'required', 'rethrow', 'return', 'sealed', 'set',
+    'show', 'static', 'super', 'switch', 'sync', 'this', 'throw', 'true',
+    'try', 'typedef', 'var', 'void', 'while', 'when', 'with', 'yield',
+}
 
 
 class ContractError(ValueError):
@@ -60,16 +71,22 @@ def _lookup(contract: dict[str, Any], dotted_path: str) -> Any:
     return value
 
 
-def _resolve(contract: dict[str, Any], value: Any) -> Any:
+def _resolve(
+    contract: dict[str, Any],
+    value: Any,
+    visited: set[str] | None = None,
+) -> Any:
     if not isinstance(value, str):
         return value
     match = REFERENCE.fullmatch(value)
     if not match:
         return value
-    resolved = _lookup(contract, match.group(1))
-    if resolved == value:
-        raise ContractError(f'cyclic token reference: {value}')
-    return _resolve(contract, resolved)
+    reference = match.group(1)
+    visited = set() if visited is None else visited
+    if reference in visited:
+        raise ContractError(f'cyclic token reference: {reference}')
+    resolved = _lookup(contract, reference)
+    return _resolve(contract, resolved, {*visited, reference})
 
 
 def _rgb(hex_color: str) -> tuple[int, int, int]:
@@ -79,7 +96,7 @@ def _rgb(hex_color: str) -> tuple[int, int, int]:
 def _is_purple(hex_color: str) -> bool:
     red, green, blue = (channel / 255 for channel in _rgb(hex_color))
     hue, saturation, _ = colorsys.rgb_to_hsv(red, green, blue)
-    return 260 <= hue * 360 <= 330 and saturation > 0.15
+    return 230 <= hue * 360 <= 330 and saturation > 0.05
 
 
 def _luminance(hex_color: str) -> float:
@@ -157,6 +174,10 @@ def _kebab(value: str) -> str:
 def _camel(value: str) -> str:
     parts = value.split('.')
     return parts[0] + ''.join(part[:1].upper() + part[1:] for part in parts[1:])
+
+
+def _dart_identifier(value: str) -> str:
+    return f'{value}Value' if value in DART_RESERVED_WORDS else value
 
 
 def _css_font_family(families: list[str]) -> str:
@@ -239,14 +260,15 @@ def render_dart(contract: dict[str, Any]) -> str:
         'abstract final class LarGeneratedColors {',
     ]
     for name, color in sorted(contract['color']['primitive'].items()):
-        lines.append(f'  static const {name} = {_dart_color(color)};')
+        lines.append(f'  static const {_dart_identifier(name)} = {_dart_color(color)};')
     lines.append('}')
 
     for mode in ('Light', 'Dark'):
         semantic = _flatten(contract['color']['semantic'][mode.lower()])
         lines.extend(['', f'abstract final class LarGenerated{mode}Colors {{'])
         for name, value in sorted(semantic.items()):
-            lines.append(f'  static const {_camel(name)} = {_dart_color(_resolve(contract, value))};')
+            identifier = _dart_identifier(_camel(name))
+            lines.append(f'  static const {identifier} = {_dart_color(_resolve(contract, value))};')
         lines.append('}')
 
     simple_groups = (
@@ -258,29 +280,30 @@ def render_dart(contract: dict[str, Any]) -> str:
     for class_name, values in simple_groups:
         lines.extend(['', f'abstract final class LarGenerated{class_name} {{'])
         for name, value in values.items():
-            lines.append(f'  static const {name} = {_dart_double(value)};')
+            lines.append(f'  static const {_dart_identifier(name)} = {_dart_double(value)};')
         lines.append('}')
 
     lines.extend(['', 'abstract final class LarGeneratedMotion {'])
     for name, value in contract['motion']['duration'].items():
-        lines.append(f'  static const {name}Milliseconds = {value};')
+        identifier = _dart_identifier(f'{name}Milliseconds')
+        lines.append(f'  static const {identifier} = {value};')
     curve = ', '.join(f'{value:g}' for value in contract['motion']['standardCurve'])
     lines.append(f'  static const standardCurve = Cubic({curve});')
     lines.append('}')
 
     lines.extend(['', 'abstract final class LarGeneratedTypography {'])
     for name, style in contract['typography']['styles'].items():
-        lines.append(f'  static const {name}FontSize = {_dart_double(style["fontSize"])};')
-        lines.append(f'  static const {name}LineHeight = {style["lineHeight"]:g};')
-        lines.append(f'  static const {name}FontWeight = FontWeight.w{style["fontWeight"]};')
+        lines.append(f'  static const {_dart_identifier(f"{name}FontSize")} = {_dart_double(style["fontSize"])};')
+        lines.append(f'  static const {_dart_identifier(f"{name}LineHeight")} = {style["lineHeight"]:g};')
+        lines.append(f'  static const {_dart_identifier(f"{name}FontWeight")} = FontWeight.w{style["fontWeight"]};')
     lines.append('}')
 
     lines.extend(['', 'abstract final class LarGeneratedElevation {'])
     for name, value in contract['elevation'].items():
-        lines.append(f'  static const {name}OffsetY = {_dart_double(value["offsetY"])};')
-        lines.append(f'  static const {name}Blur = {_dart_double(value["blur"])};')
-        lines.append(f'  static const light{name.title()}Opacity = {value["lightOpacity"]:g};')
-        lines.append(f'  static const dark{name.title()}Opacity = {value["darkOpacity"]:g};')
+        lines.append(f'  static const {_dart_identifier(f"{name}OffsetY")} = {_dart_double(value["offsetY"])};')
+        lines.append(f'  static const {_dart_identifier(f"{name}Blur")} = {_dart_double(value["blur"])};')
+        lines.append(f'  static const {_dart_identifier(f"light{name.title()}Opacity")} = {value["lightOpacity"]:g};')
+        lines.append(f'  static const {_dart_identifier(f"dark{name.title()}Opacity")} = {value["darkOpacity"]:g};')
     lines.extend(['}', ''])
     return '\n'.join(lines)
 

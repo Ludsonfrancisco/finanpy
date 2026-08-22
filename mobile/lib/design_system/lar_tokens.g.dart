@@ -95,7 +95,7 @@ abstract final class LarGeneratedRadius {
 }
 
 abstract final class LarGeneratedBorders {
-  static const default = 1.0;
+  static const defaultValue = 1.0;
   static const focus = 2.0;
 }
 

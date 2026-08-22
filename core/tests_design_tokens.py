@@ -48,6 +48,24 @@ class DesignTokenGeneratorTest(SimpleTestCase):
         with self.assertRaisesRegex(generator.ContractError, 'purple family'):
             generator.validate_contract(invalid)
 
+    def test_contract_rejects_violet(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        invalid = copy.deepcopy(contract)
+        invalid['color']['primitive']['forbiddenViolet'] = '#8A2BE2'
+
+        with self.assertRaisesRegex(generator.ContractError, 'purple family'):
+            generator.validate_contract(invalid)
+
+    def test_contract_rejects_lavender(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        invalid = copy.deepcopy(contract)
+        invalid['color']['primitive']['forbiddenLavender'] = '#E6E6FA'
+
+        with self.assertRaisesRegex(generator.ContractError, 'purple family'):
+            generator.validate_contract(invalid)
+
     def test_contract_rejects_inaccessible_semantic_text(self):
         generator = load_generator(self)
         contract = generator.load_contract(CONTRACT_PATH)
@@ -56,6 +74,35 @@ class DesignTokenGeneratorTest(SimpleTestCase):
 
         with self.assertRaisesRegex(generator.ContractError, 'contrast'):
             generator.validate_contract(invalid)
+
+    def test_contract_rejects_indirect_reference_cycle(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+        invalid = copy.deepcopy(contract)
+        invalid['color']['semantic']['dark']['text']['muted'] = (
+            '{color.semantic.dark.text.secondary}'
+        )
+        invalid['color']['semantic']['dark']['text']['secondary'] = (
+            '{color.semantic.dark.text.muted}'
+        )
+
+        try:
+            generator.validate_contract(invalid)
+        except generator.ContractError as error:
+            self.assertRegex(str(error), 'cyclic token reference')
+        except RecursionError as error:
+            self.fail(f'indirect cycle leaked RecursionError: {error}')
+        else:
+            self.fail('indirect cycle was accepted')
+
+    def test_dart_normalizes_reserved_identifiers(self):
+        generator = load_generator(self)
+        contract = generator.load_contract(CONTRACT_PATH)
+
+        dart = generator.render_dart(contract)
+
+        self.assertIn('static const defaultValue = 1.0;', dart)
+        self.assertNotIn('static const default =', dart)
 
     def test_check_detects_stale_generated_output_without_writing(self):
         generator = load_generator(self)
